@@ -96,11 +96,21 @@ func update_challenge(text: String, color: Color) -> void:
 func update_combat(combat: CombatModel, power_w: float, player_x: float, delta: float) -> void:
 	_blink_t += delta
 	_combat_row.visible = combat.enabled
-	var ratio := power_w / maxf(combat.target_power_w, 1.0)
-	_supply_label.text = "CEL %d W · %d%%" % [roundi(combat.target_power_w), roundi(ratio * 100.0)]
-	var fill_color := Palette.UI_GOOD if ratio >= 0.97 else (Palette.UI_ACCENT if ratio >= 0.7 else Palette.UI_BAD)
+	# Widełki celu: w zakresie – zielono, za słabo – pomarańczowo, za mocno – czerwono (przegrzanie).
+	var range_text := TargetBand.range_text(combat.target_power_w, combat.target_low_tol, combat.target_high_tol)
+	var fill_color := Palette.UI_GOOD
+	match combat.band_status(power_w):
+		TargetBand.Status.BELOW:
+			_supply_label.text = "CEL %s · za słabo" % range_text
+			fill_color = Palette.UI_ACCENT
+		TargetBand.Status.ABOVE:
+			_supply_label.text = "CEL %s · ZA MOCNO – PRZEGRZANIE" % range_text
+			fill_color = Palette.UI_BAD
+		_:
+			_supply_label.text = "CEL %s · OK" % range_text
+	_supply_label.add_theme_color_override("font_color", fill_color.lerp(Palette.UI_TEXT, 0.35))
 	_supply_fill.color = fill_color
-	_supply_fill.size.x = BAR_WIDTH * clampf(ratio, 0.0, 1.0)
+	_supply_fill.size.x = BAR_WIDTH * clampf(combat.supply_ratio(), 0.0, 1.0)
 	_shield_fill.size.x = BAR_WIDTH * clampf(combat.shield, 0.0, 1.0)
 	var left_warn := false
 	var right_warn := false

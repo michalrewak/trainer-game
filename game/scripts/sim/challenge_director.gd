@@ -15,7 +15,8 @@ enum Phase { IDLE, ANNOUNCE, ACTIVE, RESULT }
 
 const ANNOUNCE_S := 6.0
 const RESULT_S := 4.0
-const HOLD_TOLERANCE := 0.92
+## Widełki wyzwania: liczy się czas w zakresie celu ±8% – za mocno też jest błędem.
+const BAND_TOL := TargetBand.CHALLENGE_TOL
 const SUCCESS_RATIO := 0.8
 
 const DEFS := {
@@ -103,7 +104,7 @@ func step(delta: float, elapsed_s: float, time_left_in_run_s: float, power_w: fl
 				started.emit(current)
 		Phase.ACTIVE:
 			energy_j += power_w * delta
-			if power_w >= target_w() * HOLD_TOLERANCE:
+			if TargetBand.is_in_band(power_w, target_w(), BAND_TOL, BAND_TOL):
 				hold_time += delta
 			if phase_time >= float(current["duration"]):
 				var ok := _evaluate()
@@ -136,6 +137,7 @@ func _announce(time_left_in_run_s: float) -> void:
 
 func _evaluate() -> bool:
 	if int(current["kind"]) == Kind.SPRINT:
+		# Sprint to zryw na maksa – liczy się tylko, czy średnia sięgnęła dolnej granicy.
 		var avg := energy_j / maxf(phase_time, 0.001)
-		return avg >= target_w() * HOLD_TOLERANCE
+		return avg >= TargetBand.low(target_w(), BAND_TOL)
 	return phase_time > 0.0 and hold_time / phase_time >= SUCCESS_RATIO

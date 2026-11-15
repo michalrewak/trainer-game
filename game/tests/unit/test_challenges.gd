@@ -41,8 +41,8 @@ func test_holding_power_wins_reward() -> void:
 	var sim := _free_ride()
 	var results: Array = []
 	sim.challenges.finished.connect(func(c: Dictionary, ok: bool) -> void: results.append([int(c["kind"]), ok]))
-	# Zawsze 10% ponad cel wyzwania.
-	_ride(sim, 120.0, func(s: RunSimulation) -> float: return maxf(150.0, s.challenges.target_w() * 1.1))
+	# Dokładnie w celu wyzwania (w widełkach ±8%).
+	_ride(sim, 120.0, func(s: RunSimulation) -> float: return s.challenges.target_w() if s.challenges.is_active() else 150.0)
 	assert_true(results.size() >= 1, "wyzwanie zakończone")
 	if results.is_empty():
 		return
@@ -64,6 +64,40 @@ func test_low_power_fails_and_escape_failure_brings_the_gang() -> void:
 	var escape_failed := results.any(func(r: Array) -> bool: return r[0] == ChallengeDirector.Kind.ESCAPE)
 	assert_true(escape_failed, "była nieudana ucieczka")
 	assert_true(sim.combat.raiders_destroyed + sim.combat.live_raiders().size() + sim.combat.rams_taken + sim.combat.rams_dodged + sim.combat.rams_blocked > 0, "gang dogonił gracza")
+
+
+func test_too_much_power_is_not_holding_the_target() -> void:
+	var sim := _free_ride()
+	var results: Array = []
+	sim.challenges.finished.connect(func(c: Dictionary, ok: bool) -> void: results.append([int(c["kind"]), ok]))
+	# 25% ponad cel – poza widełkami (podjazd i ucieczka nie są zaliczane).
+	_ride(sim, 200.0, func(s: RunSimulation) -> float: return s.challenges.target_w() * 1.25 if s.challenges.is_active() else 150.0)
+	assert_true(results.size() >= 1)
+	for r in results:
+		if r[0] != ChallengeDirector.Kind.SPRINT:
+			assert_false(r[1], "za mocno = poza widełkami = niezaliczone")
+
+
+func test_target_band_and_overheating() -> void:
+	assert_eq(TargetBand.status(190.0, 200.0, 0.05, 0.05), TargetBand.Status.IN_BAND)
+	assert_eq(TargetBand.status(185.0, 200.0, 0.05, 0.05), TargetBand.Status.BELOW)
+	assert_eq(TargetBand.status(215.0, 200.0, 0.05, 0.05), TargetBand.Status.ABOVE)
+	assert_near(TargetBand.supply(200.0, 200.0, 0.05, 0.05), 1.0, 1e-6, "w widełkach pełne zasilanie")
+	assert_near(TargetBand.supply(95.0, 200.0, 0.05, 0.05), 0.5, 1e-6, "połowa dolnej granicy")
+	assert_true(TargetBand.supply(240.0, 200.0, 0.05, 0.05) < 0.8, "przegrzanie obniża zasilanie")
+	assert_near(TargetBand.supply(400.0, 200.0, 0.05, 0.05), TargetBand.OVERHEAT_MIN_SUPPLY, 1e-6, "ale nie do zera")
+	assert_eq(TargetBand.range_text(200.0, 0.05, 0.05), "190–210 W")
+
+
+func test_combat_overheats_above_band() -> void:
+	var sim := RunSimulation.new(900.0, 4)
+	sim.combat.set_first_encounter(1e9)
+	sim.combat.target_power_w = 200.0
+	sim.combat.target_low_tol = 0.05
+	sim.combat.target_high_tol = 0.05
+	_ride(sim, 15.0, func(_s: RunSimulation) -> float: return 300.0)
+	assert_true(sim.combat.supply_ratio() < 0.6, "przegrzanie: zasilanie spada (%.2f)" % sim.combat.supply_ratio())
+	assert_true(sim.combat.fire_interval_s() > CombatModel.BASE_FIRE_INTERVAL_S * 1.5, "wolniejszy ogień")
 
 
 func test_climb_tilts_the_road_and_resets_after() -> void:

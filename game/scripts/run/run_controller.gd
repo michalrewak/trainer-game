@@ -91,6 +91,12 @@ func _ride(delta: float) -> void:
 	sim.combat.fire_held = Input.is_action_pressed(&"fire")
 	var p := power.get_power_watts()
 	sim.combat.target_power_w = _current_target_w()
+	if sim.challenges.is_active():
+		sim.combat.target_low_tol = TargetBand.CHALLENGE_TOL
+		sim.combat.target_high_tol = TargetBand.CHALLENGE_TOL
+	else:
+		sim.combat.target_low_tol = TargetBand.FREE_RIDE_LOW
+		sim.combat.target_high_tol = TargetBand.FREE_RIDE_HIGH
 	sim.step(delta, p)
 	_update_views(delta, p)
 	_update_challenge_hud()
@@ -183,7 +189,7 @@ func _update_challenge_hud() -> void:
 		ChallengeDirector.Phase.ACTIVE:
 			var ratio := ch.hold_ratio()
 			var col := Palette.UI_GOOD if ratio >= ChallengeDirector.SUCCESS_RATIO else Palette.UI_BAD
-			hud.update_challenge("%s %s · ≥ %d W · %d%%" % [str(ch.current["name"]), UiStyle.clock(ch.time_left_s()), roundi(ch.target_w() * ChallengeDirector.HOLD_TOLERANCE), roundi(ratio * 100.0)], col)
+			hud.update_challenge("%s %s · %s · %d%%" % [str(ch.current["name"]), UiStyle.clock(ch.time_left_s()), TargetBand.range_text(ch.target_w(), ChallengeDirector.BAND_TOL, ChallengeDirector.BAND_TOL), roundi(ratio * 100.0)], col)
 		_:
 			hud.update_challenge("", Palette.UI_TEXT)
 
