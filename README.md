@@ -62,8 +62,28 @@ dla tego pada (inaczej pad udaje mysz).
 - **Garaż**: 5 ulepszeń (generator, pancerz, kondensator tarczy, wieżyczka, przyczepa),
   każde widać na pojeździe. Wybór terenu: Kanion Rdzy, Martwe Miasto (wymaga pancerza i
   FTP ≥ 150 W). Ustawienie FTP i auto-ognia.
+- **Tryb wolny – wyzwania**: gra sama proponuje wyzwania i dyktuje opór. Podjazd 5% to
+  nachylenie (symulacja trenażera), ucieczka przed gangiem w burzy piaskowej i sprint za
+  ciężarówką to ERG. Cele liczone są od FTP. Nagrody: złom i paliwo, a nieudana ucieczka
+  sprowadza gang. Na padzie ERG jest symulowany (tempomat sam ustawia moc celu).
 - Postęp zapisuje się w `%APPDATA%\Godot\app_userdata\Wasteland Rider\progress.json`
   (zapis atomowy z kopią `.bak`), także przy przerwaniu wyprawy albo zamknięciu okna.
+
+## Stan etapów
+
+| Etap | Stan |
+|---|---|
+| 1. Gra na padzie (kanion, buggy, moc, HUD, zapis) | gotowe |
+| 2. Walka (gang, wieżyczka, tarcza zależna od mocy) | gotowe |
+| 3. Garaż, 5 ulepszeń, paliwo, drugi teren | gotowe |
+| 4. Tryb treningowy | fundamenty: pola bezpieczne, panel planu w HUD, symulowany ERG |
+| 5. Mostek Python do Suito | w osobnym torze (branch agenta) |
+| 6. Tryb wolny z wyzwaniami | gotowe |
+| 7. Import planów z Garmina (FIT) | parsery w osobnym torze (branch agenta) |
+
+Następne kroki: kampanie treningowe (kilka tygodni, prawdziwe protokoły, bossowie), ramp
+test FTP jako walka z bossem, zakręty, wzniesienia i doliny na trasie, tempo gry
+względem FTP.
 
 ## Opcje uruchomienia (po `--`)
 
@@ -74,7 +94,8 @@ dla tego pada (inaczej pad udaje mysz).
 `--minutes=N`, `--test` (2 min), `--autostart`, `--autopilot` (jazda automatyczna),
 `--time-scale=K`, `--seed=N`, `--quit-on-finish`, `--save=user://plik.json`,
 `--screenshots=KATALOG --shot-times=4,12`, `--combat-test`, `--no-combat`,
-`--terrain=city`, `--all-upgrades`. Szczegóły: `game/scripts/app/launch_options.gd`.
+`--terrain=city`, `--all-upgrades`, `--challenge-test`, `--no-challenges`.
+Szczegóły: `game/scripts/app/launch_options.gd`.
 
 ## Testy (bez sprzętu)
 
