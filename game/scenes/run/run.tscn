@@ -1,0 +1,68 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://scripts/run/run_controller.gd" id="1_run"]
+[ext_resource type="Script" path="res://scripts/view/track_view.gd" id="2_track"]
+[ext_resource type="PackedScene" path="res://scenes/run/buggy.tscn" id="3_buggy"]
+[ext_resource type="Script" path="res://scripts/view/chase_camera.gd" id="4_cam"]
+[ext_resource type="PackedScene" path="res://scenes/ui/hud.tscn" id="5_hud"]
+[ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="6_pause"]
+[ext_resource type="PackedScene" path="res://scenes/ui/debug_overlay.tscn" id="7_debug"]
+
+[sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
+sky_top_color = Color(0.36, 0.52, 0.63, 1)
+sky_horizon_color = Color(0.92, 0.71, 0.5, 1)
+sky_curve = 0.12
+ground_bottom_color = Color(0.55, 0.36, 0.24, 1)
+ground_horizon_color = Color(0.92, 0.71, 0.5, 1)
+sun_angle_max = 25.0
+
+[sub_resource type="Sky" id="Sky"]
+sky_material = SubResource("SkyMat")
+
+[sub_resource type="Environment" id="Env"]
+background_mode = 2
+sky = SubResource("Sky")
+ambient_light_source = 3
+ambient_light_color = Color(0.85, 0.7, 0.58, 1)
+ambient_light_sky_contribution = 0.6
+ambient_light_energy = 0.9
+tonemap_mode = 4
+tonemap_exposure = 1.05
+glow_enabled = true
+glow_intensity = 0.6
+glow_bloom = 0.08
+glow_hdr_threshold = 1.2
+fog_enabled = true
+fog_light_color = Color(0.85, 0.66, 0.47, 1)
+fog_density = 0.0045
+fog_sky_affect = 0.25
+adjustment_enabled = true
+adjustment_saturation = 1.08
+
+[node name="Run" type="Node3D"]
+script = ExtResource("1_run")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Env")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+light_color = Color(1, 0.91, 0.78, 1)
+light_energy = 1.35
+shadow_enabled = true
+directional_shadow_max_distance = 90.0
+
+[node name="Track" type="Node3D" parent="."]
+script = ExtResource("2_track")
+
+[node name="Buggy" parent="." instance=ExtResource("3_buggy")]
+
+[node name="Camera" type="Camera3D" parent="."]
+current = true
+far = 600.0
+script = ExtResource("4_cam")
+
+[node name="Hud" parent="." instance=ExtResource("5_hud")]
+
+[node name="PauseMenu" parent="." instance=ExtResource("6_pause")]
+
+[node name="DebugOverlay" parent="." instance=ExtResource("7_debug")]

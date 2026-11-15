@@ -1,0 +1,11 @@
+# Normalizacja końców linii (Godot domyślnie używa LF)
+* text=auto eol=lf
+
+# Pliki binarne
+*.png binary
+*.jpg binary
+*.glb binary
+*.ttf binary
+*.otf binary
+*.wav binary
+*.ogg binary

@@ -1,47 +1,25 @@
-# Unity
-[Ll]ibrary/
-[Tt]emp/
-[Oo]bj/
-[Bb]uild/
-[Bb]uilds/
-[Ll]ogs/
-[Uu]ser[Ss]ettings/
-MemoryCaptures/
-ExportedObj/
-.consoleapp.manifest
-*.stackdump
-*.svd
-*.sln
-*.csproj
-*.pidb
-*.suo
-*.user
-*.userprefs
-*.unityproj
-*.DS_Store
-*.apk
-*.aab
-*.unitypackage
-*.gz
-Crashlytics/
-sysinfo.txt
-*.pdb
+# Godot 4 – cache importu i pliki generowane
+.godot/
+/android/
+*.tmp
 
-# Unity Asset Store
-Assets/AssetStoreTools*
+# Lokalnie pobrane narzędzia (portable Godot itp. – patrz README)
+.tools/
 
-# Visual Studio
-.vs/
-*.vsconfig
+# Wyniki testów i zrzuty ekranu z testów dymnych
+game/tests/_out/
 
-# Rider
-.idea/
+# Python (mostek do trenażera – etap 5)
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
 
-# .NET
-BLEBridge/bin/
-BLEBridge/obj/
-
-# OS
+# System / IDE
 Thumbs.db
 Desktop.ini
 .DS_Store
+.vs/
+.idea/
