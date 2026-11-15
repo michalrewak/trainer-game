@@ -19,6 +19,13 @@ var _message: Label
 var _popup: Label
 var _scrap_panel: Control
 var _fuel_value: Label
+var _challenge_label: Label
+var _workout_box: Control
+var _profile: WorkoutProfile
+var _workout_title: Label
+var _step_label: Label
+var _next_label: Label
+var _safe_label: Label
 var _supply_label: Label
 var _supply_fill: ColorRect
 var _shield_fill: ColorRect
@@ -59,6 +66,30 @@ func update_from(sim: RunSimulation, power: PowerSource, delta: float) -> void:
 	_fuel_value.text = "PALIWO %d" % e.fuel
 	_fuel_value.visible = e.fuel > 0
 	_tick_effects(delta)
+
+
+## Etap 4: tryb treningowy – profil planu na dole ekranu i bieżący krok.
+func set_workout(blocks: Array[Dictionary], plan_name: String) -> void:
+	_workout_box.visible = true
+	_profile.set_blocks(blocks)
+	_workout_title.text = plan_name
+	_supply_label.add_theme_font_size_override("font_size", 40)
+	_supply_label.add_theme_color_override("font_color", Palette.UI_TEXT)
+
+
+## info: now_s, step_label, step_left_s, next_label, target_w, safe (bool)
+func update_workout(info: Dictionary) -> void:
+	_profile.set_now(float(info.get("now_s", 0.0)))
+	_step_label.text = "%s  ·  %s" % [str(info.get("step_label", "")), UiStyle.clock(float(info.get("step_left_s", 0.0)))]
+	_next_label.text = str(info.get("next_label", ""))
+	_safe_label.visible = bool(info.get("safe", false))
+
+
+## Etap 6: linia wyzwania trybu wolnego w panelu mocy (pusta = ukryta).
+func update_challenge(text: String, color: Color) -> void:
+	_challenge_label.text = text
+	_challenge_label.visible = text != ""
+	_challenge_label.add_theme_color_override("font_color", color)
 
 
 ## Etap 2: zasilanie (moc względem celu), tarcza i ostrzeżenia o ataku z boku.
@@ -236,8 +267,39 @@ func _build() -> void:
 	combat_col.add_child(UiStyle.label("TARCZA", 22, Palette.UI_SCRAP, HORIZONTAL_ALIGNMENT_CENTER))
 	_combat_row = combat_col
 	col.add_child(combat_col)
+	_challenge_label = UiStyle.label("", 32, Palette.UI_ACCENT, HORIZONTAL_ALIGNMENT_CENTER)
+	_challenge_label.visible = false
+	col.add_child(_challenge_label)
 	# Moc na górze pośrodku: tam jest tylko niebo, a dół ekranu zajmuje pojazd.
 	_place(power_panel, Control.PRESET_CENTER_TOP, Vector2(0, 24))
+
+	# Etap 4: panel treningu na dole pośrodku (ukryty w jeździe swobodnej).
+	var wpanel := UiStyle.panel(Palette.UI_PANEL)
+	var wcol := VBoxContainer.new()
+	wcol.add_theme_constant_override("separation", 4)
+	wcol.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wpanel.add_child(wcol)
+	var title_row := HBoxContainer.new()
+	title_row.add_theme_constant_override("separation", 24)
+	title_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_workout_title = UiStyle.label("", 26, Palette.UI_DIM)
+	title_row.add_child(_workout_title)
+	_safe_label = UiStyle.label("POLE BEZPIECZNE", 26, Palette.UI_GOOD)
+	_safe_label.visible = false
+	title_row.add_child(_safe_label)
+	wcol.add_child(title_row)
+	_step_label = UiStyle.label("", 36, Palette.UI_TEXT)
+	wcol.add_child(_step_label)
+	_profile = WorkoutProfile.new()
+	_profile.custom_minimum_size = Vector2(560, 64)
+	_profile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wcol.add_child(_profile)
+	_next_label = UiStyle.label("", 24, Palette.UI_DIM)
+	wcol.add_child(_next_label)
+	_workout_box = wpanel
+	# Pod licznikiem czasu (lewa góra) – dół ekranu zajmuje pojazd.
+	_place(wpanel, Control.PRESET_TOP_LEFT, Vector2(48, 196))
+	wpanel.visible = false
 
 	# Ostrzeżenia o gangu po bokach ekranu.
 	_threat_left = UiStyle.label("", 96, Palette.UI_BAD)

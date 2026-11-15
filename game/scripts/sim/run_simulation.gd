@@ -20,6 +20,8 @@ var lanes := LaneModel.new()
 var generator: TrackGenerator
 var expedition: Expedition
 var combat: CombatModel
+## Tryb wolny (etap 6): wyzwania proponowane przez grę. Domyślnie wyłączone.
+var challenges := ChallengeDirector.new()
 var items: Array[TrackItem] = []
 
 var impact_speed_factor := 0.35
@@ -41,7 +43,42 @@ func _init(duration_s: float = 900.0, seed_value: int = 0) -> void:
 	expedition = Expedition.new(duration_s)
 	generator = TrackGenerator.new(seed_value, lanes.lane_count)
 	combat = CombatModel.new(self, seed_value)
+	challenges.enabled = false
+	challenges.finished.connect(_on_challenge_finished)
 	_refill()
+
+
+## Pole bezpieczne (etap 4, ciężkie interwały): znikają wraki przed pojazdem, nowe się nie
+## pojawiają, gang odpuszcza – można tylko pedałować, bez klikania. Po wyłączeniu nowe wraki
+## pojawiają się dopiero na krawędzi generowania (daleko przed graczem), bez zaskoczeń.
+var safe_zone := false
+
+
+func set_safe_zone(enabled: bool) -> void:
+	if enabled == safe_zone:
+		return
+	safe_zone = enabled
+	generator.wrecks_enabled = not enabled
+	combat.suppressed = enabled
+	if enabled:
+		var d := vehicle.distance_m
+		var kept: Array[TrackItem] = []
+		for item in items:
+			if item.is_wreck() and not item.consumed and item.distance_m > d - 3.0:
+				continue
+			kept.append(item)
+		items = kept
+
+
+## Nagroda albo kara za wyzwanie trybu wolnego. Porażka ucieczki = gang dogania gracza.
+func _on_challenge_finished(challenge: Dictionary, success: bool) -> void:
+	if success:
+		expedition.add_scrap(int(challenge.get("reward_scrap", 0)))
+		expedition.add_fuel(int(challenge.get("reward_fuel", 0)))
+		expedition.challenges_completed += 1
+	elif int(challenge.get("kind", -1)) == ChallengeDirector.Kind.ESCAPE and combat.enabled:
+		combat.spawn_raider(-1)
+		combat.spawn_raider(1)
 
 
 ## Dodatkowe obiekty na trasie (np. złom wypadający z rozbitego wroga).
@@ -66,6 +103,8 @@ func step(delta: float, power_w: float) -> void:
 	expedition.tick(delta, power_w, vehicle.speed_mps, vehicle.distance_m)
 	_resolve_contacts(d0, vehicle.distance_m)
 	combat.step(delta, power_w)
+	challenges.step(delta, expedition.elapsed_s, expedition.time_left_s(), power_w)
+	vehicle.grade = challenges.grade_percent() / 100.0 if challenges.enabled else vehicle.grade
 	generator.difficulty = expedition.progress()
 	generator.speed_hint_mps = maxf(vehicle.speed_mps, 8.0)
 	_refill()

@@ -38,6 +38,7 @@ func _ready() -> void:
 		["Utracony złom", str(int(s.get("scrap_lost", 0)))],
 		["Paliwo", "+%d" % int(s.get("fuel", 0))],
 		["Rozbite gangi", str(int(s.get("raiders_destroyed", 0)))],
+		["Wyzwania", str(int(s.get("challenges_completed", 0)))],
 	]
 	for pair in stats:
 		grid.add_child(UiStyle.label(pair[0], 36, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_RIGHT))

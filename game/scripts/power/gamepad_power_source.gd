@@ -29,6 +29,9 @@ var _seen_analog := false
 var _full_presses := 0
 var _was_released := true
 var _warned_unknown := false
+var _erg_active := false
+var _pre_erg_locked := false
+var _pre_erg_watts := 0.0
 
 
 func update(delta: float) -> void:
@@ -59,7 +62,32 @@ func get_label() -> String:
 	return "PAD"
 
 
+## Symulacja ERG na padzie (etap 4): tempomat sam ustawia się na moc z planu treningu,
+## tak jak zrobi to trenażer w trybie ERG. Trigger nadal może chwilowo dodać mocy,
+## a krzyżak ↑/↓ – skorygować o ±10 W do następnego kroku planu.
+func set_erg_target(watts: float) -> void:
+	if watts <= 0.0:
+		# Koniec ERG: wracamy do stanu tempomatu sprzed ERG.
+		if _erg_active:
+			_erg_active = false
+			model.cruise_locked = _pre_erg_locked
+			model.cruise_watts = _pre_erg_watts
+		return
+	if not _erg_active:
+		_erg_active = true
+		_pre_erg_locked = model.cruise_locked
+		_pre_erg_watts = model.cruise_watts
+	model.cruise_locked = true
+	model.cruise_watts = clampf(roundf(watts), 0.0, model.max_watts)
+
+
+func get_erg_target() -> float:
+	return model.cruise_watts if _erg_active else 0.0
+
+
 func get_hint() -> String:
+	if _erg_active:
+		return "ERG %d W (symulacja)" % roundi(model.cruise_watts)
 	if model.cruise_locked:
 		return "TEMPOMAT %d W" % roundi(model.cruise_watts)
 	return ""

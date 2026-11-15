@@ -13,6 +13,7 @@ var collisions := 0
 var raids_lost := 0
 var raiders_destroyed := 0
 var fuel := 0
+var challenges_completed := 0
 ## Ulepszenia (etap 3): pancerz zmniejsza straty, przyczepa dokłada część złomu.
 var scrap_loss_factor := 1.0
 var scrap_bonus := 0.0
@@ -102,6 +103,7 @@ func to_summary(completed: bool) -> Dictionary:
 		"scrap_collected": scrap_collected,
 		"scrap_lost": scrap_lost,
 		"fuel": fuel,
+		"challenges_completed": challenges_completed,
 		"collisions": collisions,
 		"raids_lost": raids_lost,
 		"raiders_destroyed": raiders_destroyed,

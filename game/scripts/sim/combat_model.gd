@@ -48,6 +48,8 @@ var raiders: Array[RaiderModel] = []
 var projectiles: Array[Dictionary] = []
 
 var enabled := true
+## Pole bezpieczne: brak nowych potyczek, napastnicy się wycofują.
+var suppressed := false
 var target_power_w := 130.0
 ## Ulepszenia (etap 3): kondensator i wieżyczka.
 var shield_regen_multiplier := 1.0
@@ -125,6 +127,12 @@ func step(delta: float, power_w: float) -> void:
 func _schedule(delta: float) -> void:
 	var e := sim.expedition
 	if e.finished:
+		return
+	if suppressed:
+		_pending_spawns.clear()
+		for r in raiders:
+			if r.is_alive() and r.state != RaiderModel.State.RETREAT:
+				r.set_state(RaiderModel.State.RETREAT)
 		return
 	if e.elapsed_s >= _next_encounter_s and e.time_left_s() > 20.0:
 		var difficulty := e.progress()

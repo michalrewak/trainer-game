@@ -26,6 +26,7 @@ var _saved := false
 var _had_pad := false
 var _last_minute_shown := false
 var _shots_done: Dictionary = {}
+var _tilt := 0.0
 
 
 func _ready() -> void:
@@ -45,6 +46,7 @@ func _ready() -> void:
 	sim.scrap_collected.connect(_on_scrap_collected)
 	sim.fuel_collected.connect(func(_item: TrackItem) -> void: hud.show_popup("+1 PALIWO", Color("ff8a4a"), 1.0))
 	_setup_combat()
+	_setup_challenges()
 	pause_menu.resume_requested.connect(_resume)
 	pause_menu.end_requested.connect(_end_early)
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
@@ -86,8 +88,10 @@ func _ride(delta: float) -> void:
 	sim.combat.aim = Input.get_vector(&"aim_left", &"aim_right", &"aim_up", &"aim_down")
 	sim.combat.fire_held = Input.is_action_pressed(&"fire")
 	var p := power.get_power_watts()
+	sim.combat.target_power_w = _current_target_w()
 	sim.step(delta, p)
 	_update_views(delta, p)
+	_update_challenge_hud()
 	if sim.vehicle.speed_mps > 1.5:
 		hud.set_persistent_message("")
 	var e := sim.expedition
@@ -110,9 +114,73 @@ func _update_views(delta: float, power_w: float) -> void:
 	if target != null:
 		target_local = Vector3(target.x, 0.0, -(target.d - sim.vehicle.distance_m))
 	buggy.update_combat(target_local, sim.combat.shield, delta)
+	# Podjazd: świat przechyla się wokół pojazdu – droga przed nami „wznosi się”.
+	_tilt = lerpf(_tilt, atan(sim.vehicle.grade) * 1.4, 1.0 - exp(-delta * 1.5))
+	track.rotation.x = _tilt
+	combat_view.rotation.x = _tilt
+	buggy.rotation.x = _tilt
 	camera.follow(sim.lanes.x_m, sim.vehicle.speed_mps, delta)
 	hud.update_from(sim, power, delta)
 	hud.update_combat(sim.combat, power_w, sim.lanes.x_m, delta)
+
+
+## Moc docelowa w tej chwili: wyzwanie trybu wolnego albo spokojne tempo (65% FTP).
+func _current_target_w() -> float:
+	if sim.challenges.is_active():
+		return sim.challenges.target_w()
+	return App.free_ride_target_w()
+
+
+# --- Tryb wolny: wyzwania (etap 6) ---------------------------------------------
+
+func _setup_challenges() -> void:
+	var ch := sim.challenges
+	ch.enabled = not App.options.no_challenges
+	ch.ftp_w = App.ftp_w()
+	if App.options.challenge_test:
+		ch.set_first_after(8.0)
+	ch.announced.connect(func(c: Dictionary) -> void:
+		hud.show_message("WYZWANIE: %s\n%s" % [str(c["name"]), str(c["brief"])], ChallengeDirector.ANNOUNCE_S))
+	ch.started.connect(_on_challenge_started)
+	ch.finished.connect(_on_challenge_finished)
+
+
+## Gra dyktuje opór: podjazd = nachylenie (symulacja trenażera), reszta = ERG.
+func _on_challenge_started(c: Dictionary) -> void:
+	if float(c.get("grade", 0.0)) > 0.0:
+		power.set_grade(float(c["grade"]))
+		if not power.supports_resistance_control():
+			power.set_erg_target(sim.challenges.target_w())
+	else:
+		power.set_erg_target(sim.challenges.target_w())
+	hud.show_message("%s: START!" % str(c["name"]), 1.5)
+
+
+func _on_challenge_finished(c: Dictionary, success: bool) -> void:
+	power.set_erg_target(0.0)
+	power.set_grade(0.0)
+	if success:
+		var reward := "+%d złomu" % int(c.get("reward_scrap", 0))
+		if int(c.get("reward_fuel", 0)) > 0:
+			reward += ", +%d paliwa" % int(c["reward_fuel"])
+		hud.show_message("%s ZALICZONY! %s" % [str(c["name"]), reward], 3.5)
+	elif int(c.get("kind", -1)) == ChallengeDirector.Kind.ESCAPE:
+		hud.show_message("Nie udało się uciec – gang dogania!", 3.5)
+	else:
+		hud.show_message("%s: tym razem się nie udało" % str(c["name"]), 3.0)
+
+
+func _update_challenge_hud() -> void:
+	var ch := sim.challenges
+	match ch.phase:
+		ChallengeDirector.Phase.ANNOUNCE:
+			hud.update_challenge("%s za %d s · cel %d W" % [str(ch.current["name"]), ceili(ch.time_left_s()), roundi(ch.target_w())], Palette.UI_ACCENT)
+		ChallengeDirector.Phase.ACTIVE:
+			var ratio := ch.hold_ratio()
+			var col := Palette.UI_GOOD if ratio >= ChallengeDirector.SUCCESS_RATIO else Palette.UI_BAD
+			hud.update_challenge("%s %s · ≥ %d W · %d%%" % [str(ch.current["name"]), UiStyle.clock(ch.time_left_s()), roundi(ch.target_w() * ChallengeDirector.HOLD_TOLERANCE), roundi(ratio * 100.0)], col)
+		_:
+			hud.update_challenge("", Palette.UI_TEXT)
 
 
 ## Martwe Miasto: szarobrązowa mgła i bledsze niebo (kopia zasobu – nie zmieniamy sceny).
