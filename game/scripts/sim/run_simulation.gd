@@ -18,6 +18,7 @@ var vehicle := VehicleModel.new()
 var lanes := LaneModel.new()
 var generator: TrackGenerator
 var expedition: Expedition
+var combat: CombatModel
 var items: Array[TrackItem] = []
 
 var impact_speed_factor := 0.35
@@ -36,7 +37,13 @@ var last_power_w := 0.0
 func _init(duration_s: float = 900.0, seed_value: int = 0) -> void:
 	expedition = Expedition.new(duration_s)
 	generator = TrackGenerator.new(seed_value, lanes.lane_count)
+	combat = CombatModel.new(self, seed_value)
 	_refill()
+
+
+## Dodatkowe obiekty na trasie (np. złom wypadający z rozbitego wroga).
+func add_items(new_items: Array[TrackItem]) -> void:
+	items.append_array(new_items)
 
 
 func request_lane_change(direction: int) -> bool:
@@ -55,6 +62,7 @@ func step(delta: float, power_w: float) -> void:
 	invulnerable_left_s = maxf(0.0, invulnerable_left_s - delta)
 	expedition.tick(delta, power_w, vehicle.speed_mps, vehicle.distance_m)
 	_resolve_contacts(d0, vehicle.distance_m)
+	combat.step(delta, power_w)
 	generator.difficulty = expedition.progress()
 	generator.speed_hint_mps = maxf(vehicle.speed_mps, 8.0)
 	_refill()

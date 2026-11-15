@@ -3,10 +3,10 @@ extends Camera3D
 ## Kamera zza pojazdu, z góry pod kątem. Podąża za pasem z opóźnieniem, przy większej
 ## prędkości lekko poszerza pole widzenia; trzęsie się po uderzeniu.
 
-var height := 5.2
-var distance := 9.0
+var height := 4.1
+var distance := 7.0
 var look_ahead := 16.0
-var look_height := 0.6
+var look_height := 0.9
 var follow_x := 0.6
 var follow_speed := 3.5
 var base_fov := 60.0

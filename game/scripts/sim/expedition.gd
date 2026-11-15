@@ -10,6 +10,8 @@ var scrap := 0
 var scrap_collected := 0
 var scrap_lost := 0
 var collisions := 0
+var raids_lost := 0
+var raiders_destroyed := 0
 var energy_j := 0.0
 var max_power_w := 0.0
 var max_speed_mps := 0.0
@@ -50,6 +52,17 @@ func lose_scrap_on_hit() -> int:
 	return lost
 
 
+## Rabunek przy udanym taranowaniu przez gang: 10% (w górę), co najmniej 2, nie więcej niż jest.
+func lose_scrap_to_raid() -> int:
+	raids_lost += 1
+	if scrap <= 0:
+		return 0
+	var lost := mini(scrap, maxi(2, ceili(scrap * 0.10)))
+	scrap -= lost
+	scrap_lost += lost
+	return lost
+
+
 func time_left_s() -> float:
 	return maxf(0.0, duration_s - elapsed_s)
 
@@ -77,6 +90,8 @@ func to_summary(completed: bool) -> Dictionary:
 		"scrap_collected": scrap_collected,
 		"scrap_lost": scrap_lost,
 		"collisions": collisions,
+		"raids_lost": raids_lost,
+		"raiders_destroyed": raiders_destroyed,
 		"avg_power_w": roundi(average_power_w()),
 		"max_power_w": roundi(max_power_w),
 		"avg_speed_kmh": snappedf(average_speed_kmh(), 0.1),

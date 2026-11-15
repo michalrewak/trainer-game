@@ -20,6 +20,8 @@ var scrap_spacing_m := 3.5
 var scrap_clearance_m := 6.0
 var big_scrap_chance := 0.18
 var wreck_variants := 4
+## Wyłączenie wraków (testy, później np. „pola bezpieczne” na ciężkich interwałach).
+var wrecks_enabled := true
 
 ## Warunki ustawiane przez symulację przed generowaniem kolejnych odcinków.
 var difficulty := 0.0
@@ -78,6 +80,8 @@ func _scrap_gap() -> float:
 
 
 func _place_row(d: float, out: Array[TrackItem]) -> void:
+	if not wrecks_enabled:
+		return
 	var two_lanes_chance := lerpf(0.2, 0.6, clampf(difficulty, 0.0, 1.0))
 	var blocked_count := 2 if _rng.randf() < two_lanes_chance else 1
 	blocked_count = mini(blocked_count, lane_count - 1)

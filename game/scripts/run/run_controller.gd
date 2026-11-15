@@ -9,6 +9,7 @@ const FINISH_DELAY_S := 2.5
 
 @onready var track: TrackView = $Track
 @onready var buggy: BuggyView = $Buggy
+@onready var combat_view: CombatView = $Combat
 @onready var camera: ChaseCamera = $Camera
 @onready var hud: Hud = $Hud
 @onready var pause_menu: PauseMenu = $PauseMenu
@@ -35,6 +36,7 @@ func _ready() -> void:
 	sim = RunSimulation.new(App.run_duration_s(), App.run_seed())
 	sim.wreck_hit.connect(_on_wreck_hit)
 	sim.scrap_collected.connect(_on_scrap_collected)
+	_setup_combat()
 	pause_menu.resume_requested.connect(_resume)
 	pause_menu.end_requested.connect(_end_early)
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
@@ -73,6 +75,8 @@ func _ride(delta: float) -> void:
 		dir = lane_input.update(delta, Input.get_action_raw_strength(&"lane_left"), Input.get_action_raw_strength(&"lane_right"))
 	if dir != 0:
 		sim.request_lane_change(dir)
+	sim.combat.aim = Input.get_vector(&"aim_left", &"aim_right", &"aim_up", &"aim_down")
+	sim.combat.fire_held = Input.is_action_pressed(&"fire")
 	var p := power.get_power_watts()
 	sim.step(delta, p)
 	_update_views(delta, p)
@@ -92,8 +96,60 @@ func _ride(delta: float) -> void:
 func _update_views(delta: float, power_w: float) -> void:
 	track.sync(sim, delta)
 	buggy.sync(sim, power.get_cadence(), power_w, delta)
+	combat_view.sync(sim, delta)
+	var target := sim.combat.current_target()
+	var target_local: Variant = null
+	if target != null:
+		target_local = Vector3(target.x, 0.0, -(target.d - sim.vehicle.distance_m))
+	buggy.update_combat(target_local, sim.combat.shield, delta)
 	camera.follow(sim.lanes.x_m, sim.vehicle.speed_mps, delta)
 	hud.update_from(sim, power, delta)
+	hud.update_combat(sim.combat, power_w, sim.lanes.x_m, delta)
+
+
+# --- Walka (etap 2) ------------------------------------------------------------
+
+func _setup_combat() -> void:
+	var c := sim.combat
+	c.target_power_w = App.free_ride_target_w()
+	c.auto_fire = App.auto_fire_enabled() or autopilot != null
+	c.enabled = not App.options.no_combat
+	if App.options.combat_test:
+		c.set_first_encounter(6.0)
+	c.raider_warning.connect(_on_raider_warning)
+	c.ram_resolved.connect(_on_ram_resolved)
+	c.raider_destroyed.connect(_on_raider_destroyed)
+	c.shot_fired.connect(func(_p: Dictionary) -> void: buggy.muzzle_flash())
+
+
+func _on_raider_warning(r: RaiderModel) -> void:
+	hud.show_message("ATAK Z %s!" % ("LEWEJ" if r.side < 0 else "PRAWEJ"), 1.2)
+
+
+func _on_ram_resolved(_r: RaiderModel, outcome: int, lost: int) -> void:
+	match outcome:
+		CombatModel.RamOutcome.HIT:
+			buggy.on_hit()
+			camera.shake(1.2)
+			hud.show_popup("RABUNEK! -%d ZŁOMU" % lost if lost > 0 else "ZEPCHNIĘTY!", Palette.UI_BAD)
+		CombatModel.RamOutcome.BLOCKED:
+			buggy.shield_block()
+			camera.shake(0.5)
+			hud.show_popup("TARCZA ZATRZYMAŁA ATAK", Palette.UI_SCRAP)
+		CombatModel.RamOutcome.DODGED:
+			hud.show_popup("UNIK!", Palette.UI_GOOD)
+		CombatModel.RamOutcome.COUNTER:
+			camera.shake(0.4)
+			hud.show_popup("ODEPCHNIĘTY!", Palette.UI_GOOD)
+
+
+func _on_raider_destroyed(r: RaiderModel, dropped: int, cause: int) -> void:
+	combat_view.explode_at(Vector3(r.x, 0.0, -(r.d - sim.vehicle.distance_m)))
+	camera.shake(0.35)
+	if cause == CombatModel.DestroyCause.WRECK:
+		hud.show_popup("ROZBIŁ SIĘ O WRAK! +%d" % dropped, Palette.UI_GOOD)
+	else:
+		hud.show_popup("GANG ROZBITY! +%d ZŁOMU NA DRODZE" % dropped, Palette.UI_GOOD)
 
 
 # --- Pauza i koniec ----------------------------------------------------------

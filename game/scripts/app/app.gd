@@ -58,6 +58,31 @@ func run_seed() -> int:
 	return options.seed_value if options.seed_value >= 0 else randi()
 
 
+## FTP gracza (W) – z ustawień; domyślnie 200 W, dopóki gracz nie poda własnego.
+func ftp_w() -> float:
+	return clampf(float(settings.get("ftp", 200.0)), 80.0, 500.0)
+
+
+func set_ftp_w(value: float) -> void:
+	settings["ftp"] = clampf(roundf(value / 5.0) * 5.0, 80.0, 500.0)
+	_save_settings()
+
+
+## Moc docelowa „zasilania” w jeździe swobodnej: spokojne tempo (65% FTP).
+func free_ride_target_w() -> float:
+	return roundf(ftp_w() * 0.65 / 5.0) * 5.0
+
+
+## Automatyczny ogień wieżyczki (wygoda na ciężkich odcinkach) – z ustawień.
+func auto_fire_enabled() -> bool:
+	return bool(settings.get("auto_fire", false))
+
+
+func set_auto_fire(enabled: bool) -> void:
+	settings["auto_fire"] = enabled
+	_save_settings()
+
+
 ## Zapisuje wynik wyprawy (ukończonej albo przerwanej) i pokazuje podsumowanie.
 func finish_run(summary: Dictionary) -> void:
 	active_run = null

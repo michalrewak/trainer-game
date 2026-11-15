@@ -13,6 +13,12 @@ var _legs: Array[Node3D] = []
 var _flag: Node3D
 var _dust: CPUParticles3D
 var _coil_mat: StandardMaterial3D
+var _turret: Node3D
+var _muzzle: MeshInstance3D
+var _muzzle_t := 0.0
+var _shield: MeshInstance3D
+var _shield_mat: ShaderMaterial
+var _shield_flash := 0.0
 var _flash := 0.0
 var _wheel_angle := 0.0
 var _crank_angle := 0.0
@@ -58,6 +64,32 @@ func sync(sim: RunSimulation, cadence_rpm: float, power_w: float, delta: float) 
 
 func on_hit() -> void:
 	_flash = 1.2
+
+
+## Wieżyczka obraca się do celu (pozycja lokalna względem pojazdu), tarcza pokazuje poziom.
+func update_combat(target_local: Variant, shield_level: float, delta: float) -> void:
+	if target_local is Vector3:
+		var t: Vector3 = target_local
+		var dx := t.x - position.x
+		var dz := t.z
+		var yaw := atan2(-dx, -dz)
+		_turret.rotation.y = lerp_angle(_turret.rotation.y, yaw, 1.0 - exp(-delta * 12.0))
+	else:
+		_turret.rotation.y = lerp_angle(_turret.rotation.y, 0.0, 1.0 - exp(-delta * 3.0))
+	_muzzle_t = maxf(0.0, _muzzle_t - delta)
+	_muzzle.visible = _muzzle_t > 0.0
+	_shield_flash = maxf(0.0, _shield_flash - delta * 2.5)
+	_shield_mat.set_shader_parameter("strength", clampf(shield_level, 0.0, 1.0))
+	_shield_mat.set_shader_parameter("flash", _shield_flash)
+	_shield.visible = shield_level > 0.05 or _shield_flash > 0.0
+
+
+func muzzle_flash() -> void:
+	_muzzle_t = 0.07
+
+
+func shield_block() -> void:
+	_shield_flash = 1.0
 
 
 func _build() -> void:
@@ -164,6 +196,40 @@ func _build() -> void:
 		_legs.append(leg)
 	rider.add_child(LowPoly.box(Vector3(0.7, 0.05, 0.05), frame, Vector3(0, 0.2, -0.78)))
 
+	# Wieżyczka na dachu klatki (etap 2): podstawa + lufa, obraca się do celu.
+	_turret = Node3D.new()
+	_turret.position = Vector3(0, 2.12, 0.1)
+	_body.add_child(_turret)
+	_turret.add_child(LowPoly.cylinder(0.28, 0.16, frame, Vector3.ZERO, Vector3.ZERO, 10))
+	_turret.add_child(LowPoly.box(Vector3(0.36, 0.22, 0.42), accent, Vector3(0, 0.17, 0.0)))
+	_turret.add_child(LowPoly.cylinder(0.06, 0.9, rim, Vector3(0, 0.2, -0.55), Vector3(PI * 0.5, 0, 0), 8))
+	_muzzle = MeshInstance3D.new()
+	var flash_mesh := SphereMesh.new()
+	flash_mesh.radius = 0.18
+	flash_mesh.height = 0.36
+	flash_mesh.radial_segments = 6
+	flash_mesh.rings = 3
+	_muzzle.mesh = flash_mesh
+	_muzzle.material_override = Palette.glow(Color("ffe08a"), 8.0)
+	_muzzle.position = Vector3(0, 0.2, -1.05)
+	_muzzle.visible = false
+	_turret.add_child(_muzzle)
+
+	# Tarcza (bańka z poświatą na krawędziach).
+	_shield = MeshInstance3D.new()
+	var bubble := SphereMesh.new()
+	bubble.radius = 1.0
+	bubble.height = 2.0
+	bubble.radial_segments = 24
+	bubble.rings = 12
+	_shield.mesh = bubble
+	_shield.scale = Vector3(1.7, 1.45, 2.2)
+	_shield.position = Vector3(0, 1.2, -0.2)
+	_shield_mat = ShaderMaterial.new()
+	_shield_mat.shader = load("res://shaders/shield.gdshader")
+	_shield.material_override = _shield_mat
+	add_child(_shield)
+
 	# Maszt z flagą.
 	_body.add_child(LowPoly.tube(Vector3(0.45, 2.0, 0.6), Vector3(0.45, 3.1, 0.75), 0.025, frame))
 	_flag = Node3D.new()
@@ -174,15 +240,15 @@ func _build() -> void:
 	# Kurz spod kół (cząsteczki lecą do tyłu względem pojazdu).
 	_dust = CPUParticles3D.new()
 	_dust.position = Vector3(0, 0.15, axle_z + 0.5)
-	_dust.amount = 48
-	_dust.lifetime = 1.1
-	_dust.direction = Vector3(0, 0.35, 1)
-	_dust.spread = 22.0
+	_dust.amount = 36
+	_dust.lifetime = 0.9
+	_dust.direction = Vector3(0, 0.25, 1)
+	_dust.spread = 18.0
 	_dust.initial_velocity_min = 3.0
-	_dust.initial_velocity_max = 6.0
+	_dust.initial_velocity_max = 5.5
 	_dust.gravity = Vector3(0, -1.0, 0)
-	_dust.scale_amount_min = 0.5
-	_dust.scale_amount_max = 1.3
+	_dust.scale_amount_min = 0.25
+	_dust.scale_amount_max = 0.6
 	_dust.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
 	_dust.emission_box_extents = Vector3(1.0, 0.05, 0.1)
 	var puff := SphereMesh.new()
@@ -191,7 +257,7 @@ func _build() -> void:
 	puff.radial_segments = 6
 	puff.rings = 3
 	var puff_mat := StandardMaterial3D.new()
-	puff_mat.albedo_color = Color(Palette.SAND, 0.5)
+	puff_mat.albedo_color = Color(Color("e2c39a"), 0.32)
 	puff_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	puff_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	puff.material = puff_mat

@@ -21,6 +21,14 @@ func _initialize() -> void:
 		# Zmiana pasa: krzyżak lewo/prawo, lewa gałka, A/D, strzałki.
 		"lane_left": _action(0.2, [_key(KEY_A), _key(KEY_LEFT), _button(JOY_BUTTON_DPAD_LEFT), _axis(JOY_AXIS_LEFT_X, -1.0)]),
 		"lane_right": _action(0.2, [_key(KEY_D), _key(KEY_RIGHT), _button(JOY_BUTTON_DPAD_RIGHT), _axis(JOY_AXIS_LEFT_X, 1.0)]),
+		# Etap 2 – wieżyczka: prawa gałka celuje (bez wychylenia = auto-cel), LT strzela.
+		# RT strzela dodatkowo dopiero, gdy moc daje trenażer (RT jest wtedy wolny) –
+		# dokłada to kod przy wyborze źródła mocy, nie ta mapa.
+		"aim_left": _action(0.25, [_axis(JOY_AXIS_RIGHT_X, -1.0)]),
+		"aim_right": _action(0.25, [_axis(JOY_AXIS_RIGHT_X, 1.0)]),
+		"aim_up": _action(0.25, [_axis(JOY_AXIS_RIGHT_Y, -1.0)]),
+		"aim_down": _action(0.25, [_axis(JOY_AXIS_RIGHT_Y, 1.0)]),
+		"fire": _action(0.3, [_key(KEY_F), _axis(JOY_AXIS_TRIGGER_LEFT, 1.0)]),
 		# Pauza / menu wyprawy.
 		"pause": _action(0.5, [_key(KEY_ESCAPE), _key(KEY_P), _button(JOY_BUTTON_START)]),
 		# Okno: pełny ekran i przeniesienie na kolejny ekran (laptop/PC + telewizor).

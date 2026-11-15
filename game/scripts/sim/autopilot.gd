@@ -19,6 +19,13 @@ func decide(sim: RunSimulation, delta: float) -> int:
 	var here := lanes.target_lane
 	var d := sim.vehicle.distance_m
 	var horizon := maxf(min_look_ahead_m, sim.vehicle.speed_mps * look_ahead_s)
+	# Ostrzeżenie przed taranowaniem: odjedź od napastnika, jeśli pas jest wolny.
+	for r in sim.combat.live_raiders():
+		if r.state == RaiderModel.State.TELEGRAPH and r.timer > 0.5:
+			var away := here - r.side
+			if away >= 0 and away < lanes.lane_count and not _wreck_ahead(sim, away, d, horizon):
+				_cooldown = cooldown_s
+				return -r.side
 	if _wreck_ahead(sim, here, d, horizon):
 		var best := _best_free_lane(sim, here, d, horizon)
 		if best != here:

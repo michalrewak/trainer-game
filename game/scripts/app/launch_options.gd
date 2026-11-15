@@ -13,6 +13,8 @@ extends RefCounted
 ##   --save=ŚCIEŻKA     inny plik postępu (np. user://smoke.json)
 ##   --screenshots=KAT  zapisuj zrzuty ekranu do katalogu (tylko z renderowaniem)
 ##   --shot-times=a,b   sekundy wyprawy, w których robić zrzuty (domyślnie 4,12)
+##   --combat-test      pierwsza potyczka z gangiem już po 6 s (testy walki)
+##   --no-combat        wyprawa bez gangów
 
 const DEFAULT_MINUTES := 15.0
 const TEST_MINUTES := 2.0
@@ -27,6 +29,8 @@ var quit_on_finish := false
 var save_path := "user://progress.json"
 var screenshot_dir := ""
 var shot_times: Array[float] = [4.0, 12.0]
+var combat_test := false
+var no_combat := false
 
 
 static func parse(args: PackedStringArray) -> LaunchOptions:
@@ -64,6 +68,10 @@ static func parse(args: PackedStringArray) -> LaunchOptions:
 					o.save_path = value
 			"--screenshots":
 				o.screenshot_dir = value
+			"--combat-test":
+				o.combat_test = true
+			"--no-combat":
+				o.no_combat = true
 			"--shot-times":
 				var times: Array[float] = []
 				for part in value.split(",", false):

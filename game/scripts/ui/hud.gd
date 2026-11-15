@@ -18,6 +18,15 @@ var _hint: Label
 var _message: Label
 var _popup: Label
 var _scrap_panel: Control
+var _supply_label: Label
+var _supply_fill: ColorRect
+var _shield_fill: ColorRect
+var _combat_row: Control
+var _threat_left: Label
+var _threat_right: Label
+var _blink_t := 0.0
+
+const BAR_WIDTH := 300.0
 
 var _message_left := 0.0
 var _persistent_message := ""
@@ -47,6 +56,56 @@ func update_from(sim: RunSimulation, power: PowerSource, delta: float) -> void:
 	_time_value.add_theme_color_override("font_color", Palette.UI_ACCENT if e.time_left_s() <= 60.0 else Palette.UI_TEXT)
 	_scrap_value.text = str(e.scrap)
 	_tick_effects(delta)
+
+
+## Etap 2: zasilanie (moc względem celu), tarcza i ostrzeżenia o ataku z boku.
+func update_combat(combat: CombatModel, power_w: float, player_x: float, delta: float) -> void:
+	_blink_t += delta
+	_combat_row.visible = combat.enabled
+	var ratio := power_w / maxf(combat.target_power_w, 1.0)
+	_supply_label.text = "CEL %d W · %d%%" % [roundi(combat.target_power_w), roundi(ratio * 100.0)]
+	var fill_color := Palette.UI_GOOD if ratio >= 0.97 else (Palette.UI_ACCENT if ratio >= 0.7 else Palette.UI_BAD)
+	_supply_fill.color = fill_color
+	_supply_fill.size.x = BAR_WIDTH * clampf(ratio, 0.0, 1.0)
+	_shield_fill.size.x = BAR_WIDTH * clampf(combat.shield, 0.0, 1.0)
+	var left_warn := false
+	var right_warn := false
+	var left_near := false
+	var right_near := false
+	for r in combat.live_raiders():
+		var on_left := r.x < player_x
+		if r.is_threatening():
+			if on_left:
+				left_warn = true
+			else:
+				right_warn = true
+		elif r.state == RaiderModel.State.APPROACH or r.state == RaiderModel.State.SHADOW:
+			if on_left:
+				left_near = true
+			else:
+				right_near = true
+	var blink := fmod(_blink_t * 5.0, 1.0) < 0.6
+	_set_threat(_threat_left, left_warn, left_near, blink, "◀ !!", "◀ GANG")
+	_set_threat(_threat_right, right_warn, right_near, blink, "!! ▶", "GANG ▶")
+
+
+func _set_threat(l: Label, warn: bool, near: bool, blink: bool, warn_text: String, near_text: String) -> void:
+	if warn:
+		l.text = warn_text
+		l.add_theme_color_override("font_color", Palette.UI_BAD)
+		l.visible = blink
+	elif near:
+		l.text = near_text
+		l.add_theme_color_override("font_color", Palette.UI_ACCENT)
+		l.visible = true
+	else:
+		l.visible = false
+
+
+func show_popup(text: String, color: Color, seconds: float = 1.6) -> void:
+	_popup.text = text
+	_popup.add_theme_color_override("font_color", color)
+	_popup_left = seconds
 
 
 func flash_hit(lost: int) -> void:
@@ -128,7 +187,7 @@ func _build() -> void:
 	var power_panel := UiStyle.panel(Palette.UI_PANEL)
 	var col := VBoxContainer.new()
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	col.add_theme_constant_override("separation", -10)
+	col.add_theme_constant_override("separation", 0)
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	power_panel.add_child(col)
 	_hint = UiStyle.label("", 34, Palette.UI_ACCENT, HORIZONTAL_ALIGNMENT_CENTER)
@@ -145,22 +204,80 @@ func _build() -> void:
 	row.add_child(unit)
 	_cadence_value = UiStyle.label("", 34, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	col.add_child(_cadence_value)
-	_place(power_panel, Control.PRESET_CENTER_BOTTOM, Vector2(0, -30))
+	# Etap 2: zasilanie względem celu i tarcza.
+	var combat_col := VBoxContainer.new()
+	combat_col.add_theme_constant_override("separation", 6)
+	combat_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_supply_label = UiStyle.label("", 28, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	combat_col.add_child(_supply_label)
+	var supply_row := HBoxContainer.new()
+	supply_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	supply_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var supply_bar := _bar(Palette.UI_GOOD)
+	_supply_fill = supply_bar.get_meta("fill")
+	supply_row.add_child(supply_bar)
+	combat_col.add_child(supply_row)
+	var shield_row := HBoxContainer.new()
+	shield_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	shield_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var shield_bar := _bar(Palette.UI_SCRAP)
+	_shield_fill = shield_bar.get_meta("fill")
+	shield_row.add_child(shield_bar)
+	combat_col.add_child(shield_row)
+	combat_col.add_child(UiStyle.label("TARCZA", 22, Palette.UI_SCRAP, HORIZONTAL_ALIGNMENT_CENTER))
+	_combat_row = combat_col
+	col.add_child(combat_col)
+	# Moc na górze pośrodku: tam jest tylko niebo, a dół ekranu zajmuje pojazd.
+	_place(power_panel, Control.PRESET_CENTER_TOP, Vector2(0, 24))
+
+	# Ostrzeżenia o gangu po bokach ekranu.
+	_threat_left = UiStyle.label("", 96, Palette.UI_BAD)
+	_threat_left.set_anchors_preset(Control.PRESET_CENTER_LEFT)
+	_threat_left.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_threat_left.position.x += 40
+	_threat_left.visible = false
+	_root.add_child(_threat_left)
+	_threat_right = UiStyle.label("", 96, Palette.UI_BAD, HORIZONTAL_ALIGNMENT_RIGHT)
+	_threat_right.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+	_threat_right.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_threat_right.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_threat_right.position.x -= 40
+	_threat_right.visible = false
+	_root.add_child(_threat_right)
 
 	# Komunikaty na środku i wyskakujące „-N ZŁOMU”.
 	_message = UiStyle.label("", 72, Palette.UI_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 	_message.set_anchors_preset(Control.PRESET_CENTER)
 	_message.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_message.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_message.position.y -= 160
+	_message.position.y -= 40
 	_message.visible = false
 	_root.add_child(_message)
 	_popup = UiStyle.label("", 80, Palette.UI_BAD, HORIZONTAL_ALIGNMENT_CENTER)
-	_popup.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_popup.set_anchors_preset(Control.PRESET_CENTER)
 	_popup.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	_popup.position.y += 150
+	_popup.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_popup.position.y += 70
 	_popup.visible = false
 	_root.add_child(_popup)
+
+
+func _bar(color: Color) -> Control:
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(BAR_WIDTH, 16)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var bg := ColorRect.new()
+	bg.color = Color(0, 0, 0, 0.55)
+	bg.size = Vector2(BAR_WIDTH, 16)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(bg)
+	var fill := ColorRect.new()
+	fill.color = color
+	fill.size = Vector2(0, 16)
+	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(fill)
+	holder.set_meta("fill", fill)
+	return holder
 
 
 func _stat_panel(caption: String, value_color: Color = Palette.UI_TEXT) -> PanelContainer:
@@ -183,7 +300,7 @@ func _place(c: Control, preset: Control.LayoutPreset, offset: Vector2) -> void:
 	match preset:
 		Control.PRESET_TOP_RIGHT, Control.PRESET_BOTTOM_RIGHT:
 			c.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-		Control.PRESET_CENTER_BOTTOM:
+		Control.PRESET_CENTER_BOTTOM, Control.PRESET_CENTER_TOP:
 			c.grow_horizontal = Control.GROW_DIRECTION_BOTH
 		_:
 			c.grow_horizontal = Control.GROW_DIRECTION_END
