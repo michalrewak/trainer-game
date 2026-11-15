@@ -88,6 +88,22 @@ Następne kroki: kampanie treningowe (kilka tygodni, prawdziwe protokoły, bosso
 test FTP jako walka z bossem, zakręty, wzniesienia i doliny na trasie, tempo gry
 względem FTP.
 
+## Trenażer Elite Suito (etap 5)
+
+Gra łączy się z trenażerem przez mostek w Pythonie (`bridge/`, BLE FTMS ↔ WebSocket).
+Szczegóły: [bridge/README.md](bridge/README.md).
+
+1. Raz: `powershell -ExecutionPolicy Bypass -File bridge/setup.ps1` (venv z bleak/websockets/rich;
+   użyje Pythona 3.12 z systemu albo przenośnego z `.tools/`).
+2. Przed jazdą: `bridge/.venv/Scripts/python -m wasteland_bridge` (prawdziwe Suito) albo z
+   `--sim` (symulator bez sprzętu). Suito nie może być w tym czasie połączone z Zwiftem ani
+   inną aplikacją. Garmin Edge dalej nagrywa z pomiaru mocy w rowerze.
+3. W garażu: **Moc: TRENAŻER**. Gra czeka na mostek (czas wyprawy stoi), a po utracie
+   połączenia pauzuje. Przy trenażerze RT też strzela.
+
+Port: domyślnie 8765. Na tym komputerze **8765 zajmuje inny program** (CutLoop). Uruchom
+wtedy mostek z `--port 8766`, a grę z `-- --bridge-port=8766`; gra zapamięta port.
+
 ## Opcje uruchomienia (po `--`)
 
 ```bash
