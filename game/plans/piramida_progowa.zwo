@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Przykładowy plan w formacie Zwift (.zwo) – gra wczytuje go tak samo jak plany JSON. -->
+<workout_file>
+    <author>Wasteland Rider</author>
+    <name>Piramida progowa</name>
+    <description>Schodki w górę i w dół wokół progu: 2-3-4-3-2 minuty przy 95–103% FTP z krótkim luzem. Razem 39 minut.</description>
+    <sportType>bike</sportType>
+    <tags/>
+    <workout>
+        <Warmup Duration="480" PowerLow="0.45" PowerHigh="0.75"/>
+        <SteadyState Duration="120" Power="0.95"/>
+        <SteadyState Duration="60" Power="0.55"/>
+        <SteadyState Duration="180" Power="1.00"/>
+        <SteadyState Duration="90" Power="0.55"/>
+        <SteadyState Duration="240" Power="1.03" Cadence="90">
+            <textevent timeoffset="0" message="Szczyt piramidy – trzymaj równo!"/>
+        </SteadyState>
+        <SteadyState Duration="120" Power="0.55"/>
+        <SteadyState Duration="180" Power="1.00"/>
+        <SteadyState Duration="90" Power="0.55"/>
+        <SteadyState Duration="120" Power="0.95"/>
+        <FreeRide Duration="180"/>
+        <Cooldown Duration="480" PowerLow="0.65" PowerHigh="0.40"/>
+    </workout>
+</workout_file>

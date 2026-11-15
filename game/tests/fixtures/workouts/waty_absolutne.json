@@ -1,0 +1,11 @@
+{
+  "name": "Waty dla FTP 280",
+  "absolute_watts": true,
+  "ftp": 280,
+  "steps": [
+    {"type": "warmup", "duration": "5:00", "from": 140, "to": 210},
+    {"type": "work", "duration": "2:00", "power": 308, "label": "308 W"},
+    {"type": "recovery", "duration": 120, "power": "50%"},
+    {"type": "cooldown", "duration": 300}
+  ]
+}

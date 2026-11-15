@@ -1,0 +1,4 @@
+{
+  "name": "Zepsuty",
+  "steps": [
+    {"type": "work", "duration": 60, "power": 1.0}

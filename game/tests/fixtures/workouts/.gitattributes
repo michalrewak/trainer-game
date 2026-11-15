@@ -1,0 +1,2 @@
+# Pliki FIT są binarne – bez konwersji końców linii i bez diffów tekstowych.
+*.fit binary
