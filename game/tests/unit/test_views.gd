@@ -3,9 +3,9 @@ extends TestCase
 
 
 func test_buggy_visible_again_after_hit_flash() -> void:
-	var tree := Engine.get_main_loop() as SceneTree
+	# Budujemy węzeł jawnie (w trakcie _initialize drzewo nie wywołuje jeszcze _ready).
 	var view := BuggyView.new()
-	tree.root.add_child(view)
+	view._ready()
 	var sim := RunSimulation.new(60.0, 1)
 	view.on_hit()
 	var t := 0.0

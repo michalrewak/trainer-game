@@ -7,7 +7,21 @@ extends SceneTree
 const UNIT_DIR := "res://tests/unit"
 
 
+## Łapie błędy skryptu (np. dostęp do null) – test z takim błędem to porażka, nie „ok”.
+class ScriptErrorCatcher extends Logger:
+	var count := 0
+
+	func _log_error(_function: String, _file: String, _line: int, _code: String, _rationale: String, _editor_notify: bool, error_type: int, _script_backtraces: Array[ScriptBacktrace]) -> void:
+		if error_type == ERROR_TYPE_SCRIPT:
+			count += 1
+
+	func _log_message(_message: String, _error: bool) -> void:
+		pass
+
+
 func _initialize() -> void:
+	var catcher := ScriptErrorCatcher.new()
+	OS.add_logger(catcher)
 	var filter := ""
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--filter="):
@@ -32,7 +46,10 @@ func _initialize() -> void:
 		for method_name in methods:
 			var instance: TestCase = script.new()
 			instance.begin(method_name)
+			var errors_before := catcher.count
 			instance.call(method_name)
+			if catcher.count > errors_before:
+				instance.fail("błąd skryptu w trakcie testu (%d) – szczegóły w logu powyżej" % (catcher.count - errors_before))
 			var label := "%s :: %s" % [file.get_file().get_basename(), method_name]
 			if instance.failures.is_empty():
 				passed += 1
