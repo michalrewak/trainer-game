@@ -12,6 +12,7 @@ var _terrain_button: Button
 var _duration_button: Button
 var _ftp_button: Button
 var _autofire_button: Button
+var _source_button: Button
 var _go_button: Button
 var _buggy: BuggyView
 var _turntable: Node3D
@@ -95,17 +96,24 @@ func _build() -> void:
 	col.add_child(_duration_button)
 	var settings_row := HBoxContainer.new()
 	settings_row.add_theme_constant_override("separation", 12)
-	_ftp_button = _small_button(560)
+	_ftp_button = _small_button(380)
 	_ftp_button.gui_input.connect(_on_ftp_input)
 	_ftp_button.pressed.connect(func() -> void: _change_ftp(5.0))
 	_ftp_button.focus_entered.connect(func() -> void: _detail.text = "Twoje FTP: ←/→ zmienia o 5 W. Cel mocy w jeździe swobodnej = 65% FTP; niektóre tereny wymagają wyższego FTP.")
 	settings_row.add_child(_ftp_button)
-	_autofire_button = _small_button(330)
+	_autofire_button = _small_button(250)
 	_autofire_button.pressed.connect(func() -> void:
 		App.set_auto_fire(not App.auto_fire_enabled())
 		_refresh())
 	_autofire_button.focus_entered.connect(func() -> void: _detail.text = "Auto-ogień: wieżyczka strzela sama do najbliższego celu – wygodne na ciężkich odcinkach.")
 	settings_row.add_child(_autofire_button)
+	_source_button = _small_button(250)
+	_source_button.pressed.connect(func() -> void:
+		var next := PowerSourceFactory.KIND_GAMEPAD if App.power_source_kind() == PowerSourceFactory.KIND_TRAINER else PowerSourceFactory.KIND_TRAINER
+		App.set_power_source_kind(next)
+		_refresh())
+	_source_button.focus_entered.connect(func() -> void: _detail.text = "Źródło mocy: PAD (symulacja na triggerze) albo TRENAŻER (Elite Suito przez mostek bridge/ – uruchom go przed wyprawą).")
+	settings_row.add_child(_source_button)
 	col.add_child(settings_row)
 	var go_row := HBoxContainer.new()
 	go_row.add_theme_constant_override("separation", 12)
@@ -156,8 +164,9 @@ func _refresh() -> void:
 	_terrain_button.text = "Teren: %s%s" % [TerrainCatalog.display_name(tid), "" if missing.is_empty() else "   (zablokowany: %s)" % ", ".join(missing)]
 	var minutes := DURATIONS[_duration_index]
 	_duration_button.text = "Czas: %s" % ("TEST 2 min" if minutes < 5.0 else "%d min" % roundi(minutes))
-	_ftp_button.text = "FTP: %d W   (cel w jeździe swobodnej %d W)   ← →" % [roundi(App.ftp_w()), roundi(App.free_ride_target_w())]
-	_autofire_button.text = "Auto-ogień: %s" % ("WŁĄCZONY" if App.auto_fire_enabled() else "wyłączony")
+	_ftp_button.text = "FTP: %d W  ← →" % roundi(App.ftp_w())
+	_autofire_button.text = "Auto-ogień: %s" % ("TAK" if App.auto_fire_enabled() else "nie")
+	_source_button.text = "Moc: %s" % ("TRENAŻER" if App.power_source_kind() == PowerSourceFactory.KIND_TRAINER else "PAD")
 	_go_button.disabled = not missing.is_empty()
 	_go_button.text = "WYRUSZ!  →  %s" % TerrainCatalog.display_name(tid) if missing.is_empty() else "TEREN ZABLOKOWANY"
 	if _buggy != null:

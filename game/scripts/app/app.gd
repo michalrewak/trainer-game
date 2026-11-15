@@ -54,7 +54,16 @@ func start_run(minutes: float) -> void:
 
 
 func power_source_kind() -> String:
-	return PowerSourceFactory.KIND_AUTOPILOT if options.autopilot else PowerSourceFactory.KIND_GAMEPAD
+	if options.autopilot:
+		return PowerSourceFactory.KIND_AUTOPILOT
+	if options.trainer or str(settings.get("power_source", "")) == PowerSourceFactory.KIND_TRAINER:
+		return PowerSourceFactory.KIND_TRAINER
+	return PowerSourceFactory.KIND_GAMEPAD
+
+
+func set_power_source_kind(kind: String) -> void:
+	settings["power_source"] = kind
+	_save_settings()
 
 
 func run_duration_s() -> float:

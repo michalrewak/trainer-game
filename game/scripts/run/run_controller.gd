@@ -77,9 +77,15 @@ func _ride(delta: float) -> void:
 	power.update(delta)
 	for notice in power.take_notices():
 		hud.show_message(notice, 5.0)
-	if power.get_status() != PowerSource.Status.ACTIVE:
-		_pause("Źródło mocy: brak połączenia")
-		return
+	match power.get_status():
+		PowerSource.Status.CONNECTING:
+			# Czekamy na trenażer – czas wyprawy stoi, nic nie przepada.
+			hud.set_persistent_message("Łączenie z trenażerem (mostek bridge/)…")
+			_update_views(delta, 0.0)
+			return
+		PowerSource.Status.LOST:
+			_pause("Trenażer rozłączony – mostek próbuje połączyć się ponownie")
+			return
 	var dir := 0
 	if autopilot != null:
 		dir = autopilot.decide(sim, delta)
@@ -88,7 +94,9 @@ func _ride(delta: float) -> void:
 	if dir != 0:
 		sim.request_lane_change(dir)
 	sim.combat.aim = Input.get_vector(&"aim_left", &"aim_right", &"aim_up", &"aim_down")
-	sim.combat.fire_held = Input.is_action_pressed(&"fire")
+	# LT strzela zawsze; RT dodatkowo, gdy moc daje trenażer (RT nie jest wtedy „pedałem”).
+	var rt_fires := not (power is GamepadPowerSource) and Input.get_action_raw_strength(&"power_trigger") > 0.3
+	sim.combat.fire_held = Input.is_action_pressed(&"fire") or rt_fires
 	var p := power.get_power_watts()
 	sim.combat.target_power_w = _current_target_w()
 	if sim.challenges.is_active():
