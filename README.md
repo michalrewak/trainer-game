@@ -76,10 +76,13 @@ dla tego pada (inaczej pad udaje mysz).
 | 1. Gra na padzie (kanion, buggy, moc, HUD, zapis) | gotowe |
 | 2. Walka (gang, wieżyczka, tarcza zależna od mocy) | gotowe |
 | 3. Garaż, 5 ulepszeń, paliwo, drugi teren | gotowe |
-| 4. Tryb treningowy | fundamenty: pola bezpieczne, panel planu w HUD, symulowany ERG |
-| 5. Mostek Python do Suito | w osobnym torze (branch agenta) |
+| 4. Tryb treningowy | gotowe (wersja podstawowa): plan prowadzi jazdę, ERG, widełki ±5%, burze = pola bezpieczne |
+| 5. Mostek Python do Suito | gra: wybór PAD/TRENAŻER w garażu, czekanie na mostek; mostek – patrz `bridge/` |
 | 6. Tryb wolny z wyzwaniami | gotowe |
-| 7. Import planów z Garmina (FIT) | parsery w osobnym torze (branch agenta) |
+| 7. Import planów z Garmina (FIT) | parsery JSON/ZWO/FIT gotowe; pliki planów wrzucaj do `%APPDATA%\Godot\app_userdata\Wasteland Rider\plans` |
+
+Cel mocy zawsze ma **widełki**: za mało i za dużo to błąd. W treningu obowiązuje ±5%, w
+wyzwaniach ±8%. Powyżej górnej granicy generator się przegrzewa (słabsza tarcza i ogień).
 
 Następne kroki: kampanie treningowe (kilka tygodni, prawdziwe protokoły, bossowie), ramp
 test FTP jako walka z bossem, zakręty, wzniesienia i doliny na trasie, tempo gry
@@ -94,7 +97,8 @@ względem FTP.
 `--minutes=N`, `--test` (2 min), `--autostart`, `--autopilot` (jazda automatyczna),
 `--time-scale=K`, `--seed=N`, `--quit-on-finish`, `--save=user://plik.json`,
 `--screenshots=KATALOG --shot-times=4,12`, `--combat-test`, `--no-combat`,
-`--terrain=city`, `--all-upgrades`, `--challenge-test`, `--no-challenges`.
+`--terrain=city`, `--all-upgrades`, `--challenge-test`, `--no-challenges`, `--trainer`,
+`--plan=res://plans/kanion_4x4.json`.
 Szczegóły: `game/scripts/app/launch_options.gd`.
 
 ## Testy (bez sprzętu)
