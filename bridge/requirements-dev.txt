@@ -1,0 +1,3 @@
+# Zależności deweloperskie (testy). Instaluje też wszystko z requirements.txt.
+-r requirements.txt
+pytest==9.2.0
