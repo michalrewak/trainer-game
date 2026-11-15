@@ -2,7 +2,7 @@ extends Node
 ## Autoload "App": opcje uruchomienia, postęp gracza, przełączanie ekranów oraz okno
 ## (pełny ekran, przenoszenie na drugi monitor/telewizor, skala renderowania 3D).
 
-const START_SCENE := "res://scenes/ui/start_screen.tscn"
+const START_SCENE := "res://scenes/ui/garage.tscn"
 const RUN_SCENE := "res://scenes/run/run.tscn"
 const SUMMARY_SCENE := "res://scenes/ui/summary_screen.tscn"
 const SETTINGS_PATH := "user://settings.json"
@@ -11,6 +11,7 @@ var options: LaunchOptions
 var progress: ProgressStore
 var settings: Dictionary = {}
 var selected_minutes := LaunchOptions.DEFAULT_MINUTES
+var selected_terrain := "canyon"
 var last_summary: Dictionary = {}
 var last_total_before := 0
 ## Aktywna wyprawa (RunController) – żeby zapisać postęp przy zamknięciu okna.
@@ -24,6 +25,11 @@ func _ready() -> void:
 	progress.load_data()
 	settings = _load_settings()
 	selected_minutes = options.minutes if options.minutes_from_cli else float(settings.get("minutes", LaunchOptions.DEFAULT_MINUTES))
+	selected_terrain = str(settings.get("terrain", "canyon"))
+	if not TerrainCatalog.is_unlocked(selected_terrain, progress.loadout(), ftp_w()):
+		selected_terrain = TerrainCatalog.CANYON
+	if options.terrain != "" and TerrainCatalog.DEFS.has(options.terrain):
+		selected_terrain = options.terrain
 	Engine.time_scale = options.time_scale
 	get_tree().set_auto_accept_quit(false)
 	_setup_display()
@@ -41,7 +47,8 @@ func start_run(minutes: float) -> void:
 	selected_minutes = maxf(0.05, minutes)
 	if not options.minutes_from_cli:
 		settings["minutes"] = selected_minutes
-		_save_settings()
+	settings["terrain"] = selected_terrain
+	_save_settings()
 	get_tree().paused = false
 	get_tree().change_scene_to_file(RUN_SCENE)
 
@@ -56,6 +63,16 @@ func run_duration_s() -> float:
 
 func run_seed() -> int:
 	return options.seed_value if options.seed_value >= 0 else randi()
+
+
+## Moduły na tę wyprawę (z magazynu albo – przy --all-upgrades – wszystkie na maks.).
+func run_loadout() -> Loadout:
+	if options.all_upgrades:
+		var maxed := {}
+		for id in UpgradeCatalog.ORDER:
+			maxed[id] = UpgradeCatalog.max_level(id)
+		return Loadout.new(maxed)
+	return progress.loadout()
 
 
 ## FTP gracza (W) – z ustawień; domyślnie 200 W, dopóki gracz nie poda własnego.

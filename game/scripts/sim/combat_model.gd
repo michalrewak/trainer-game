@@ -49,6 +49,9 @@ var projectiles: Array[Dictionary] = []
 
 var enabled := true
 var target_power_w := 130.0
+## Ulepszenia (etap 3): kondensator i wieżyczka.
+var shield_regen_multiplier := 1.0
+var fire_rate_multiplier := 1.0
 var supply := 1.0
 var shield := SHIELD_START
 var aim := Vector2.ZERO
@@ -91,7 +94,7 @@ func supply_ratio() -> float:
 
 
 func fire_interval_s() -> float:
-	return BASE_FIRE_INTERVAL_S / clampf(supply, MIN_SUPPLY_FOR_FIRE, 1.0)
+	return BASE_FIRE_INTERVAL_S / clampf(supply, MIN_SUPPLY_FOR_FIRE, 1.0) / maxf(fire_rate_multiplier, 0.1)
 
 
 func live_raiders() -> Array[RaiderModel]:
@@ -107,7 +110,7 @@ func step(delta: float, power_w: float) -> void:
 		return
 	var ratio := clampf(power_w / maxf(target_power_w, 1.0), 0.0, 1.2)
 	supply += (ratio - supply) * (1.0 - exp(-delta / 1.5))
-	shield = minf(1.0, shield + SHIELD_REGEN_PER_S * clampf(supply, 0.0, 1.2) * delta)
+	shield = minf(1.0, shield + SHIELD_REGEN_PER_S * shield_regen_multiplier * clampf(supply, 0.0, 1.2) * delta)
 	if not enabled:
 		return
 	_schedule(delta)

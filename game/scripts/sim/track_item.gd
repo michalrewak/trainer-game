@@ -3,7 +3,7 @@ extends RefCounted
 ## Obiekt na trasie: wrak do ominięcia albo złom do zebrania.
 ## Pozycja = pas + dystans wzdłuż trasy (metry od startu wyprawy).
 
-enum Kind { WRECK, SCRAP, SCRAP_BIG }
+enum Kind { WRECK, SCRAP, SCRAP_BIG, FUEL }
 
 var id := 0
 var kind: Kind = Kind.SCRAP
@@ -29,3 +29,12 @@ func is_wreck() -> bool:
 
 func is_scrap() -> bool:
 	return kind == Kind.SCRAP or kind == Kind.SCRAP_BIG
+
+
+func is_fuel() -> bool:
+	return kind == Kind.FUEL
+
+
+## Rzecz do zebrania (złom albo paliwo).
+func is_pickup() -> bool:
+	return kind != Kind.WRECK

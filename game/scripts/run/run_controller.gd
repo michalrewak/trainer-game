@@ -34,8 +34,16 @@ func _ready() -> void:
 	if App.options.autopilot:
 		autopilot = Autopilot.new()
 	sim = RunSimulation.new(App.run_duration_s(), App.run_seed())
+	# Etap 3: moduły z garażu i teren wyprawy.
+	var loadout := App.run_loadout()
+	loadout.apply_to(sim)
+	TerrainCatalog.apply_to(App.selected_terrain, sim)
+	track.theme = App.selected_terrain
+	buggy.apply_loadout(loadout)
+	_apply_terrain_look(App.selected_terrain)
 	sim.wreck_hit.connect(_on_wreck_hit)
 	sim.scrap_collected.connect(_on_scrap_collected)
+	sim.fuel_collected.connect(func(_item: TrackItem) -> void: hud.show_popup("+1 PALIWO", Color("ff8a4a"), 1.0))
 	_setup_combat()
 	pause_menu.resume_requested.connect(_resume)
 	pause_menu.end_requested.connect(_end_early)
@@ -105,6 +113,23 @@ func _update_views(delta: float, power_w: float) -> void:
 	camera.follow(sim.lanes.x_m, sim.vehicle.speed_mps, delta)
 	hud.update_from(sim, power, delta)
 	hud.update_combat(sim.combat, power_w, sim.lanes.x_m, delta)
+
+
+## Martwe Miasto: szarobrązowa mgła i bledsze niebo (kopia zasobu – nie zmieniamy sceny).
+func _apply_terrain_look(terrain_id: String) -> void:
+	if terrain_id != TerrainCatalog.CITY:
+		return
+	var world := $WorldEnvironment as WorldEnvironment
+	var env := world.environment.duplicate(true) as Environment
+	env.fog_light_color = Color(0.64, 0.6, 0.54)
+	env.fog_density = 0.006
+	env.ambient_light_color = Color(0.72, 0.68, 0.62)
+	var sky_mat := env.sky.sky_material as ProceduralSkyMaterial
+	if sky_mat != null:
+		sky_mat.sky_top_color = Color(0.42, 0.48, 0.54)
+		sky_mat.sky_horizon_color = Color(0.76, 0.7, 0.62)
+		sky_mat.ground_horizon_color = Color(0.76, 0.7, 0.62)
+	world.environment = env
 
 
 # --- Walka (etap 2) ------------------------------------------------------------

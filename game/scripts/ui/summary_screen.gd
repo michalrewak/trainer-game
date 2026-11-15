@@ -36,6 +36,8 @@ func _ready() -> void:
 		["Energia", "%d kJ" % int(s.get("energy_kj", 0))],
 		["Zderzenia", str(int(s.get("collisions", 0)))],
 		["Utracony złom", str(int(s.get("scrap_lost", 0)))],
+		["Paliwo", "+%d" % int(s.get("fuel", 0))],
+		["Rozbite gangi", str(int(s.get("raiders_destroyed", 0)))],
 	]
 	for pair in stats:
 		grid.add_child(UiStyle.label(pair[0], 36, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_RIGHT))
@@ -43,13 +45,13 @@ func _ready() -> void:
 
 	var before := App.last_total_before
 	var after := App.progress.total_scrap()
-	col.add_child(UiStyle.label("Złom w magazynie: %d → %d" % [before, after], 44, Palette.UI_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+	col.add_child(UiStyle.label("Złom w magazynie: %d → %d   ·   Paliwo: %d" % [before, after, App.progress.fuel()], 44, Palette.UI_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
 	if not bool(s.get("saved", true)):
 		col.add_child(UiStyle.label("Uwaga: nie udało się zapisać postępu!", 40, Palette.UI_BAD, HORIZONTAL_ALIGNMENT_CENTER))
 
 	var again := UiStyle.button("JESZCZE RAZ (%s)" % _minutes_label(App.selected_minutes))
 	again.pressed.connect(func() -> void: App.start_run(App.selected_minutes))
-	var menu := UiStyle.button("MENU")
+	var menu := UiStyle.button("GARAŻ")
 	menu.pressed.connect(func() -> void: App.go_to_start())
 	var buttons := HBoxContainer.new()
 	buttons.alignment = BoxContainer.ALIGNMENT_CENTER

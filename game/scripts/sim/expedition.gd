@@ -12,6 +12,11 @@ var scrap_lost := 0
 var collisions := 0
 var raids_lost := 0
 var raiders_destroyed := 0
+var fuel := 0
+## Ulepszenia (etap 3): pancerz zmniejsza straty, przyczepa dokłada część złomu.
+var scrap_loss_factor := 1.0
+var scrap_bonus := 0.0
+var _bonus_acc := 0.0
 var energy_j := 0.0
 var max_power_w := 0.0
 var max_speed_mps := 0.0
@@ -37,27 +42,34 @@ func tick(delta: float, power_w: float, speed_mps: float, p_distance_m: float) -
 
 
 func add_scrap(amount: int) -> void:
-	scrap += amount
-	scrap_collected += amount
+	_bonus_acc += amount * scrap_bonus
+	var extra := floori(_bonus_acc)
+	_bonus_acc -= extra
+	scrap += amount + extra
+	scrap_collected += amount + extra
+
+
+func add_fuel(amount: int) -> void:
+	fuel += amount
 
 
 ## Utrata części złomu przy zderzeniu: 15% (w górę), co najmniej 3, nie więcej niż jest.
+## Pancerz (scrap_loss_factor) zmniejsza stratę.
 func lose_scrap_on_hit() -> int:
 	collisions += 1
-	if scrap <= 0:
-		return 0
-	var lost := mini(scrap, maxi(3, ceili(scrap * 0.15)))
-	scrap -= lost
-	scrap_lost += lost
-	return lost
+	return _lose(maxi(3, ceili(scrap * 0.15)))
 
 
-## Rabunek przy udanym taranowaniu przez gang: 10% (w górę), co najmniej 2, nie więcej niż jest.
+## Rabunek przy udanym taranowaniu przez gang: 10% (w górę), co najmniej 2.
 func lose_scrap_to_raid() -> int:
 	raids_lost += 1
+	return _lose(maxi(2, ceili(scrap * 0.10)))
+
+
+func _lose(base: int) -> int:
 	if scrap <= 0:
 		return 0
-	var lost := mini(scrap, maxi(2, ceili(scrap * 0.10)))
+	var lost := mini(scrap, ceili(base * scrap_loss_factor))
 	scrap -= lost
 	scrap_lost += lost
 	return lost
@@ -89,6 +101,7 @@ func to_summary(completed: bool) -> Dictionary:
 		"scrap": scrap,
 		"scrap_collected": scrap_collected,
 		"scrap_lost": scrap_lost,
+		"fuel": fuel,
 		"collisions": collisions,
 		"raids_lost": raids_lost,
 		"raiders_destroyed": raiders_destroyed,

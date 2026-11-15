@@ -22,6 +22,8 @@ var big_scrap_chance := 0.18
 var wreck_variants := 4
 ## Wyłączenie wraków (testy, później np. „pola bezpieczne” na ciężkich interwałach).
 var wrecks_enabled := true
+## Kanister paliwa średnio co tyle metrów (etap 3: druga waluta).
+var fuel_every_m := 420.0
 
 ## Warunki ustawiane przez symulację przed generowaniem kolejnych odcinków.
 var difficulty := 0.0
@@ -32,6 +34,7 @@ var _next_id := 1
 var _generated_until_m := 0.0
 var _next_row_m := 0.0
 var _next_scrap_m := 0.0
+var _next_fuel_m := 260.0
 ## Rzędy wraków: [{d, blocked: Array[int]}] – do omijania przy rozmieszczaniu złomu.
 var _rows: Array[Dictionary] = []
 
@@ -62,6 +65,9 @@ func generate_until(distance_m: float) -> Array[TrackItem]:
 	while _next_scrap_m < distance_m:
 		_place_scrap_line(_next_scrap_m, out)
 		_next_scrap_m += _scrap_gap()
+	while _next_fuel_m < distance_m:
+		_place_fuel(_next_fuel_m, out)
+		_next_fuel_m += fuel_every_m * _rng.randf_range(0.7, 1.3)
 	_generated_until_m = distance_m
 	out.sort_custom(func(a: TrackItem, b: TrackItem) -> bool: return a.distance_m < b.distance_m)
 	_forget_rows_before(distance_m - 400.0)
@@ -114,6 +120,16 @@ func _place_scrap_line(d: float, out: Array[TrackItem]) -> void:
 	var lane: int = candidates[_rng.randi_range(0, candidates.size() - 1)]
 	for i in count:
 		out.append(_make(TrackItem.Kind.SCRAP, lane, d + i * scrap_spacing_m, 1, 0))
+
+
+func _place_fuel(d: float, out: Array[TrackItem]) -> void:
+	var candidates: Array[int] = []
+	for lane in lane_count:
+		if not _blocked_near(lane, d, scrap_clearance_m):
+			candidates.append(lane)
+	if candidates.is_empty():
+		return
+	out.append(_make(TrackItem.Kind.FUEL, candidates[_rng.randi_range(0, candidates.size() - 1)], d, 1, 0))
 
 
 func _make(kind: TrackItem.Kind, lane: int, d: float, value: int, variant: int) -> TrackItem:

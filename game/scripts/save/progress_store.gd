@@ -24,6 +24,8 @@ static func default_data() -> Dictionary:
 	return {
 		"version": FORMAT_VERSION,
 		"total_scrap": 0,
+		"fuel": 0,
+		"upgrades": {},
 		"runs_completed": 0,
 		"total_distance_m": 0,
 		"best_run_scrap": 0,
@@ -33,6 +35,38 @@ static func default_data() -> Dictionary:
 
 func total_scrap() -> int:
 	return int(data.get("total_scrap", 0))
+
+
+func fuel() -> int:
+	return int(data.get("fuel", 0))
+
+
+func upgrade_level(id: String) -> int:
+	return int((data.get("upgrades", {}) as Dictionary).get(id, 0))
+
+
+func loadout() -> Loadout:
+	return Loadout.new(data.get("upgrades", {}))
+
+
+func can_buy(id: String) -> bool:
+	var cost := UpgradeCatalog.next_cost(id, upgrade_level(id))
+	if cost.is_empty():
+		return false
+	return total_scrap() >= int(cost["scrap"]) and fuel() >= int(cost["fuel"])
+
+
+## Kupuje następny poziom ulepszenia (zapis pliku robi wywołujący). Zwraca powodzenie.
+func buy(id: String) -> bool:
+	if not can_buy(id):
+		return false
+	var cost := UpgradeCatalog.next_cost(id, upgrade_level(id))
+	data["total_scrap"] = total_scrap() - int(cost["scrap"])
+	data["fuel"] = fuel() - int(cost["fuel"])
+	var ups: Dictionary = data.get("upgrades", {})
+	ups[id] = upgrade_level(id) + 1
+	data["upgrades"] = ups
+	return true
 
 
 func runs() -> Array:
@@ -45,6 +79,7 @@ func record_run(summary: Dictionary, timestamp: String = "") -> void:
 	run["date"] = timestamp if timestamp != "" else Time.get_datetime_string_from_system(false, true)
 	var scrap := int(run.get("scrap", 0))
 	data["total_scrap"] = total_scrap() + scrap
+	data["fuel"] = fuel() + int(run.get("fuel", 0))
 	data["total_distance_m"] = int(data.get("total_distance_m", 0)) + int(run.get("distance_m", 0))
 	if bool(run.get("completed", false)):
 		data["runs_completed"] = int(data.get("runs_completed", 0)) + 1
@@ -112,6 +147,14 @@ static func _sanitize(raw: Dictionary) -> Dictionary:
 	var clean := default_data()
 	clean["version"] = FORMAT_VERSION
 	clean["total_scrap"] = maxi(0, int(raw.get("total_scrap", 0)))
+	clean["fuel"] = maxi(0, int(raw.get("fuel", 0)))
+	var ups: Variant = raw.get("upgrades", {})
+	var clean_ups := {}
+	if ups is Dictionary:
+		for id in UpgradeCatalog.ORDER:
+			if (ups as Dictionary).has(id):
+				clean_ups[id] = clampi(int(ups[id]), 0, UpgradeCatalog.max_level(id))
+	clean["upgrades"] = clean_ups
 	clean["runs_completed"] = maxi(0, int(raw.get("runs_completed", 0)))
 	clean["total_distance_m"] = maxi(0, int(raw.get("total_distance_m", 0)))
 	clean["best_run_scrap"] = maxi(0, int(raw.get("best_run_scrap", 0)))

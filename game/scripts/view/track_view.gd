@@ -11,6 +11,9 @@ const ROAD_HALF_WIDTH := 6.2
 const ITEM_VISIBLE_BEHIND := 25.0
 const ITEM_VISIBLE_AHEAD := 300.0
 
+## Wygląd terenu: "canyon" (Kanion Rdzy) albo "city" (Martwe Miasto). Ustaw przed pierwszym sync.
+var theme := "canyon"
+
 var _segments: Array[Node3D] = []
 var _segment_ids: Array[int] = []
 var _item_nodes: Dictionary = {}
@@ -87,6 +90,10 @@ func _build_segment(seg: Node3D, idx: int) -> void:
 		var side := -1.0 if rng.randf() < 0.5 else 1.0
 		seg.add_child(LowPoly.box(Vector3(rng.randf_range(1.0, 2.6), 0.05, rng.randf_range(3.0, 9.0)), sand_drift, Vector3(side * rng.randf_range(4.6, 6.6), 0.03, -rng.randf_range(2.0, L - 2.0)), Vector3(0, rng.randf_range(-0.3, 0.3), 0)))
 
+	if theme == "city":
+		_build_city_sides(seg, rng)
+		return
+
 	# Ściany kanionu: nachodzące na siebie bloki skalne + dalsze mesy.
 	var rock_colors := [Palette.ROCK_A, Palette.ROCK_B, Palette.ROCK_C, Palette.ROCK_D]
 	for side: float in [-1.0, 1.0]:
@@ -138,6 +145,71 @@ func _build_segment(seg: Node3D, idx: int) -> void:
 				_add_barrels(seg, pos, rng)
 			_:
 				_add_sign(seg, pos, rng)
+
+
+## Martwe Miasto: zrujnowane bloki z pasami okien, chodniki, latarnie, billboardy, gruz.
+func _build_city_sides(seg: Node3D, rng: RandomNumberGenerator) -> void:
+	var L := SEGMENT_LENGTH
+	var concrete: Array[Color] = [Color("9c9184"), Color("8a8277"), Color("b3a58f"), Color("6e6a63"), Color("a2826a")]
+	var window_mat := Palette.mat(Color("2a2522"))
+	var sidewalk := Palette.mat(Color("8f877c"))
+	var rubble := Palette.mat(Color("7d756b"))
+	for side: float in [-1.0, 1.0]:
+		# Chodnik (miejscami zerwany).
+		var z0 := 0.0
+		while z0 < L:
+			var len := rng.randf_range(5.0, 14.0)
+			if rng.randf() > 0.2:
+				seg.add_child(LowPoly.box(Vector3(2.2, 0.18, minf(len, L - z0)), sidewalk, Vector3(side * 7.5, 0.09, -z0 - minf(len, L - z0) * 0.5)))
+			z0 += len + rng.randf_range(0.5, 3.0)
+		# Bloki.
+		var z := rng.randf_range(0.0, 3.0)
+		while z < L:
+			var w := rng.randf_range(7.0, 12.0)
+			var depth := rng.randf_range(8.0, 13.0)
+			var h := rng.randf_range(7.0, 24.0)
+			var x := side * (rng.randf_range(11.0, 13.5) + w * 0.5)
+			var b := Node3D.new()
+			b.position = Vector3(x, 0, -z - depth * 0.5)
+			seg.add_child(b)
+			var color: Color = concrete[rng.randi_range(0, concrete.size() - 1)]
+			b.add_child(LowPoly.box(Vector3(w, h, depth), Palette.mat(color), Vector3(0, h * 0.5, 0)))
+			# Pasy okien od strony drogi.
+			var floors := floori(h / 3.2)
+			for f in floors:
+				if rng.randf() < 0.85:
+					b.add_child(LowPoly.box(Vector3(0.1, 1.1, depth * 0.8), window_mat, Vector3(-side * (w * 0.5 + 0.02), 1.8 + f * 3.2, 0)))
+			# Wyszczerbiony dach.
+			if rng.randf() < 0.6:
+				b.add_child(LowPoly.box(Vector3(w * 0.6, 2.0, depth * 0.5), Palette.mat(color.darkened(0.1)), Vector3(rng.randf_range(-1.0, 1.0), h + 0.5, rng.randf_range(-2.0, 2.0)), Vector3(rng.randf_range(-0.3, 0.3), 0, rng.randf_range(-0.4, 0.4))))
+			z += depth + rng.randf_range(0.5, 4.0)
+		# Gruz przy chodniku.
+		for j in rng.randi_range(2, 5):
+			var s := rng.randf_range(0.4, 1.4)
+			seg.add_child(LowPoly.mesh_instance(LowPoly.rock_mesh(rng.randi_range(0, 11), 0.35), rubble,
+				Vector3(side * rng.randf_range(7.0, 9.5), s * 0.2, -rng.randf_range(0.0, L)), Vector3(s, s * 0.5, s), Vector3(0, rng.randf_range(0, TAU), 0)))
+	# Latarnia (prawa strona) i czasem billboard (lewa).
+	var pole_mat := Palette.mat(Color("4b4744"), 0.6, 0.5)
+	var lamp := Node3D.new()
+	lamp.position = Vector3(8.4, 0, -rng.randf_range(2.0, 8.0))
+	lamp.rotation = Vector3(0, 0, rng.randf_range(-0.12, 0.05))
+	lamp.add_child(LowPoly.cylinder(0.1, 7.0, pole_mat, Vector3(0, 3.5, 0), Vector3.ZERO, 6))
+	lamp.add_child(LowPoly.box(Vector3(1.6, 0.12, 0.2), pole_mat, Vector3(-0.7, 7.0, 0)))
+	seg.add_child(lamp)
+	if rng.randf() < 0.45:
+		var bb := Node3D.new()
+		bb.position = Vector3(-10.5, 0, -rng.randf_range(5.0, L - 5.0))
+		bb.rotation = Vector3(0, 0.35, 0)
+		bb.add_child(LowPoly.cylinder(0.12, 6.0, pole_mat, Vector3(-1.5, 3.0, 0), Vector3.ZERO, 6))
+		bb.add_child(LowPoly.cylinder(0.12, 6.0, pole_mat, Vector3(1.5, 3.0, 0), Vector3.ZERO, 6))
+		var faded: Array[Color] = [Color("b85d3f"), Color("4f7c7a"), Color("c8a04a")]
+		bb.add_child(LowPoly.box(Vector3(5.0, 2.6, 0.15), Palette.mat(faded[rng.randi_range(0, 2)], 0.9), Vector3(0, 6.2, 0), Vector3(0, 0, rng.randf_range(-0.08, 0.08))))
+		seg.add_child(bb)
+	if rng.randf() < 0.5:
+		var car := WreckFactory.make(rng.randi_range(0, 1))
+		car.position = Vector3((-1.0 if rng.randf() < 0.5 else 1.0) * 9.2, 0.0, -rng.randf_range(4.0, L - 4.0))
+		car.rotation.y = rng.randf_range(0.6, 1.2)
+		seg.add_child(car)
 
 
 func _add_pole(seg: Node3D, pos: Vector3, rng: RandomNumberGenerator) -> void:
@@ -212,8 +284,8 @@ func _sync_items(sim: RunSimulation, d: float, delta: float) -> void:
 			_item_nodes[item.id] = node
 			add_child(node)
 		var base := Vector3(sim.lane_x(item.lane), 0.0, -(item.distance_m - d))
-		if item.is_scrap():
-			_animate_scrap(node, item, base, delta)
+		if item.is_pickup():
+			_animate_pickup(node, item, base, delta)
 		else:
 			_animate_wreck(node, item, base, delta)
 	for id in _item_nodes.keys():
@@ -222,6 +294,10 @@ func _sync_items(sim: RunSimulation, d: float, delta: float) -> void:
 			_item_nodes.erase(id)
 			_hit_anim.erase(id)
 			_pickup_anim.erase(id)
+
+
+func _animate_pickup(node: Node3D, item: TrackItem, base: Vector3, delta: float) -> void:
+	_animate_scrap(node, item, base, delta)
 
 
 func _animate_scrap(node: Node3D, item: TrackItem, base: Vector3, delta: float) -> void:
@@ -255,5 +331,7 @@ func _make_item_node(item: TrackItem) -> Node3D:
 			return WreckFactory.make(item.variant)
 		TrackItem.Kind.SCRAP_BIG:
 			return WreckFactory.make_scrap(true)
+		TrackItem.Kind.FUEL:
+			return WreckFactory.make_fuel()
 		_:
 			return WreckFactory.make_scrap(false)

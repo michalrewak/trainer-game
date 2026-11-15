@@ -60,6 +60,18 @@ static func _barrier() -> Node3D:
 	return root
 
 
+## Kanister paliwa (etap 3): czerwony, z poświatą – inny kolor niż złom.
+static func make_fuel() -> Node3D:
+	var root := Node3D.new()
+	var body := Palette.mat(Color("c8321e"), 0.5, 0.2)
+	var glow := Palette.glow(Color("ff6a2a"), 2.0)
+	root.add_child(LowPoly.box(Vector3(0.55, 0.75, 0.32), body, Vector3(0, 0.0, 0)))
+	root.add_child(LowPoly.box(Vector3(0.3, 0.1, 0.12), glow, Vector3(0.0, 0.43, 0)))
+	root.add_child(LowPoly.cylinder(0.06, 0.18, Palette.mat(Palette.METAL, 0.4, 0.7), Vector3(0.2, 0.45, 0), Vector3(0, 0, -0.5), 6))
+	root.add_child(LowPoly.box(Vector3(0.57, 0.08, 0.34), glow, Vector3(0, -0.1, 0)))
+	return root
+
+
 ## Złom: świecąca zębatka (mały) albo skrzynia z wiązką światła (duży, wart 5).
 static func make_scrap(big: bool) -> Node3D:
 	var root := Node3D.new()

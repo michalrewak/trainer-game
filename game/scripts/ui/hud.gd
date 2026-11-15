@@ -18,6 +18,7 @@ var _hint: Label
 var _message: Label
 var _popup: Label
 var _scrap_panel: Control
+var _fuel_value: Label
 var _supply_label: Label
 var _supply_fill: ColorRect
 var _shield_fill: ColorRect
@@ -55,6 +56,8 @@ func update_from(sim: RunSimulation, power: PowerSource, delta: float) -> void:
 	_time_value.text = UiStyle.clock(e.time_left_s())
 	_time_value.add_theme_color_override("font_color", Palette.UI_ACCENT if e.time_left_s() <= 60.0 else Palette.UI_TEXT)
 	_scrap_value.text = str(e.scrap)
+	_fuel_value.text = "PALIWO %d" % e.fuel
+	_fuel_value.visible = e.fuel > 0
 	_tick_effects(delta)
 
 
@@ -172,6 +175,12 @@ func _build() -> void:
 	_scrap_value = scrap_box.get_meta("value")
 	_scrap_panel = scrap_box
 	_place(scrap_box, Control.PRESET_TOP_RIGHT, Vector2(-48, 40))
+	_fuel_value = UiStyle.label("", 34, Color("ff9a5a"), HORIZONTAL_ALIGNMENT_RIGHT)
+	_fuel_value.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	_fuel_value.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_fuel_value.position += Vector2(-60, 205)
+	_fuel_value.visible = false
+	_root.add_child(_fuel_value)
 
 	# Lewy dół: prędkość.
 	var speed_box := _stat_panel("KM/H")

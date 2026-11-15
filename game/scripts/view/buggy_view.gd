@@ -88,6 +88,91 @@ func muzzle_flash() -> void:
 	_muzzle_t = 0.07
 
 
+## Moduły z garażu (etap 3) – każdy widocznie zmienia sylwetkę pojazdu.
+func apply_loadout(loadout: Loadout) -> void:
+	var old := _body.get_node_or_null("Modules")
+	if old != null:
+		old.free()
+	var old_trailer := get_node_or_null("Trailer")
+	if old_trailer != null:
+		for w in old_trailer.find_children("Wheel*", "Node3D", true, false):
+			_wheels.erase(w)
+		old_trailer.free()
+	var mods := Node3D.new()
+	mods.name = "Modules"
+	_body.add_child(mods)
+	var frame := Palette.mat(Palette.BUGGY_FRAME, 0.5, 0.6)
+	var accent := Palette.mat(Palette.BUGGY_ACCENT, 0.55, 0.2)
+	var steel := Palette.mat(Palette.METAL, 0.45, 0.7)
+	var rust := Palette.mat(Palette.RUST_LIGHT, 0.8, 0.3)
+
+	var gen := loadout.level(UpgradeCatalog.GENERATOR)
+	for i in gen:
+		# Dodatkowe cewki i żebra chłodzące generatora.
+		var side := -1.0 if i % 2 == 0 else 1.0
+		mods.add_child(LowPoly.cylinder(0.14, 0.4, _coil_mat, Vector3(side * 0.42, 1.0, -0.55 + 0.05 * i), Vector3(0, 0, PI * 0.5), 10))
+		for f in 3:
+			mods.add_child(LowPoly.box(Vector3(0.04, 0.32, 0.32), steel, Vector3(side * (0.3 + f * 0.09), 1.0, -0.55)))
+
+	var armor := loadout.level(UpgradeCatalog.ARMOR)
+	if armor >= 1:
+		for side in [-1.0, 1.0]:
+			mods.add_child(LowPoly.box(Vector3(0.1, 0.75, 2.1), rust, Vector3(side * 0.74, 1.0, -0.1), Vector3(0, 0, side * 0.08)))
+			for k in 3:
+				mods.add_child(LowPoly.box(Vector3(0.12, 0.08, 0.08), steel, Vector3(side * 0.8, 1.25, -0.8 + k * 0.7)))
+	if armor >= 2:
+		mods.add_child(LowPoly.box(Vector3(1.5, 0.55, 0.12), rust, Vector3(0, 0.55, -1.95), Vector3(-0.5, 0, 0)))
+		for k in 4:
+			mods.add_child(LowPoly.cylinder(0.05, 0.4, steel, Vector3(-0.6 + k * 0.4, 0.5, -2.1), Vector3(PI * 0.5, 0, 0), 5))
+
+	var cap := loadout.level(UpgradeCatalog.CAPACITOR)
+	for i in cap:
+		var x := -0.3 + i * 0.6 if cap > 1 else 0.0
+		mods.add_child(LowPoly.cylinder(0.16, 0.7, frame, Vector3(x, 1.25, 0.95), Vector3.ZERO, 10))
+		mods.add_child(LowPoly.cylinder(0.12, 0.72, Palette.glow(Palette.SCRAP_GLOW, 1.6), Vector3(x, 1.25, 0.95), Vector3.ZERO, 10))
+
+	var old_turret_mods := _turret.get_node_or_null("TurretMods")
+	if old_turret_mods != null:
+		old_turret_mods.free()
+	var turret_mods := Node3D.new()
+	turret_mods.name = "TurretMods"
+	_turret.add_child(turret_mods)
+	var turret := loadout.level(UpgradeCatalog.TURRET)
+	if turret >= 1:
+		turret_mods.add_child(LowPoly.box(Vector3(0.6, 0.35, 0.06), accent, Vector3(0, 0.25, -0.25)))
+	if turret >= 2:
+		turret_mods.add_child(LowPoly.cylinder(0.06, 0.9, steel, Vector3(0.16, 0.2, -0.55), Vector3(PI * 0.5, 0, 0), 8))
+		turret_mods.add_child(LowPoly.cylinder(0.06, 0.9, steel, Vector3(-0.16, 0.2, -0.55), Vector3(PI * 0.5, 0, 0), 8))
+
+	var trailer_level := loadout.level(UpgradeCatalog.TRAILER)
+	if trailer_level >= 1:
+		var trailer := Node3D.new()
+		trailer.name = "Trailer"
+		add_child(trailer)
+		trailer.add_child(LowPoly.tube(Vector3(0, 0.55, 1.1), Vector3(0, 0.55, 1.9), 0.05, frame))
+		var bed_len := 1.6 if trailer_level == 1 else 2.6
+		var bed_z := 1.9 + bed_len * 0.5
+		trailer.add_child(LowPoly.box(Vector3(1.4, 0.12, bed_len), frame, Vector3(0, 0.62, bed_z)))
+		for side in [-1.0, 1.0]:
+			trailer.add_child(LowPoly.box(Vector3(0.06, 0.4, bed_len), rust, Vector3(side * 0.7, 0.85, bed_z)))
+		trailer.add_child(LowPoly.box(Vector3(1.4, 0.4, 0.06), rust, Vector3(0, 0.85, bed_z + bed_len * 0.5)))
+		# Kupka złomu na pace.
+		for k in 5 + trailer_level * 3:
+			var s := 0.18 + 0.05 * (k % 3)
+			trailer.add_child(LowPoly.mesh_instance(LowPoly.rock_mesh(k + 40, 0.4), steel if k % 2 == 0 else rust,
+				Vector3(-0.45 + (k % 4) * 0.3, 0.8 + 0.08 * (k % 2), bed_z - bed_len * 0.35 + (k % 5) * bed_len * 0.17), Vector3(s, s, s)))
+		var axles := [bed_z] if trailer_level == 1 else [bed_z - 0.6, bed_z + 0.6]
+		var tire := Palette.mat(Palette.TIRE, 0.95)
+		for az in axles:
+			for side in [-1.0, 1.0]:
+				var w := Node3D.new()
+				w.name = "Wheel%d" % trailer.get_child_count()
+				w.position = Vector3(side * 0.82, 0.4, az)
+				w.add_child(LowPoly.cylinder(0.4, 0.24, tire, Vector3.ZERO, Vector3(0, 0, PI * 0.5), 10))
+				trailer.add_child(w)
+				_wheels.append(w)
+
+
 func shield_block() -> void:
 	_shield_flash = 1.0
 
@@ -239,6 +324,7 @@ func _build() -> void:
 
 	# Kurz spod kół (cząsteczki lecą do tyłu względem pojazdu).
 	_dust = CPUParticles3D.new()
+	_dust.emitting = false
 	_dust.position = Vector3(0, 0.15, axle_z + 0.5)
 	_dust.amount = 36
 	_dust.lifetime = 0.9

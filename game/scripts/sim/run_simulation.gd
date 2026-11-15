@@ -9,6 +9,7 @@ extends RefCounted
 
 signal wreck_hit(item: TrackItem, scrap_lost: int)
 signal scrap_collected(item: TrackItem)
+signal fuel_collected(item: TrackItem)
 signal finished
 
 const LOOKAHEAD_M := 260.0
@@ -32,6 +33,8 @@ var scrap_half_width_m := 1.2
 
 var invulnerable_left_s := 0.0
 var last_power_w := 0.0
+## Teren wyprawy (TerrainCatalog) – widok dobiera do niego wygląd.
+var terrain := "canyon"
 
 
 func _init(duration_s: float = 900.0, seed_value: int = 0) -> void:
@@ -109,6 +112,10 @@ func _resolve_contacts(d0: float, d1: float) -> void:
 			invulnerable_left_s = invulnerability_s
 			var lost := expedition.lose_scrap_on_hit()
 			wreck_hit.emit(item, lost)
+		elif item.is_fuel():
+			item.consumed = true
+			expedition.add_fuel(item.value)
+			fuel_collected.emit(item)
 		else:
 			item.consumed = true
 			expedition.add_scrap(item.value)

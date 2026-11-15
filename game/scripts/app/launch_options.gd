@@ -15,6 +15,8 @@ extends RefCounted
 ##   --shot-times=a,b   sekundy wyprawy, w których robić zrzuty (domyślnie 4,12)
 ##   --combat-test      pierwsza potyczka z gangiem już po 6 s (testy walki)
 ##   --no-combat        wyprawa bez gangów
+##   --terrain=ID       wymuś teren (canyon/city) – testy, z pominięciem wymagań
+##   --all-upgrades     jazda z wszystkimi modułami na maks. (podgląd; zapis bez zmian)
 
 const DEFAULT_MINUTES := 15.0
 const TEST_MINUTES := 2.0
@@ -31,6 +33,8 @@ var screenshot_dir := ""
 var shot_times: Array[float] = [4.0, 12.0]
 var combat_test := false
 var no_combat := false
+var terrain := ""
+var all_upgrades := false
 
 
 static func parse(args: PackedStringArray) -> LaunchOptions:
@@ -72,6 +76,10 @@ static func parse(args: PackedStringArray) -> LaunchOptions:
 				o.combat_test = true
 			"--no-combat":
 				o.no_combat = true
+			"--terrain":
+				o.terrain = value
+			"--all-upgrades":
+				o.all_upgrades = true
 			"--shot-times":
 				var times: Array[float] = []
 				for part in value.split(",", false):
