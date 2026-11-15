@@ -82,10 +82,8 @@ func test_scrap_size_and_center() -> void:
 		return
 	for big: bool in [false, true]:
 		var s := KenneyModels.scrap(big, _rng(3))
-		var beam := s.get_node_or_null("Beam") as Node3D
-		assert_eq(beam != null, big, "słup światła tylko przy dużym złomie")
-		if beam != null:
-			beam.visible = false  # mierzymy samą zębatkę
+		# Słup światła nad dużym złomem dokłada WreckFactory – tu ma być sama zębatka.
+		assert_eq(s.get_child_count(), 1, "sama zębatka, bez słupa światła big=%s" % big)
 		var b := KenneyModels.bounds_of(s)
 		var expected := KenneyModels.SCRAP_BIG_SIZE_M if big else KenneyModels.SCRAP_SIZE_M
 		assert_near(maxf(b.size.x, b.size.y), expected, 0.03, "średnica zębatki big=%s" % big)
@@ -138,6 +136,11 @@ func test_buggy_parts_dimensions() -> void:
 		assert_near(wb.size.x, KenneyModels.WHEEL_WIDTH_M, 0.02, "szerokość koła (oś X)")
 		assert_true(wb.get_center().length() < 0.01, "środek koła w początku układu")
 		wheel.free()
+	var small := KenneyModels.buggy_wheel(1.0, 0.8)
+	var sb := KenneyModels.bounds_of(small)
+	assert_near(sb.size.y, 0.8, 0.02, "koło przyczepy: średnica")
+	assert_near(sb.size.x, KenneyModels.WHEEL_WIDTH_M * 0.8 / KenneyModels.WHEEL_DIAMETER_M, 0.02, "koło przyczepy: szerokość")
+	small.free()
 	var rider := KenneyModels.buggy_rider()
 	var rb := KenneyModels.bounds_of(rider)
 	assert_near(rb.size.y, KenneyModels.RIDER_HEIGHT_M, 0.02, "wysokość kierowcy")

@@ -134,7 +134,7 @@ func _build_road_stage(origin: Vector3) -> void:
 			stage.add_child(node)
 	var scraps := [[-13.0, 1, false], [-26.0, 1, true], [-38.0, 2, false], [-51.0, 0, false], [-65.0, 1, true], [-79.0, 0, false], [-93.0, 2, false]]
 	for s: Array in scraps:
-		var node := KenneyModels.scrap(bool(s[2]), rng)
+		var node := _scrap(bool(s[2]), rng)
 		if node != null:
 			node.position = Vector3(LANE_X[int(s[1])], 0.9, float(s[0]))
 			node.rotation.y = rng.randf_range(-0.6, 0.6)
@@ -174,7 +174,7 @@ func _build_prop_stage(origin: Vector3) -> void:
 			stage.add_child(prop)
 	for i in 6:
 		var big := i >= 3
-		var node := KenneyModels.scrap(big, rng)
+		var node := _scrap(big, rng)
 		if node != null:
 			node.position = Vector3((i - 2.5) * 2.6, 0.9, 5.0)
 			node.rotation.y = -0.5 + i * 0.25
@@ -215,6 +215,20 @@ func _build_buggy_stage(origin: Vector3) -> void:
 		rider.position = Vector3(0.0, 1.06, 0.22)
 		mock.add_child(rider)
 	_label(stage, "BuggyView (prymitywy)  |  części Kenney", Vector3(0.0, 0.1, 2.6))
+
+
+## Złom jak w grze: zębatka z KenneyModels + słup światła nad dużym (w grze dokłada go
+## WreckFactory).
+func _scrap(big: bool, rng: RandomNumberGenerator) -> Node3D:
+	var node := KenneyModels.scrap(big, rng)
+	if node != null and big:
+		var beam_mat := StandardMaterial3D.new()
+		beam_mat.albedo_color = Color(Palette.SCRAP_BIG_GLOW, 0.25)
+		beam_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		beam_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		beam_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		node.add_child(LowPoly.cylinder(0.25, 9.0, beam_mat, Vector3(0, 4.0, 0), Vector3.ZERO, 8))
+	return node
 
 
 func _stage(origin: Vector3) -> Node3D:
