@@ -63,8 +63,8 @@ func test_nudge_engages_cruise_and_steps_10w() -> void:
 	var m := ManualPowerModel.new()
 	m.nudge(1)
 	assert_true(m.cruise_locked, "W włącza tempomat")
-	assert_near(m.cruise_watts, 10.0, 0.01)
-	for i in 19:
+	assert_near(m.cruise_watts, ManualPowerModel.START_WATTS, 0.01, "od zera od razu moc, która rusza pojazd")
+	for i in 10:
 		m.nudge(1)
 	assert_near(m.cruise_watts, 200.0, 0.01)
 	m.nudge(-1)

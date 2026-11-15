@@ -37,10 +37,16 @@ func toggle_cruise() -> void:
 		cruise_watts = _round_lock(_power)
 
 
+## Od zera pierwsze „w górę” daje od razu START_WATTS (10 W nie ruszyłoby pojazdu z miejsca).
+const START_WATTS := 100.0
+
 func nudge(steps: int) -> void:
 	if not cruise_locked:
 		cruise_locked = true
 		cruise_watts = _round_lock(_power)
+	if steps > 0 and cruise_watts < START_WATTS * 0.5:
+		cruise_watts = START_WATTS
+		return
 	cruise_watts = clampf(cruise_watts + steps * step_watts, 0.0, max_watts)
 
 

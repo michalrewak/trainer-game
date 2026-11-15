@@ -141,7 +141,8 @@ func test_no_challenge_in_the_last_half_minute() -> void:
 
 func test_pad_erg_simulation_restores_cruise() -> void:
 	var pad := GamepadPowerSource.new()
-	pad.model.nudge(15)
+	pad.model.nudge(1)
+	pad.model.nudge(5)
 	assert_near(pad.model.cruise_watts, 150.0, 0.01)
 	pad.set_erg_target(260.0)
 	assert_near(pad.get_erg_target(), 260.0, 0.01, "ERG ustawia moc")

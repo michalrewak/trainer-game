@@ -28,6 +28,7 @@ var _had_pad := false
 var _last_minute_shown := false
 var _shots_done: Dictionary = {}
 var _tilt := 0.0
+var _checkpoint_t := 0.0
 
 
 func _ready() -> void:
@@ -69,6 +70,8 @@ func _process(delta: float) -> void:
 			_ride(delta)
 		State.FINISHING:
 			_finish_left -= delta
+			# Na mecie pojazd wytacza się bez mocy (zamiast „zamarzać”).
+			sim.vehicle.step(delta, 0.0)
 			_update_views(delta, 0.0)
 			if _finish_left <= 0.0:
 				_commit(true)
@@ -131,6 +134,11 @@ func _ride(delta: float) -> void:
 		_last_minute_shown = true
 		hud.show_message("OSTATNIA MINUTA", 3.0)
 	_maybe_screenshot()
+	# Checkpoint co 60 s: po awarii (np. utrata GPU) złom z wyprawy nie przepada.
+	_checkpoint_t += delta
+	if _checkpoint_t >= 60.0:
+		_checkpoint_t = 0.0
+		App.write_checkpoint(_summary(false))
 	if e.finished:
 		_state = State.FINISHING
 		_finish_left = FINISH_DELAY_S
@@ -345,11 +353,13 @@ func _pause(reason: String) -> void:
 		return
 	_state = State.PAUSED
 	get_tree().paused = true
+	hud.visible = false
 	pause_menu.open(reason)
 
 
 func _resume() -> void:
 	pause_menu.close()
+	hud.visible = true
 	get_tree().paused = false
 	_state = State.RIDING
 
@@ -374,6 +384,7 @@ func _commit(completed: bool) -> void:
 	_saved = true
 	_state = State.DONE
 	power.set_erg_target(0.0)
+	App.clear_checkpoint()
 	App.finish_run(_summary(completed and sim.expedition.finished))
 
 
@@ -382,7 +393,8 @@ func save_partial_run() -> void:
 	if _saved:
 		return
 	_saved = true
-	App.progress.record_run(_summary(false))
+	App.clear_checkpoint()
+	App.progress.record_run(_summary(sim.expedition.finished))
 	App.progress.save_data()
 
 

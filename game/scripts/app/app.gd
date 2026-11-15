@@ -23,6 +23,7 @@ func _ready() -> void:
 	options = LaunchOptions.parse(OS.get_cmdline_user_args())
 	progress = ProgressStore.new(options.save_path)
 	progress.load_data()
+	_recover_checkpoint()
 	settings = _load_settings()
 	selected_minutes = options.minutes if options.minutes_from_cli else float(settings.get("minutes", LaunchOptions.DEFAULT_MINUTES))
 	selected_terrain = str(settings.get("terrain", "canyon"))
@@ -179,7 +180,8 @@ func _notification(what: int) -> void:
 
 # --- Okno i wyświetlacz -----------------------------------------------------
 
-func _unhandled_input(event: InputEvent) -> void:
+## _input (nie _unhandled_input): Alt+Enter w menu nie może „kliknąć” przycisku z fokusem.
+func _input(event: InputEvent) -> void:
 	if event.is_action_pressed(&"toggle_fullscreen"):
 		toggle_fullscreen()
 		get_viewport().set_input_as_handled()
@@ -224,11 +226,45 @@ func _move_to_screen(screen: int) -> void:
 func _setup_display() -> void:
 	if is_headless():
 		return
-	# Jeśli użytkownik sam podał --screen, nie nadpisujemy go zapamiętanym ekranem.
-	var cli_screen := OS.get_cmdline_args().has("--screen")
+	# Jeśli okno startuje poza ekranem głównym (np. --screen 1), to wybór użytkownika –
+	# nie nadpisujemy go zapamiętanym ekranem. (--screen nie trafia do get_cmdline_args.)
+	var cli_screen := DisplayServer.window_get_current_screen() != DisplayServer.get_primary_screen()
 	var saved_screen := int(settings.get("screen", -1))
 	if not cli_screen and saved_screen >= 0 and saved_screen < DisplayServer.get_screen_count():
 		_move_to_screen.call_deferred(saved_screen)
+
+
+# --- Checkpoint wyprawy (ochrona przed awarią) -----------------------------
+
+func _checkpoint_path() -> String:
+	return options.save_path.get_basename() + "_checkpoint.json"
+
+
+func write_checkpoint(summary: Dictionary) -> void:
+	var f := FileAccess.open(_checkpoint_path(), FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(summary))
+		f.close()
+
+
+func clear_checkpoint() -> void:
+	if FileAccess.file_exists(_checkpoint_path()):
+		DirAccess.remove_absolute(_checkpoint_path())
+
+
+## Wyprawa przerwana awarią: dopisujemy jej złom do magazynu przy następnym starcie.
+func _recover_checkpoint() -> void:
+	if not FileAccess.file_exists(_checkpoint_path()):
+		return
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(_checkpoint_path()))
+	if parsed is Dictionary:
+		var s: Dictionary = parsed
+		s["completed"] = false
+		s["recovered"] = true
+		progress.record_run(s)
+		progress.save_data()
+		print("Odzyskano przerwaną wyprawę: +%d złomu" % int(s.get("scrap", 0)))
+	clear_checkpoint()
 
 
 # --- Ustawienia lokalne (nie postęp) ---------------------------------------
