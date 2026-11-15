@@ -63,6 +63,14 @@ func power_source_kind() -> String:
 	return PowerSourceFactory.KIND_GAMEPAD
 
 
+## Adres mostka do trenażera. Port można zmienić (--bridge-port=N, zapamiętywany),
+## gdy 8765 zajmuje inny program.
+func bridge_url() -> String:
+	if options.bridge_port > 0:
+		settings["bridge_port"] = options.bridge_port
+	return "ws://127.0.0.1:%d" % int(settings.get("bridge_port", 8765))
+
+
 func set_power_source_kind(kind: String) -> void:
 	settings["power_source"] = kind
 	_save_settings()

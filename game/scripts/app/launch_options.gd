@@ -17,6 +17,7 @@ extends RefCounted
 ##   --no-combat        wyprawa bez gangów
 ##   --trainer          moc z trenażera przez mostek (ws://127.0.0.1:8765, etap 5)
 ##   --plan=ŚCIEŻKA     trening z planu (np. res://plans/kanion_4x4.json; .json/.zwo/.fit)
+##   --bridge-port=N    port mostka (domyślnie 8765; zapamiętywany)
 ##   --challenge-test   pierwsze wyzwanie trybu wolnego już po 8 s
 ##   --no-challenges    jazda swobodna bez wyzwań
 ##   --terrain=ID       wymuś teren (canyon/city) – testy, z pominięciem wymagań
@@ -43,6 +44,7 @@ var challenge_test := false
 var no_challenges := false
 var trainer := false
 var plan_path := ""
+var bridge_port := 0
 
 
 static func parse(args: PackedStringArray) -> LaunchOptions:
@@ -96,6 +98,9 @@ static func parse(args: PackedStringArray) -> LaunchOptions:
 				o.trainer = true
 			"--plan":
 				o.plan_path = value
+			"--bridge-port":
+				if value.is_valid_int():
+					o.bridge_port = clampi(value.to_int(), 1, 65535)
 			"--shot-times":
 				var times: Array[float] = []
 				for part in value.split(",", false):

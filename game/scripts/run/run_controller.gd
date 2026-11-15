@@ -32,7 +32,7 @@ var _tilt := 0.0
 
 func _ready() -> void:
 	sun.look_at_from_position(Vector3.ZERO, Vector3(-0.35, -0.75, -0.55), Vector3.UP)
-	power = PowerSourceFactory.create(App.power_source_kind())
+	power = PowerSourceFactory.create(App.power_source_kind(), App.bridge_url())
 	if App.options.autopilot:
 		autopilot = Autopilot.new()
 	sim = RunSimulation.new(App.run_duration_s(), App.run_seed())
@@ -84,7 +84,7 @@ func _ride(delta: float) -> void:
 	match power.get_status():
 		PowerSource.Status.CONNECTING:
 			# Czekamy na trenażer – czas wyprawy stoi, nic nie przepada.
-			hud.set_persistent_message("Łączenie z trenażerem (mostek bridge/)…")
+			hud.set_persistent_message("Łączenie z trenażerem: %s\n(uruchom mostek bridge/; port zajęty? --bridge-port=8766)" % App.bridge_url())
 			_update_views(delta, 0.0)
 			return
 		PowerSource.Status.LOST:
