@@ -136,6 +136,13 @@ func _build_segment(seg: Node3D, idx: int) -> void:
 	for j in rng.randi_range(1, 3):
 		var side := -1.0 if rng.randf() < 0.5 else 1.0
 		var pos := Vector3(side * rng.randf_range(7.0, 9.8), 0, -rng.randf_range(4.0, L - 4.0))
+		# Połowa rekwizytów z paczki Kenney (beczki, skały, znaki, blaszaki), reszta z prymitywów.
+		if rng.randf() < 0.5:
+			var prop := KenneyModels.roadside_prop(rng)
+			if prop != null:
+				prop.position = pos
+				seg.add_child(prop)
+				continue
 		match rng.randi_range(0, 3):
 			0:
 				_add_cactus(seg, pos, rng)

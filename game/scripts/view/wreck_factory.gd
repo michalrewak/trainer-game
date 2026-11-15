@@ -5,6 +5,10 @@ extends RefCounted
 
 
 static func make(variant: int) -> Node3D:
+	# Najpierw modele Kenney (CC0); bez assetów – prymitywy poniżej.
+	var kenney := KenneyModels.wreck(variant)
+	if kenney != null:
+		return kenney
 	match posmod(variant, 4):
 		0:
 			return _car_wreck(false)
@@ -74,6 +78,11 @@ static func make_fuel() -> Node3D:
 
 ## Złom: świecąca zębatka (mały) albo skrzynia z wiązką światła (duży, wart 5).
 static func make_scrap(big: bool) -> Node3D:
+	var kenney := KenneyModels.scrap(big)
+	if kenney != null:
+		if big:
+			kenney.add_child(_beam(Palette.SCRAP_BIG_GLOW))
+		return kenney
 	var root := Node3D.new()
 	var color := Palette.SCRAP_BIG_GLOW if big else Palette.SCRAP_GLOW
 	var glow := Palette.glow(color, 3.0 if big else 2.2)
@@ -86,10 +95,15 @@ static func make_scrap(big: bool) -> Node3D:
 		gear.add_child(LowPoly.box(Vector3(0.14, 0.16, 0.16) * size, glow, Vector3(cos(a), 0, sin(a)) * 0.4 * size, Vector3(0, -a, 0)))
 	root.add_child(gear)
 	if big:
-		var beam_mat := StandardMaterial3D.new()
-		beam_mat.albedo_color = Color(color, 0.25)
-		beam_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		beam_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		beam_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-		root.add_child(LowPoly.cylinder(0.25, 9.0, beam_mat, Vector3(0, 4.0, 0), Vector3.ZERO, 8))
+		root.add_child(_beam(color))
 	return root
+
+
+## Świetlna kolumna nad dużym złomem – widać go z daleka.
+static func _beam(color: Color) -> MeshInstance3D:
+	var beam_mat := StandardMaterial3D.new()
+	beam_mat.albedo_color = Color(color, 0.25)
+	beam_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	beam_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	beam_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	return LowPoly.cylinder(0.25, 9.0, beam_mat, Vector3(0, 4.0, 0), Vector3.ZERO, 8)
