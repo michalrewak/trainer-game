@@ -1,4 +1,4 @@
-[gd_scene load_steps=13 format=3]
+[gd_scene load_steps=14 format=3]
 
 [ext_resource type="Script" path="res://scripts/run/run_controller.gd" id="1_run"]
 [ext_resource type="Script" path="res://scripts/view/track_view.gd" id="2_track"]
@@ -8,6 +8,7 @@
 [ext_resource type="PackedScene" path="res://scenes/ui/pause_menu.tscn" id="6_pause"]
 [ext_resource type="PackedScene" path="res://scenes/ui/debug_overlay.tscn" id="7_debug"]
 [ext_resource type="Script" path="res://scripts/view/combat_view.gd" id="8_combat"]
+[ext_resource type="Script" path="res://scripts/view/weather_fx.gd" id="9_weather"]
 
 [sub_resource type="ProceduralSkyMaterial" id="SkyMat"]
 sky_top_color = Color(0.36, 0.52, 0.63, 1)
@@ -59,6 +60,9 @@ script = ExtResource("2_track")
 
 [node name="Combat" type="Node3D" parent="."]
 script = ExtResource("8_combat")
+
+[node name="Weather" type="Node3D" parent="."]
+script = ExtResource("9_weather")
 
 [node name="Camera" type="Camera3D" parent="."]
 current = true

@@ -10,6 +10,7 @@ const FINISH_DELAY_S := 2.5
 @onready var track: TrackView = $Track
 @onready var buggy: BuggyView = $Buggy
 @onready var combat_view: CombatView = $Combat
+@onready var weather: WeatherFx = $Weather
 @onready var camera: ChaseCamera = $Camera
 @onready var hud: Hud = $Hud
 @onready var pause_menu: PauseMenu = $PauseMenu
@@ -42,6 +43,7 @@ func _ready() -> void:
 	track.theme = App.selected_terrain
 	buggy.apply_loadout(loadout)
 	_apply_terrain_look(App.selected_terrain)
+	weather.setup($WorldEnvironment, sun)
 	sim.wreck_hit.connect(_on_wreck_hit)
 	sim.scrap_collected.connect(_on_scrap_collected)
 	sim.fuel_collected.connect(func(_item: TrackItem) -> void: hud.show_popup("+1 PALIWO", Color("ff8a4a"), 1.0))
@@ -153,12 +155,15 @@ func _on_challenge_started(c: Dictionary) -> void:
 			power.set_erg_target(sim.challenges.target_w())
 	else:
 		power.set_erg_target(sim.challenges.target_w())
+	if int(c.get("kind", -1)) == ChallengeDirector.Kind.ESCAPE:
+		weather.set_storm(0.8)
 	hud.show_message("%s: START!" % str(c["name"]), 1.5)
 
 
 func _on_challenge_finished(c: Dictionary, success: bool) -> void:
 	power.set_erg_target(0.0)
 	power.set_grade(0.0)
+	weather.set_storm(0.0)
 	if success:
 		var reward := "+%d złomu" % int(c.get("reward_scrap", 0))
 		if int(c.get("reward_fuel", 0)) > 0:
