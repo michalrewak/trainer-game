@@ -200,9 +200,9 @@ static func _barrel_pile(rng: RandomNumberGenerator) -> Node3D:
 
 # --- Złom -------------------------------------------------------------------------
 
-## Świecąca zębatka z Factory Kit (ok. 0,8 m, duża 1,3 m + słup światła), stoi pionowo
-## przodem do kamery. Początek układu w środku zębatki (TrackView unosi ją nad ziemią
-## i obraca wokół Y).
+## Świecąca zębatka z Factory Kit (ok. 0,8 m, duża 1,3 m), stoi pionowo przodem do
+## kamery. Początek układu w środku zębatki (TrackView unosi ją nad ziemią i obraca
+## wokół Y). Bez słupa światła – dokłada go wołający (WreckFactory._beam).
 static func scrap(big: bool, rng: RandomNumberGenerator = null) -> Node3D:
 	var r := _rng_or_new(rng)
 	var cog := _instance(FACTORY_DIR + "/" + str(COGS[r.randi_range(0, COGS.size() - 1)]) + ".glb", _scrap_material(big))
@@ -221,20 +221,6 @@ static func scrap(big: bool, rng: RandomNumberGenerator = null) -> Node3D:
 	var root := Node3D.new()
 	root.name = "KenneyScrap"
 	root.add_child(pivot)
-	if big:
-		var beam := MeshInstance3D.new()
-		beam.name = "Beam"
-		var cyl := CylinderMesh.new()
-		cyl.top_radius = 0.22
-		cyl.bottom_radius = 0.3
-		cyl.height = 9.0
-		cyl.radial_segments = 8
-		cyl.rings = 1
-		beam.mesh = cyl
-		beam.material_override = _beam_material()
-		beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		beam.position = Vector3(0.0, 4.0, 0.0)
-		root.add_child(beam)
 	return root
 
 
@@ -447,15 +433,16 @@ static func _wall_slab(model: String, length: float, height: float, depth: float
 
 # --- Części buggy ---------------------------------------------------------------
 
-## Koło (wheel-tractor-back): średnica 1,24 m, oś wzdłuż X, początek układu w środku
-## koła (obracaj węzeł wokół X). Felga na zewnątrz: outer_side = +1 (prawe koło) / -1.
-static func buggy_wheel(outer_side: float = 1.0) -> Node3D:
+## Koło (wheel-tractor-back): średnica 1,24 m (szerokość 0,5 m), oś wzdłuż X, początek
+## układu w środku koła (obracaj węzeł wokół X). Felga na zewnątrz: outer_side = +1
+## (prawe koło) / -1. Inna średnica (np. 0,8 m przyczepy) skaluje też szerokość.
+static func buggy_wheel(outer_side: float = 1.0, diameter_m: float = WHEEL_DIAMETER_M) -> Node3D:
 	var model := _instance(CAR_DIR + "/wheel-tractor-back.glb", material(CAR_DIR, "buggy"))
 	if model == null:
 		return null
 	var raw := bounds_of(model)
-	var d := WHEEL_DIAMETER_M / raw.size.y
-	model.scale = Vector3(WHEEL_WIDTH_M / raw.size.x, d, d)
+	var d := diameter_m / raw.size.y
+	model.scale = Vector3(WHEEL_WIDTH_M * diameter_m / WHEEL_DIAMETER_M / raw.size.x, d, d)
 	if outer_side < 0.0:
 		model.rotation.y = PI
 	var root := Node3D.new()
@@ -637,18 +624,6 @@ static func _scrap_material(big: bool) -> StandardMaterial3D:
 	m.roughness = 0.4
 	m.metallic = 0.0
 	_materials[key] = m
-	return m
-
-
-static func _beam_material() -> StandardMaterial3D:
-	if _materials.has("beam"):
-		return _materials["beam"]
-	var m := StandardMaterial3D.new()
-	m.albedo_color = Color(Palette.SCRAP_BIG_GLOW, 0.22)
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
-	_materials["beam"] = m
 	return m
 
 
