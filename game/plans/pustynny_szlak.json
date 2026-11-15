@@ -1,0 +1,14 @@
+{
+  "format": "wasteland-workout",
+  "version": 1,
+  "name": "Pustynny szlak",
+  "description": "30 minut spokojnej jazdy w drugiej strefie z pięcioma krótkimi zrywami po 30 sekund (120% FTP).",
+  "steps": [
+    {"type": "warmup", "duration": "5:00", "from": 0.50, "to": 0.68, "label": "Rozgrzewka"},
+    {"repeat": 5, "steps": [
+      {"type": "steady", "duration": "3:30", "power": 0.70, "label": "Równe tempo"},
+      {"type": "work", "duration": 30, "power": 1.20, "cadence": 100, "label": "Zryw"}
+    ]},
+    {"type": "cooldown", "duration": "5:00", "from": 0.60, "to": 0.45, "label": "Schłodzenie"}
+  ]
+}

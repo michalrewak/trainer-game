@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Fixture: uszkodzony XML (niezamknięty element SteadyState). -->
+<workout_file>
+    <name>Uszkodzony</name>
+    <workout>
+        <SteadyState Duration="300" Power="0.7"/>
+        <SteadyState Duration="300" Power="0.8">
+    </workout>
+</workout_file>

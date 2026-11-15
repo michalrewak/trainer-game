@@ -1,0 +1,16 @@
+{
+  "format": "wasteland-workout",
+  "version": 1,
+  "name": "Szybki test 20 min",
+  "description": "Krótki plan do sprawdzenia gry i trenażera: krótkie interwały, rampa, jazda swobodna i schłodzenie – po trochu każdego rodzaju kroku.",
+  "steps": [
+    {"type": "warmup", "duration": "3:00", "from": 0.50, "to": 0.70, "label": "Rozgrzewka"},
+    {"repeat": 6, "steps": [
+      {"type": "work", "duration": 60, "power": 1.10, "label": "Pościg"},
+      {"type": "recovery", "duration": 60, "power": 0.50, "label": "Oddech"}
+    ]},
+    {"type": "ramp", "duration": 60, "from": 0.60, "to": 0.95, "label": "Podjazd"},
+    {"type": "freeride", "duration": "2:00", "label": "Jazda swobodna"},
+    {"type": "cooldown", "duration": "2:00", "from": 0.60, "to": 0.45, "label": "Schłodzenie"}
+  ]
+}
