@@ -10,6 +10,8 @@ var wave_period_s := 40.0
 
 var _time := 0.0
 var _power := 0.0
+var _saved_base := -1.0
+var _saved_wave := 0.0
 
 
 func _init(p_base_watts: float = 210.0, p_wave_watts: float = 25.0) -> void:
@@ -28,6 +30,20 @@ func get_power_watts() -> float:
 
 func get_cadence() -> float:
 	return ManualPowerModel.cadence_for_power(_power, _time)
+
+
+## Autopilot jak posłuszny zawodnik: w ERG trzyma cel (z drobnym wahaniem ±2%).
+func set_erg_target(watts: float) -> void:
+	if watts > 0.0:
+		if _saved_base < 0.0:
+			_saved_base = base_watts
+			_saved_wave = wave_watts
+		base_watts = watts
+		wave_watts = watts * 0.02
+	elif _saved_base >= 0.0:
+		base_watts = _saved_base
+		wave_watts = _saved_wave
+		_saved_base = -1.0
 
 
 func get_label() -> String:
