@@ -1,0 +1,4 @@
+# Mostek trenażera – zależności uruchomieniowe (wersje przypięte, patrz README).
+bleak==3.0.2
+websockets==17.4
+rich==15.0.0
