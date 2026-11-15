@@ -13,6 +13,8 @@ var _duration_button: Button
 var _ftp_button: Button
 var _autofire_button: Button
 var _source_button: Button
+var _mode_button: Button
+var _plans: Array[String] = []
 var _go_button: Button
 var _buggy: BuggyView
 var _turntable: Node3D
@@ -86,6 +88,10 @@ func _build() -> void:
 	_detail.custom_minimum_size = Vector2(900, 64)
 	col.add_child(_detail)
 	col.add_child(UiStyle.label("WYPRAWA", 26, Palette.UI_DIM))
+	_mode_button = _small_button()
+	_mode_button.pressed.connect(_cycle_mode)
+	_mode_button.focus_entered.connect(func() -> void: _detail.text = "Jazda swobodna: gra proponuje wyzwania. Trening: plan (JSON/ZWO/FIT) prowadzi jazdę – interwały to burze piaskowe z polem bezpiecznym, cel ±5%.")
+	col.add_child(_mode_button)
 	_terrain_button = _small_button()
 	_terrain_button.pressed.connect(_cycle_terrain)
 	_terrain_button.focus_entered.connect(func() -> void: _detail.text = TerrainCatalog.description(TerrainCatalog.ORDER[_terrain_index]))
@@ -162,8 +168,14 @@ func _refresh() -> void:
 	var tid := TerrainCatalog.ORDER[_terrain_index]
 	var missing := TerrainCatalog.missing_requirements(tid, p.loadout(), App.ftp_w())
 	_terrain_button.text = "Teren: %s%s" % [TerrainCatalog.display_name(tid), "" if missing.is_empty() else "   (zablokowany: %s)" % ", ".join(missing)]
-	var minutes := DURATIONS[_duration_index]
-	_duration_button.text = "Czas: %s" % ("TEST 2 min" if minutes < 5.0 else "%d min" % roundi(minutes))
+	var plan := App.selected_plan()
+	if plan != null:
+		_mode_button.text = "Tryb: TRENING – %s" % plan.name
+		_duration_button.text = "Czas: %s (z planu)" % WorkoutStep.format_duration(plan.total_duration_s())
+	else:
+		_mode_button.text = "Tryb: jazda swobodna (wyzwania)"
+		var minutes := DURATIONS[_duration_index]
+		_duration_button.text = "Czas: %s" % ("TEST 2 min" if minutes < 5.0 else "%d min" % roundi(minutes))
 	_ftp_button.text = "FTP: %d W  ← →" % roundi(App.ftp_w())
 	_autofire_button.text = "Auto-ogień: %s" % ("TAK" if App.auto_fire_enabled() else "nie")
 	_source_button.text = "Moc: %s" % ("TRENAŻER" if App.power_source_kind() == PowerSourceFactory.KIND_TRAINER else "PAD")
@@ -192,6 +204,18 @@ func _cycle_terrain() -> void:
 	_terrain_index = (_terrain_index + 1) % TerrainCatalog.ORDER.size()
 	App.selected_terrain = TerrainCatalog.ORDER[_terrain_index]
 	_detail.text = TerrainCatalog.description(App.selected_terrain)
+	_refresh()
+
+
+func _cycle_mode() -> void:
+	if _plans.is_empty():
+		_plans = App.available_plans()
+	var options: Array[String] = [""]
+	options.append_array(_plans)
+	var i := options.find(App.selected_plan_path)
+	App.selected_plan_path = options[(i + 1) % options.size()]
+	var plan := App.selected_plan()
+	_detail.text = plan.describe() if plan != null else "Jazda swobodna – gra sama proponuje wyzwania (podjazd, ucieczka, sprint)."
 	_refresh()
 
 

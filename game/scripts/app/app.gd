@@ -30,6 +30,8 @@ func _ready() -> void:
 		selected_terrain = TerrainCatalog.CANYON
 	if options.terrain != "" and TerrainCatalog.DEFS.has(options.terrain):
 		selected_terrain = options.terrain
+	if options.plan_path != "":
+		selected_plan_path = options.plan_path
 	Engine.time_scale = options.time_scale
 	get_tree().set_auto_accept_quit(false)
 	_setup_display()
@@ -67,7 +69,33 @@ func set_power_source_kind(kind: String) -> void:
 
 
 func run_duration_s() -> float:
+	var plan := selected_plan()
+	if plan != null:
+		return plan.total_duration_s()
 	return selected_minutes * 60.0
+
+
+## Tryb treningowy (etap 4): ścieżka planu albo "" = jazda swobodna.
+var selected_plan_path := ""
+var _plan_cache: Dictionary = {}
+
+const PLANS_DIR := "res://plans"
+const USER_PLANS_DIR := "user://plans"
+
+
+func available_plans() -> Array[String]:
+	var out: Array[String] = WorkoutLoader.list_plan_files(PLANS_DIR)
+	out.append_array(WorkoutLoader.list_plan_files(USER_PLANS_DIR))
+	return out
+
+
+func selected_plan() -> WorkoutPlan:
+	if selected_plan_path == "":
+		return null
+	if not _plan_cache.has(selected_plan_path):
+		var res: Dictionary = WorkoutLoader.load_file(selected_plan_path, ftp_w())
+		_plan_cache[selected_plan_path] = res.get("plan")
+	return _plan_cache[selected_plan_path]
 
 
 func run_seed() -> int:

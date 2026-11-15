@@ -49,6 +49,7 @@ func _ready() -> void:
 	sim.fuel_collected.connect(func(_item: TrackItem) -> void: hud.show_popup("+1 PALIWO", Color("ff8a4a"), 1.0))
 	_setup_combat()
 	_setup_challenges()
+	_setup_workout()
 	pause_menu.resume_requested.connect(_resume)
 	pause_menu.end_requested.connect(_end_early)
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
@@ -99,13 +100,18 @@ func _ride(delta: float) -> void:
 	sim.combat.fire_held = Input.is_action_pressed(&"fire") or rt_fires
 	var p := power.get_power_watts()
 	sim.combat.target_power_w = _current_target_w()
-	if sim.challenges.is_active():
+	if workout != null:
+		sim.combat.target_low_tol = TargetBand.WORKOUT_TOL
+		sim.combat.target_high_tol = TargetBand.WORKOUT_TOL
+	elif sim.challenges.is_active():
 		sim.combat.target_low_tol = TargetBand.CHALLENGE_TOL
 		sim.combat.target_high_tol = TargetBand.CHALLENGE_TOL
 	else:
 		sim.combat.target_low_tol = TargetBand.FREE_RIDE_LOW
 		sim.combat.target_high_tol = TargetBand.FREE_RIDE_HIGH
 	sim.step(delta, p)
+	if workout != null:
+		_tick_workout(delta, p)
 	_update_views(delta, p)
 	_update_challenge_hud()
 	if sim.vehicle.speed_mps > 1.5:
@@ -140,11 +146,57 @@ func _update_views(delta: float, power_w: float) -> void:
 	hud.update_combat(sim.combat, power_w, sim.lanes.x_m, delta)
 
 
-## Moc docelowa w tej chwili: wyzwanie trybu wolnego albo spokojne tempo (65% FTP).
+## Moc docelowa w tej chwili: krok planu, wyzwanie trybu wolnego albo spokojne tempo (65% FTP).
 func _current_target_w() -> float:
+	if workout != null:
+		var w := workout.target_w(sim.expedition.elapsed_s)
+		return w if w > 0.0 else App.free_ride_target_w()
 	if sim.challenges.is_active():
 		return sim.challenges.target_w()
 	return App.free_ride_target_w()
+
+
+# --- Tryb treningowy (etap 4) --------------------------------------------------
+
+var workout: WorkoutRunner = null
+var _erg_refresh := 0.0
+
+
+func _setup_workout() -> void:
+	var plan := App.selected_plan()
+	if plan == null:
+		return
+	workout = WorkoutRunner.new(plan, App.ftp_w())
+	sim.challenges.enabled = false
+	hud.set_workout(workout.blocks(), plan.name)
+	workout.step_changed.connect(_on_workout_step)
+
+
+func _on_workout_step(index: int, step: WorkoutStep) -> void:
+	var t := sim.expedition.elapsed_s
+	var hard := workout.plan.is_hard_step(index)
+	# Ciężki interwał = burza piaskowa i pole bezpieczne: tylko pedałujesz, bez klikania.
+	sim.set_safe_zone(hard)
+	weather.set_storm(0.85 if hard else 0.0)
+	power.set_erg_target(workout.target_w(t))
+	_erg_refresh = 0.0
+	var title := "INTERWAŁ – BURZA PIASKOWA" if hard else step.display_label().to_upper()
+	hud.show_message("%s\n%s · %s" % [title, TargetBand.range_text(workout.target_w(t), workout.tol, workout.tol), WorkoutStep.format_duration(step.duration_s)], 3.0)
+
+
+func _tick_workout(delta: float, power_w: float) -> void:
+	var t := sim.expedition.elapsed_s
+	workout.step(t, delta, power_w)
+	# Rampy (rozgrzewka/schłodzenie): odświeżamy cel ERG co 5 s.
+	_erg_refresh += delta
+	if _erg_refresh >= 5.0:
+		_erg_refresh = 0.0
+		var i := workout.plan.step_index_at(t)
+		if i >= 0 and workout.plan.steps[i].is_ramp():
+			power.set_erg_target(workout.target_w(t))
+	var info := workout.info(t)
+	info["safe"] = sim.safe_zone
+	hud.update_workout(info)
 
 
 # --- Tryb wolny: wyzwania (etap 6) ---------------------------------------------
@@ -286,12 +338,21 @@ func _end_early() -> void:
 	_commit(false)
 
 
+func _summary(completed: bool) -> Dictionary:
+	var s := sim.expedition.to_summary(completed)
+	if workout != null:
+		s["workout"] = workout.plan.name
+		s["workout_in_band_pct"] = roundi(workout.compliance() * 100.0)
+	return s
+
+
 func _commit(completed: bool) -> void:
 	if _saved:
 		return
 	_saved = true
 	_state = State.DONE
-	App.finish_run(sim.expedition.to_summary(completed and sim.expedition.finished))
+	power.set_erg_target(0.0)
+	App.finish_run(_summary(completed and sim.expedition.finished))
 
 
 ## Wywoływane przez App przy zamknięciu okna w trakcie jazdy – złom nie przepada.
@@ -299,7 +360,7 @@ func save_partial_run() -> void:
 	if _saved:
 		return
 	_saved = true
-	App.progress.record_run(sim.expedition.to_summary(false))
+	App.progress.record_run(_summary(false))
 	App.progress.save_data()
 
 

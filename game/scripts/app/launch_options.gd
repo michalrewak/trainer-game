@@ -16,6 +16,7 @@ extends RefCounted
 ##   --combat-test      pierwsza potyczka z gangiem już po 6 s (testy walki)
 ##   --no-combat        wyprawa bez gangów
 ##   --trainer          moc z trenażera przez mostek (ws://127.0.0.1:8765, etap 5)
+##   --plan=ŚCIEŻKA     trening z planu (np. res://plans/kanion_4x4.json; .json/.zwo/.fit)
 ##   --challenge-test   pierwsze wyzwanie trybu wolnego już po 8 s
 ##   --no-challenges    jazda swobodna bez wyzwań
 ##   --terrain=ID       wymuś teren (canyon/city) – testy, z pominięciem wymagań
@@ -41,6 +42,7 @@ var all_upgrades := false
 var challenge_test := false
 var no_challenges := false
 var trainer := false
+var plan_path := ""
 
 
 static func parse(args: PackedStringArray) -> LaunchOptions:
@@ -92,6 +94,8 @@ static func parse(args: PackedStringArray) -> LaunchOptions:
 				o.no_challenges = true
 			"--trainer":
 				o.trainer = true
+			"--plan":
+				o.plan_path = value
 			"--shot-times":
 				var times: Array[float] = []
 				for part in value.split(",", false):

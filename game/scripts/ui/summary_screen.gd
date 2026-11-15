@@ -40,6 +40,9 @@ func _ready() -> void:
 		["Rozbite gangi", str(int(s.get("raiders_destroyed", 0)))],
 		["Wyzwania", str(int(s.get("challenges_completed", 0)))],
 	]
+	if s.has("workout"):
+		stats.append(["Trening", str(s["workout"])])
+		stats.append(["W widełkach", "%d%% czasu" % int(s.get("workout_in_band_pct", 0))])
 	for pair in stats:
 		grid.add_child(UiStyle.label(pair[0], 36, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_RIGHT))
 		grid.add_child(UiStyle.label(pair[1], 44, Palette.UI_TEXT))
