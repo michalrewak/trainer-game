@@ -59,7 +59,8 @@ func sync(sim: RunSimulation, cadence_rpm: float, power_w: float, delta: float) 
 	# Błysk po uderzeniu.
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - delta)
-		_body.visible = fmod(_flash, 0.14) > 0.05
+		# Po końcu migania pojazd MUSI być widoczny (wcześniej znikał na resztę wyprawy).
+		_body.visible = _flash <= 0.0 or fmod(_flash, 0.14) > 0.05
 
 
 func on_hit() -> void:

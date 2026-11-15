@@ -74,10 +74,15 @@ func _process(delta: float) -> void:
 				_commit(true)
 
 
-func _ride(delta: float) -> void:
-	if Input.is_action_just_pressed(&"pause"):
+## Pauza przez zdarzenie (nie odpytywanie w _process): to samo wciśnięcie, które wznawia
+## grę w menu pauzy, nie może jej od razu znowu zapauzować.
+func _unhandled_input(event: InputEvent) -> void:
+	if _state == State.RIDING and event.is_action_pressed(&"pause"):
+		get_viewport().set_input_as_handled()
 		_pause("")
-		return
+
+
+func _ride(delta: float) -> void:
 	power.update(delta)
 	for notice in power.take_notices():
 		hud.show_message(notice, 5.0)

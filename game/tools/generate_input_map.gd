@@ -10,6 +10,9 @@ extends SceneTree
 
 func _initialize() -> void:
 	var actions := {
+		# Menu: w Godot 4.7 domyślne ui_accept/ui_cancel nie mają przycisków pada – dodajemy A/B.
+		"ui_accept": _action(0.5, [_key(KEY_ENTER), _key(KEY_KP_ENTER), _key(KEY_SPACE), _button(JOY_BUTTON_A)]),
+		"ui_cancel": _action(0.5, [_key(KEY_ESCAPE), _button(JOY_BUTTON_B)]),
 		# Moc (symulacja na padzie): prawy trigger analogowy 0..1 -> 0..350 W.
 		"power_trigger": _action(0.05, [_axis(JOY_AXIS_TRIGGER_RIGHT, 1.0)]),
 		# Tempomat na LB: lewy palec wskazujący jest wolny, prawy trzyma RT, kciuki zostają

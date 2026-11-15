@@ -67,4 +67,4 @@ func _build() -> void:
 	_end = UiStyle.button("ZAKOŃCZ WYPRAWĘ (zapisz złom)")
 	_end.pressed.connect(func() -> void: end_requested.emit())
 	col.add_child(_end)
-	col.add_child(UiStyle.label("Start / Esc – wróć do jazdy", 32, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER))
+	col.add_child(UiStyle.label("Start / B / Esc – wróć do jazdy   ·   A – wybierz", 32, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER))

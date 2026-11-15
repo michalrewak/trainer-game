@@ -336,7 +336,10 @@ func _build() -> void:
 	_root.add_child(_threat_right)
 
 	# Komunikaty na środku i wyskakujące „-N ZŁOMU”.
-	_message = UiStyle.label("", 72, Palette.UI_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	_message = UiStyle.label("", 58, Palette.UI_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	# Długie komunikaty (np. o cyfrowym triggerze) zawijamy, zamiast ucinać na 16:9.
+	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_message.custom_minimum_size = Vector2(1500, 0)
 	_message.set_anchors_preset(Control.PRESET_CENTER)
 	_message.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_message.grow_vertical = Control.GROW_DIRECTION_BOTH
