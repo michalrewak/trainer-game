@@ -23,3 +23,6 @@ Desktop.ini
 .DS_Store
 .vs/
 .idea/
+
+# Worktree agentów Claude Code (robocze kopie repo)
+.claude/worktrees/
