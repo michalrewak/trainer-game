@@ -41,6 +41,9 @@ func _ready() -> void:
 	loadout.apply_to(sim)
 	TerrainCatalog.apply_to(App.selected_terrain, sim)
 	track.theme = App.selected_terrain
+	# Wzniesienia i doliny – w mieście łagodniej.
+	sim.course_enabled = true
+	sim.course.amplitude = 0.5 if App.selected_terrain == TerrainCatalog.CITY else 1.0
 	buggy.apply_loadout(loadout)
 	_apply_terrain_look(App.selected_terrain)
 	weather.setup($WorldEnvironment, sun)
@@ -112,6 +115,8 @@ func _ride(delta: float) -> void:
 	sim.step(delta, p)
 	if workout != null:
 		_tick_workout(delta, p)
+	else:
+		_send_terrain_grade()
 	_update_views(delta, p)
 	_update_challenge_hud()
 	if sim.vehicle.speed_mps > 1.5:
@@ -160,6 +165,18 @@ func _current_target_w() -> float:
 
 var workout: WorkoutRunner = null
 var _erg_refresh := 0.0
+var _sent_grade := 999.0
+
+
+## Jazda swobodna: trenażer czuje teren (tryb symulacji). Wysyłamy tylko zmiany >= 0,5%,
+## a w trakcie wyzwań ERG – wcale (ERG ma pierwszeństwo). W treningu nigdy.
+func _send_terrain_grade() -> void:
+	if sim.challenges.is_active() and float(sim.challenges.current.get("grade", 0.0)) <= 0.0:
+		return
+	var g := snappedf(sim.vehicle.grade * 100.0, 0.5)
+	if absf(g - _sent_grade) >= 0.5:
+		_sent_grade = g
+		power.set_grade(g)
 
 
 func _setup_workout() -> void:

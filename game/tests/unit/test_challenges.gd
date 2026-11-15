@@ -100,6 +100,27 @@ func test_combat_overheats_above_band() -> void:
 	assert_true(sim.combat.fire_interval_s() > CombatModel.BASE_FIRE_INTERVAL_S * 1.5, "wolniejszy ogień")
 
 
+func test_course_has_hills_and_valleys() -> void:
+	var c := CourseProfile.new(3)
+	assert_near(c.grade_at(100.0), 0.0, 1e-9, "płaski start")
+	var lo := 1.0
+	var hi := -1.0
+	var d := 0.0
+	while d < 20000.0:
+		var g := c.grade_at(d)
+		lo = minf(lo, g)
+		hi = maxf(hi, g)
+		d += 10.0
+	assert_true(hi > 0.03, "są podjazdy (maks %.3f)" % hi)
+	assert_true(lo < -0.03, "są zjazdy (min %.3f)" % lo)
+	assert_true(hi <= 0.061 and lo >= -0.061, "nachylenie w rozsądnym zakresie")
+	var sim := RunSimulation.new(900.0, 3)
+	sim.course_enabled = true
+	sim.vehicle.distance_m = 5000.0
+	sim.step(0.1, 200.0)
+	assert_near(sim.vehicle.grade, sim.course.grade_at(sim.vehicle.distance_m), 0.002, "pojazd czuje teren")
+
+
 func test_climb_tilts_the_road_and_resets_after() -> void:
 	var sim := _free_ride()
 	_ride(sim, 10.5 + ChallengeDirector.ANNOUNCE_S + 1.0, func(_s: RunSimulation) -> float: return 200.0)

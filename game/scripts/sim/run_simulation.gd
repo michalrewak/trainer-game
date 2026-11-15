@@ -22,6 +22,9 @@ var expedition: Expedition
 var combat: CombatModel
 ## Tryb wolny (etap 6): wyzwania proponowane przez grę. Domyślnie wyłączone.
 var challenges := ChallengeDirector.new()
+## Wzniesienia i doliny (CourseProfile). W grze włączone, w czystej symulacji domyślnie płasko.
+var course: CourseProfile
+var course_enabled := false
 var items: Array[TrackItem] = []
 
 var impact_speed_factor := 0.35
@@ -43,6 +46,7 @@ func _init(duration_s: float = 900.0, seed_value: int = 0) -> void:
 	expedition = Expedition.new(duration_s)
 	generator = TrackGenerator.new(seed_value, lanes.lane_count)
 	combat = CombatModel.new(self, seed_value)
+	course = CourseProfile.new(seed_value)
 	challenges.enabled = false
 	challenges.finished.connect(_on_challenge_finished)
 	_refill()
@@ -104,13 +108,22 @@ func step(delta: float, power_w: float) -> void:
 	_resolve_contacts(d0, vehicle.distance_m)
 	combat.step(delta, power_w)
 	challenges.step(delta, expedition.elapsed_s, expedition.time_left_s(), power_w)
-	vehicle.grade = challenges.grade_percent() / 100.0 if challenges.enabled else vehicle.grade
+	vehicle.grade = current_grade()
 	generator.difficulty = expedition.progress()
 	generator.speed_hint_mps = maxf(vehicle.speed_mps, 8.0)
 	_refill()
 	_prune()
 	if expedition.finished:
 		finished.emit()
+
+
+## Nachylenie w tej chwili: podjazd z wyzwania ma pierwszeństwo, potem ukształtowanie trasy.
+func current_grade() -> float:
+	if challenges.enabled and challenges.grade_percent() > 0.0:
+		return challenges.grade_percent() / 100.0
+	if course_enabled:
+		return course.grade_at(vehicle.distance_m)
+	return 0.0
 
 
 func is_invulnerable() -> bool:

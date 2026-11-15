@@ -19,6 +19,7 @@ var _message: Label
 var _popup: Label
 var _scrap_panel: Control
 var _fuel_value: Label
+var _speed_caption: Label
 var _challenge_label: Label
 var _workout_box: Control
 var _profile: WorkoutProfile
@@ -59,6 +60,13 @@ func update_from(sim: RunSimulation, power: PowerSource, delta: float) -> void:
 	_hint.text = power.get_hint()
 	_hint.visible = _hint.text != ""
 	_speed_value.text = "%d" % roundi(sim.vehicle.speed_kmh())
+	var grade_pct := roundi(sim.vehicle.grade * 100.0)
+	if grade_pct > 0:
+		_speed_caption.text = "KM/H  ↑ %d%%" % grade_pct
+	elif grade_pct < 0:
+		_speed_caption.text = "KM/H  ↓ %d%%" % absi(grade_pct)
+	else:
+		_speed_caption.text = "KM/H"
 	_distance_value.text = UiStyle.km(sim.vehicle.distance_m)
 	_time_value.text = UiStyle.clock(e.time_left_s())
 	_time_value.add_theme_color_override("font_color", Palette.UI_ACCENT if e.time_left_s() <= 60.0 else Palette.UI_TEXT)
@@ -226,6 +234,7 @@ func _build() -> void:
 	# Lewy dół: prędkość.
 	var speed_box := _stat_panel("KM/H")
 	_speed_value = speed_box.get_meta("value")
+	_speed_caption = speed_box.get_meta("caption")
 	_place(speed_box, Control.PRESET_BOTTOM_LEFT, Vector2(48, -40))
 
 	# Prawy dół: dystans.
@@ -370,8 +379,10 @@ func _stat_panel(caption: String, value_color: Color = Palette.UI_TEXT) -> Panel
 	var value := UiStyle.label("0", 84, value_color, HORIZONTAL_ALIGNMENT_CENTER)
 	value.custom_minimum_size = Vector2(220, 0)
 	col.add_child(value)
-	col.add_child(UiStyle.label(caption, 28, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER))
+	var caption_label := UiStyle.label(caption, 28, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	col.add_child(caption_label)
 	p.set_meta("value", value)
+	p.set_meta("caption", caption_label)
 	return p
 
 
