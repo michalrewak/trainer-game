@@ -1,6 +1,7 @@
 extends TestCase
 
-const DIR := "user://test_saves"
+## Osobny katalog na proces – równoległe uruchomienia testów (np. z kilku worktree) nie kolidują.
+var DIR := "user://test_saves/%d" % OS.get_process_id()
 
 
 func _fresh_path(name: String) -> String:
