@@ -40,7 +40,6 @@ func _process(delta: float) -> void:
 	_env.fog_light_color = _base_fog.lerp(_storm_fog, _strength)
 	_sun.light_energy = lerpf(_base_sun, 0.55, _strength)
 	_streaks.emitting = _strength > 0.05
-	_streaks.amount_ratio = clampf(_strength, 0.0, 1.0)
 
 
 func _build_streaks() -> void:
