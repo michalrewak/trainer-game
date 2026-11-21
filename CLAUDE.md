@@ -8,6 +8,8 @@ Gra 3D w Godot 4 sterowana trenażerem Elite Suito (Bluetooth FTMS), wyświetlan
 
 Ziemia po apokalipsie w stylu Mad Max: pustynie, kaniony, zrujnowane miasta, strefy skażone, burze piaskowe, gangi na buggy. Kamera zza pojazdu, z góry pod kątem (third-person chase cam), pokazująca cały pojazd i to, co nadjeżdża.
 
+Fabuła (Żarłok, Tłuści, burze iskrowe), kierunek graficzny (dzień, burza, noc) i filary rozgrywki (największy nacisk: rozwój pojazdu; decyzje na trasie i zwiad) są opisane w [docs/swiat.md](docs/swiat.md). Przy pracy nad wyglądem, fabułą i progresją trzymaj się tego dokumentu.
+
 ## Pojazd i progresja
 
 - Start: jednoosiowy buggy z pedałowym generatorem.
