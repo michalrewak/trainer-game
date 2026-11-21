@@ -9,7 +9,7 @@ extends Node3D
 
 const DAY := {
 	"sun_color": Color(1.0, 0.82, 0.58), "sun_energy": 2.4, "sun_dir": Vector3(-0.55, -0.5, -0.45),
-	"amb_color": Color(0.25, 0.55, 0.62), "amb_energy": 1.1,
+	"amb_color": Color(0.36, 0.46, 0.56), "amb_energy": 0.8,
 	"fog_color": Color(0.93, 0.62, 0.36), "fog_density": 0.0035,
 	"sky_top": Color(0.16, 0.42, 0.55), "sky_horizon": Color(0.96, 0.68, 0.42),
 	"saturation": 1.3, "contrast": 1.12, "headlights": 0.0,

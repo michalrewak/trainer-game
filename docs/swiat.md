@@ -86,8 +86,12 @@ przejściami, burza z błyskawicami, reflektory i ściana burzy na horyzoncie. P
 do wyboru w garażu: zmienna (start za dnia, w połowie zachód słońca, końcówka nocą),
 dzień albo noc. Tarcza nie jest bańką pola siłowego: zablokowany atak to snop iskier.
 
-Do zrobienia: modele pojazdów i wrogów nadal są z prostych brył, kampania nie steruje
-jeszcze porą dnia.
+Pojazdy: wrogowie to seryjne auta (sedan, SUV, pickup) przerobione na tarany – osmalony
+lakier, kolczaste zderzaki, zaspawane okna. Buggy gracza ma koła terenowe, łataną blachę,
+klatkę, generator z korbą i kierowcę, który naprawdę kręci nogami w tempie kadencji.
+
+Do zrobienia: kampania nie steruje jeszcze porą dnia, ściana burzy na horyzoncie jest
+płaska.
 
 ## Filary rozgrywki
 

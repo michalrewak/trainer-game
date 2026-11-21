@@ -17,6 +17,7 @@ signal ram_resolved(raider: RaiderModel, outcome: int, scrap_lost: int)
 signal raider_destroyed(raider: RaiderModel, scrap_dropped: int, cause: int)
 signal shot_fired(projectile: Dictionary)
 signal raider_hit(raider: RaiderModel)
+signal wreck_destroyed(item: TrackItem)
 
 enum RamOutcome { HIT, BLOCKED, DODGED, COUNTER }
 enum DestroyCause { SHOT, WRECK }
@@ -359,12 +360,38 @@ func _update_fire(delta: float) -> void:
 	_fire_cooldown = maxf(0.0, _fire_cooldown - delta)
 	var target := current_target()
 	locked_target_id = target.id if target != null else -1
-	if target == null or _fire_cooldown > 0.0:
+	if _fire_cooldown > 0.0:
 		return
-	if not (fire_held or auto_fire):
-		return
-	_fire_at(target)
-	_fire_cooldown = fire_interval_s()
+	if target != null and (fire_held or auto_fire):
+		_fire_at(target)
+		_fire_cooldown = fire_interval_s()
+	elif fire_held:
+		# Wolny strzał: bez wroga w celowniku pocisk leci tam, gdzie wskazuje gałka
+		# (bez wychylenia – prosto przed siebie). Tak rozbija się wraki na swoim pasie.
+		_spawn_projectile(aim_direction(), -1)
+		_fire_cooldown = fire_interval_s()
+
+
+## Kierunek celowania w układzie (bok, przód): gałka albo prosto, gdy nie jest wychylona.
+func aim_direction() -> Vector2:
+	if aim.length() > 0.4:
+		return Vector2(aim.x, -aim.y).normalized()
+	return Vector2(0.0, 1.0)
+
+
+## Czy gracz aktywnie celuje albo strzela (widok pokazuje wtedy linię celownika).
+func is_aiming() -> bool:
+	return aim.length() > 0.4 or fire_held
+
+
+## Punkt, w który patrzy wieżyczka, względem pojazdu (bok, przód); null = spoczynek.
+func aim_point() -> Variant:
+	var target := current_target()
+	if target != null:
+		return Vector2(target.x - sim.lanes.x_m, target.d - sim.vehicle.distance_m)
+	if is_aiming():
+		return aim_direction() * 20.0
+	return null
 
 
 func _fire_at(target: RaiderModel) -> void:
@@ -376,13 +403,20 @@ func _fire_at(target: RaiderModel) -> void:
 	var t := rel.length() / PROJECTILE_SPEED
 	var aim_point := rel + rel_vel * t
 	var dir := aim_point.normalized() if aim_point.length() > 0.01 else Vector2(0, 1)
+	_spawn_projectile(dir, target.id)
+
+
+func _spawn_projectile(dir: Vector2, target_id: int) -> void:
+	var px := sim.lanes.x_m
+	var pd := sim.vehicle.distance_m
+	var pv := sim.vehicle.speed_mps
 	var p := {
 		"id": _next_projectile_id,
 		"x": px, "d": pd + 0.3,
 		"vx": dir.x * PROJECTILE_SPEED,
 		"vd": dir.y * PROJECTILE_SPEED + pv,
 		"age": 0.0,
-		"target": target.id,
+		"target": target_id,
 		"alive": true,
 	}
 	_next_projectile_id += 1
@@ -410,8 +444,25 @@ func _update_projectiles(delta: float) -> void:
 				raider_hit.emit(r)
 				_damage(r, 1, DestroyCause.SHOT)
 				break
+		if p["alive"]:
+			_hit_wrecks(p, Vector2(x0, d0), Vector2(x1, d1))
 		if float(p["age"]) > PROJECTILE_MAX_AGE_S:
 			p["alive"] = false
+
+
+## Pocisk trafia we wrak: dwa trafienia rozbijają go i zwalniają pas.
+func _hit_wrecks(p: Dictionary, from: Vector2, to: Vector2) -> void:
+	for item in sim.items:
+		if item.consumed or not item.is_wreck():
+			continue
+		var c := Vector2(sim.lane_x(item.lane), item.distance_m)
+		if _segment_point_distance(from, to, c) < sim.wreck_half_width_m + 0.3:
+			p["alive"] = false
+			item.hp -= 1
+			if item.hp <= 0:
+				item.consumed = true
+				wreck_destroyed.emit(item)
+			return
 
 
 func _damage(r: RaiderModel, amount: int, cause: int) -> void:

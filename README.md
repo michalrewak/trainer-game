@@ -32,8 +32,8 @@ Pełny opis założeń: [CLAUDE.md](CLAUDE.md).
 | Tempomat (zablokuj moc) | **LB** | C / Spacja |
 | Moc ±10 W (włącza tempomat) | krzyżak **↑ / ↓** | W / S, strzałki ↑ / ↓ |
 | Zmiana pasa | krzyżak **← / →**, lewa gałka | A / D, strzałki ← / → |
-| Celowanie wieżyczki | prawa gałka (bez wychylenia = auto-cel) | auto-cel |
-| Strzał | **LT** | F |
+| Celowanie wieżyczki | prawa gałka: czerwona linia pokazuje kierunek; blisko wroga celownik sam go łapie | auto-cel |
+| Strzał | **LT** – strzela zawsze: we wroga w celowniku, a bez niego tam, gdzie wskazuje gałka (bez wychylenia prosto) | F |
 | Pauza / menu wyprawy | **Start** | Esc / P |
 | Podgląd wejść pada | **Back / Select** | F3 |
 | Menu | krzyżak/gałka + **A**, **B** wstecz | strzałki + Enter, Esc |
@@ -56,6 +56,7 @@ dla tego pada (inaczej pad udaje mysz).
 - **Wyprawa** trwa zadany czas (15/30/45/60 min, test 2 min). Kończy się zawsze po czasie,
   nigdy porażką. Zderzenie z wrakiem kosztuje prędkość i część złomu.
 - **Złom** (cyjanowe zębatki) i **paliwo** (czerwone kanistry) to waluty garażu.
+- **Wraki można rozstrzelać**: dwa trafienia rozbijają wrak i zwalniają pas.
 - **Gangi** dojeżdżają z boku i taranują. Obrona: wieżyczka, unik zmianą pasa po ostrzeżeniu
   „!” albo tarcza. Tarcza ładuje się i działko strzela szybciej, gdy trzymasz moc docelową
   (65% FTP w jeździe swobodnej). Przegrana potyczka to rabunek części złomu.

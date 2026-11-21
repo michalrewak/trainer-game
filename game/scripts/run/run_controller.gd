@@ -186,11 +186,12 @@ func _update_views(delta: float, power_w: float) -> void:
 	track.sync(sim, delta)
 	buggy.sync(sim, power.get_cadence(), power_w, delta)
 	combat_view.sync(sim, delta)
-	var target := sim.combat.current_target()
+	var aim_at: Variant = sim.combat.aim_point()
 	var target_local: Variant = null
-	if target != null:
-		target_local = Vector3(target.x, 0.0, -(target.d - sim.vehicle.distance_m))
+	if aim_at is Vector2:
+		target_local = Vector3(sim.lanes.x_m + (aim_at as Vector2).x, 0.0, -(aim_at as Vector2).y)
 	buggy.update_combat(target_local, sim.combat.shield, delta)
+	buggy.set_aim_line(sim.combat.is_aiming())
 	# Zakręty i wzniesienia rysuje shader (bend.gdshaderinc) – podajemy mu dystans pojazdu.
 	# Podjazd z wyzwania to dodatkowe nachylenie, wizualnie przesadzone jak reszta wzniesień.
 	var climb := sim.challenges.grade_percent() / 100.0 * 2.5 if sim.challenges.enabled else 0.0
@@ -353,6 +354,9 @@ func _setup_combat() -> void:
 	c.ram_resolved.connect(_on_ram_resolved)
 	c.raider_destroyed.connect(_on_raider_destroyed)
 	c.shot_fired.connect(func(_p: Dictionary) -> void: buggy.muzzle_flash())
+	c.wreck_destroyed.connect(func(item: TrackItem) -> void:
+		combat_view.explode_at(Vector3(sim.lane_x(item.lane), 0.0, -(item.distance_m - sim.vehicle.distance_m)))
+		hud.show_popup("WRAK ROZBITY", Palette.UI_GOOD, 1.0))
 
 
 func _on_raider_warning(r: RaiderModel) -> void:

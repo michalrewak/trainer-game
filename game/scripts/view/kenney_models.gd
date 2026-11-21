@@ -452,6 +452,34 @@ static func buggy_wheel(outer_side: float = 1.0, diameter_m: float = WHEEL_DIAME
 	return root
 
 
+## Auto gangu: seryjny wóz (sedan, SUV, pickup) w ciemnym, osmalonym lakierze, przodem
+## w -Z, szerokość ~2,0 m, koła na ziemi. Zwraca null bez assetów. Koła do obracania:
+## meta "wheels" (Array węzłów; obrót wokół lokalnej osi X), bryła: meta "size" (Vector3).
+const RAIDER_CARS := ["sedan-sports", "suv", "truck"]
+
+static func raider_car(variant: int) -> Node3D:
+	var model: String = RAIDER_CARS[posmod(variant, RAIDER_CARS.size())]
+	var car := _instance(CAR_DIR + "/" + model + ".glb", material(CAR_DIR, "raider"))
+	if car == null:
+		return null
+	var wheels: Array = []
+	for child in car.get_children():
+		if child is Node3D and String(child.name).begins_with("wheel"):
+			wheels.append(child)
+	var raw := bounds_of(car)
+	var k := minf(2.0 / raw.size.x, 4.2 / raw.size.z)
+	car.scale = Vector3(k * 1.12, k, k)
+	car.rotation.y = PI
+	var root := Node3D.new()
+	root.name = "KenneyRaider"
+	root.add_child(car)
+	var b := bounds_of(root)
+	car.position -= Vector3(b.get_center().x, b.position.y, b.get_center().z)
+	root.set_meta("wheels", wheels)
+	root.set_meta("size", bounds_of(root).size)
+	return root
+
+
 ## Kierowca w kasku (postać „character” z gokarta kart-oozi), siedzący, przodem w -Z.
 ## RIDER_HEIGHT_M od spodu do czubka kasku (duża głowa – styl Kenney); początek
 ## układu: środek spodu postaci. Model jest jednym meshem (bez animacji nóg).
@@ -552,6 +580,8 @@ static func _style(style: String) -> Style:
 	match style:
 		"rust":
 			return Style.new(0.3, 0.88, 0.92, Color("b27a56"), 0.95)
+		"raider":
+			return Style.new(0.3, 1.05, 0.62, Color("6e4a40"), 0.85)
 		"burnt":
 			return Style.new(0.1, 0.85, 0.78, Color("6a564a"), 0.97)
 		"faded":

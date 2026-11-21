@@ -98,3 +98,29 @@ static func tube(from: Vector3, to: Vector3, radius: float, material: Material) 
 		basis = Basis(axis, acos(clampf(up.dot(dir), -1.0, 1.0)))
 	mi.transform = Transform3D(basis, mid)
 	return mi
+
+
+## Rura o jednostkowej długości do animacji – ustawiana co klatkę przez place_tube.
+static func unit_tube(radius: float, material: Material) -> MeshInstance3D:
+	var m := CylinderMesh.new()
+	m.top_radius = radius
+	m.bottom_radius = radius
+	m.height = 1.0
+	m.radial_segments = 6
+	m.rings = 1
+	var mi := MeshInstance3D.new()
+	mi.mesh = m
+	mi.material_override = material
+	return mi
+
+
+## Rozciąga rurę z unit_tube między dwoma punktami (w układzie rodzica).
+static func place_tube(mi: MeshInstance3D, from: Vector3, to: Vector3) -> void:
+	var length := maxf(from.distance_to(to), 0.001)
+	var dir := (to - from) / length
+	var basis := Basis.IDENTITY
+	if absf(dir.dot(Vector3.UP)) > 0.999:
+		basis = Basis.IDENTITY if dir.y > 0 else Basis(Vector3.RIGHT, PI)
+	else:
+		basis = Basis(Vector3.UP.cross(dir).normalized(), acos(clampf(Vector3.UP.dot(dir), -1.0, 1.0)))
+	mi.transform = Transform3D(basis * Basis.from_scale(Vector3(1.0, length, 1.0)), (from + to) * 0.5)

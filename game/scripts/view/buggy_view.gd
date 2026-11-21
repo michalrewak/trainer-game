@@ -4,18 +4,23 @@ extends Node3D
 ## płoza z przodu, klatka z rur, kierowca kręcący korbą generatora (tempo = kadencja).
 ## Widok tylko odwzorowuje stan symulacji: pozycję w pasie, prędkość, przechył, uderzenia.
 
-const WHEEL_RADIUS := 0.62
+const WHEEL_RADIUS := 0.66
+## Oś korby generatora w układzie nadwozia i promień pedałów.
+const CRANK_CENTER := Vector3(0, 1.0, -0.55)
+const CRANK_RADIUS := 0.16
 
 var _body: Node3D
 var _wheels: Array[Node3D] = []
 var _crank: Node3D
-var _legs: Array[Node3D] = []
+var _thighs: Array[MeshInstance3D] = []
+var _shins: Array[MeshInstance3D] = []
 var _flag: Node3D
 var _dust: CPUParticles3D
 var _coil_mat: ShaderMaterial
 var _turret: Node3D
 var _muzzle: MeshInstance3D
 var _muzzle_t := 0.0
+var _aim_line: MeshInstance3D
 var _sparks: CPUParticles3D
 var _spark_light: OmniLight3D
 var _charge_level := 0.0
@@ -41,9 +46,7 @@ func sync(sim: RunSimulation, cadence_rpm: float, power_w: float, delta: float) 
 		w.rotation.x = _wheel_angle
 	_crank_angle += cadence_rpm / 60.0 * TAU * delta
 	_crank.rotation.x = _crank_angle
-	for i in _legs.size():
-		var phase := _crank_angle + PI * i
-		_legs[i].rotation.x = -0.6 + 0.45 * sin(phase)
+	_pose_legs()
 	# Przechył przy zmianie pasa, „nurkowanie” przy hamowaniu/przyspieszaniu.
 	var roll := clampf(-sim.lanes.lateral_velocity_mps * 0.03, -0.22, 0.22)
 	var accel := (v - _prev_speed) / maxf(delta, 1e-4)
@@ -86,6 +89,11 @@ func update_combat(target_local: Variant, shield_level: float, delta: float) -> 
 	_spark_light.light_energy = _shield_flash * 9.0
 	_spark_light.visible = _shield_flash > 0.0
 	_charge_level = shield_level
+
+
+## Linia celownika z lufy – widoczna, gdy gracz celuje albo strzela.
+func set_aim_line(on: bool) -> void:
+	_aim_line.visible = on
 
 
 func muzzle_flash() -> void:
@@ -187,75 +195,104 @@ func _build() -> void:
 	_body = Node3D.new()
 	_body.name = "Body"
 	add_child(_body)
-	var frame := Palette.mat(Palette.BUGGY_FRAME, 0.5, 0.6)
-	var accent := Palette.mat(Palette.BUGGY_ACCENT, 0.55, 0.2)
+	var frame := Palette.mat(Color("2a2826"), 0.6, 0.6)
+	var accent := Palette.mat(Palette.BUGGY_ACCENT, 0.7, 0.2)
+	var rust := Palette.mat(Palette.RUST_LIGHT, 0.85, 0.3)
 	var tire := Palette.mat(Palette.TIRE, 0.95)
 	var rim := Palette.mat(Palette.METAL, 0.4, 0.7)
+	var leather := Palette.mat(Color("3b2f27"))
+	var cloth := Palette.mat(Color("6a5038"))
+	var skin := Palette.mat(Color("b98562"))
 	_coil_mat = Palette.glow(Palette.GENERATOR_GLOW, 1.0).duplicate() as ShaderMaterial
 
-	# Oś z dwoma dużymi kołami (z tyłu).
+	# Jedna oś z dwoma wielkimi kołami terenowymi.
 	var axle_z := 0.55
-	_body.add_child(LowPoly.cylinder(0.07, 1.9, frame, Vector3(0, WHEEL_RADIUS, axle_z), Vector3(0, 0, PI * 0.5), 8))
-	for side in [-1.0, 1.0]:
+	_body.add_child(LowPoly.cylinder(0.08, 2.0, frame, Vector3(0, WHEEL_RADIUS, axle_z), Vector3(0, 0, PI * 0.5), 8))
+	for side: float in [-1.0, 1.0]:
 		var wheel := Node3D.new()
-		wheel.position = Vector3(side * 0.98, WHEEL_RADIUS, axle_z)
-		var t := LowPoly.cylinder(WHEEL_RADIUS, 0.34, tire, Vector3.ZERO, Vector3(0, 0, PI * 0.5), 14)
-		wheel.add_child(t)
-		wheel.add_child(LowPoly.cylinder(0.34, 0.36, rim, Vector3.ZERO, Vector3(0, 0, PI * 0.5), 8))
-		for k in 3:
-			var a := TAU * k / 3.0
-			wheel.add_child(LowPoly.box(Vector3(0.38, 0.09, 0.09), accent, Vector3(side * 0.02, sin(a) * 0.2, cos(a) * 0.2), Vector3(a, 0, 0)))
+		wheel.position = Vector3(side * 1.08, WHEEL_RADIUS, axle_z)
+		var model := KenneyModels.buggy_wheel(side, WHEEL_RADIUS * 2.0)
+		if model != null:
+			wheel.add_child(model)
+		else:
+			wheel.add_child(LowPoly.cylinder(WHEEL_RADIUS, 0.42, tire, Vector3.ZERO, Vector3(0, 0, PI * 0.5), 14))
+			wheel.add_child(LowPoly.cylinder(0.34, 0.44, rim, Vector3.ZERO, Vector3(0, 0, PI * 0.5), 8))
+		# Kolce na piaście.
+		wheel.add_child(LowPoly.cylinder(0.05, 0.3, rim, Vector3(side * 0.3, 0, 0), Vector3(0, 0, PI * 0.5), 5))
 		_wheels.append(wheel)
 		_body.add_child(wheel)
+		# Błotnik z blachy nad kołem.
+		_body.add_child(LowPoly.box(Vector3(0.5, 0.05, 1.0), rust, Vector3(side * 1.08, WHEEL_RADIUS * 2.0 + 0.1, axle_z), Vector3(0.0, 0, side * -0.1)))
+		_body.add_child(LowPoly.tube(Vector3(side * 0.66, 1.0, axle_z), Vector3(side * 0.95, WHEEL_RADIUS * 2.0 + 0.08, axle_z), 0.035, frame))
 
-	# Płoza z przodu (druga „oś” to tylko ślizg – miejsce na przyszłe moduły).
-	_body.add_child(LowPoly.box(Vector3(0.9, 0.08, 1.2), frame, Vector3(0, 0.12, -1.55), Vector3(-0.15, 0, 0)))
-	_body.add_child(LowPoly.tube(Vector3(-0.35, 0.16, -1.2), Vector3(-0.3, 0.75, -0.2), 0.04, frame))
-	_body.add_child(LowPoly.tube(Vector3(0.35, 0.16, -1.2), Vector3(0.3, 0.75, -0.2), 0.04, frame))
+	# Rama: podłużnice zbiegające się ku przodowi, płoza z amortyzatorem zamiast drugiej osi.
+	for side: float in [-1.0, 1.0]:
+		_body.add_child(LowPoly.tube(Vector3(side * 0.5, 0.62, 1.15), Vector3(side * 0.3, 0.5, -1.75), 0.055, frame))
+		_body.add_child(LowPoly.tube(Vector3(side * 0.3, 0.5, -1.75), Vector3(side * 0.2, 0.14, -1.55), 0.04, rim))
+	_body.add_child(LowPoly.box(Vector3(0.55, 0.07, 1.15), frame, Vector3(0, 0.1, -1.7), Vector3(-0.12, 0, 0)))
+	_body.add_child(LowPoly.box(Vector3(0.55, 0.07, 0.35), frame, Vector3(0, 0.22, -2.35), Vector3(-0.7, 0, 0)))
 
-	# Podłoga, siedzisko i klatka.
-	_body.add_child(LowPoly.box(Vector3(1.3, 0.1, 1.8), frame, Vector3(0, 0.72, -0.15)))
-	_body.add_child(LowPoly.box(Vector3(1.1, 0.18, 0.1), accent, Vector3(0, 0.82, -1.05)))
-	_body.add_child(LowPoly.box(Vector3(0.55, 0.12, 0.55), Palette.mat(Color("3b2f27")), Vector3(0, 1.05, 0.35)))
-	_body.add_child(LowPoly.box(Vector3(0.55, 0.6, 0.1), Palette.mat(Color("3b2f27")), Vector3(0, 1.35, 0.62), Vector3(-0.2, 0, 0)))
+	# Wanna: podłoga, burty z łatanej blachy, maska i zderzak z kolcami.
+	_body.add_child(LowPoly.box(Vector3(1.3, 0.08, 2.1), frame, Vector3(0, 0.68, -0.2)))
+	for side: float in [-1.0, 1.0]:
+		_body.add_child(LowPoly.box(Vector3(0.06, 0.55, 1.7), accent, Vector3(side * 0.67, 0.98, -0.2)))
+		_body.add_child(LowPoly.box(Vector3(0.07, 0.3, 0.55), rust, Vector3(side * 0.68, 0.9, 0.35), Vector3(0.06, 0, 0)))
+		_body.add_child(LowPoly.box(Vector3(0.07, 0.22, 0.4), frame, Vector3(side * 0.68, 1.1, -0.7), Vector3(-0.1, 0, 0)))
+	_body.add_child(LowPoly.box(Vector3(1.2, 0.06, 0.95), accent, Vector3(0, 0.98, -1.3), Vector3(0.38, 0, 0)))
+	_body.add_child(LowPoly.box(Vector3(0.3, 0.07, 0.97), frame, Vector3(0, 0.99, -1.3), Vector3(0.38, 0, 0)))
+	_body.add_child(LowPoly.cylinder(0.05, 1.5, rim, Vector3(0, 0.62, -1.85), Vector3(0, 0, PI * 0.5), 6))
+	for k in 4:
+		_body.add_child(LowPoly.cylinder(0.045, 0.35, rim, Vector3(-0.6 + k * 0.4, 0.62, -2.02), Vector3(PI * 0.5, 0, 0), 5))
+	# Reflektory.
+	var lamp := Palette.glow(Color("ffe2a8"), 1.6)
+	for side: float in [-1.0, 1.0]:
+		_body.add_child(LowPoly.cylinder(0.12, 0.16, frame, Vector3(side * 0.42, 0.98, -1.74), Vector3(PI * 0.5, 0, 0), 8))
+		_body.add_child(LowPoly.cylinder(0.09, 0.03, lamp, Vector3(side * 0.42, 0.98, -1.83), Vector3(PI * 0.5, 0, 0), 8))
+
+	# Fotel i klatka bezpieczeństwa z dachem pod wieżyczkę.
+	_body.add_child(LowPoly.box(Vector3(0.55, 0.12, 0.55), leather, Vector3(0, 1.05, 0.35)))
+	_body.add_child(LowPoly.box(Vector3(0.55, 0.65, 0.1), leather, Vector3(0, 1.38, 0.63), Vector3(-0.2, 0, 0)))
 	var cage := [
-		[Vector3(-0.62, 0.75, 0.75), Vector3(-0.5, 2.05, 0.55)],
-		[Vector3(0.62, 0.75, 0.75), Vector3(0.5, 2.05, 0.55)],
+		[Vector3(-0.62, 0.75, 0.8), Vector3(-0.5, 2.05, 0.55)],
+		[Vector3(0.62, 0.75, 0.8), Vector3(0.5, 2.05, 0.55)],
 		[Vector3(-0.5, 2.05, 0.55), Vector3(0.5, 2.05, 0.55)],
 		[Vector3(-0.62, 0.75, -0.95), Vector3(-0.5, 1.75, -0.35)],
 		[Vector3(0.62, 0.75, -0.95), Vector3(0.5, 1.75, -0.35)],
 		[Vector3(-0.5, 1.75, -0.35), Vector3(-0.5, 2.05, 0.55)],
 		[Vector3(0.5, 1.75, -0.35), Vector3(0.5, 2.05, 0.55)],
 		[Vector3(-0.5, 1.75, -0.35), Vector3(0.5, 1.75, -0.35)],
+		[Vector3(-0.62, 0.75, 0.8), Vector3(0.5, 2.05, 0.55)],
 	]
 	for c in cage:
-		_body.add_child(LowPoly.tube(c[0], c[1], 0.045, frame))
-	# Płyty pancerza po bokach (akcent – gracz widoczny z daleka).
-	for side in [-1.0, 1.0]:
-		_body.add_child(LowPoly.box(Vector3(0.06, 0.5, 1.5), accent, Vector3(side * 0.66, 1.0, -0.15)))
+		_body.add_child(LowPoly.tube(c[0], c[1], 0.05, frame))
+	_body.add_child(LowPoly.box(Vector3(1.0, 0.05, 0.85), rust, Vector3(0, 2.07, 0.12), Vector3(-0.3, 0, 0)))
 
-	# Generator z korbą przed kierowcą.
+	# Generator z korbą przed kierowcą: cewki świecą mocniej przy większej mocy.
 	var gen := Node3D.new()
-	gen.position = Vector3(0, 1.0, -0.55)
+	gen.position = CRANK_CENTER
 	_body.add_child(gen)
-	gen.add_child(LowPoly.cylinder(0.2, 0.5, frame, Vector3.ZERO, Vector3(0, 0, PI * 0.5), 10))
-	gen.add_child(LowPoly.cylinder(0.16, 0.52, _coil_mat, Vector3.ZERO, Vector3(0, 0, PI * 0.5), 10))
+	gen.add_child(LowPoly.cylinder(0.22, 0.5, frame, Vector3.ZERO, Vector3(0, 0, PI * 0.5), 10))
+	gen.add_child(LowPoly.cylinder(0.17, 0.52, _coil_mat, Vector3.ZERO, Vector3(0, 0, PI * 0.5), 10))
+	for f in 4:
+		gen.add_child(LowPoly.box(Vector3(0.03, 0.5, 0.5), rim, Vector3(-0.21 + f * 0.14, 0, 0)))
 	_crank = Node3D.new()
 	gen.add_child(_crank)
-	for side in [-1.0, 1.0]:
-		_crank.add_child(LowPoly.box(Vector3(0.05, 0.32, 0.06), rim, Vector3(side * 0.3, 0.0, 0.0)))
-		_crank.add_child(LowPoly.box(Vector3(0.14, 0.04, 0.08), accent, Vector3(side * 0.36, 0.16 * side, 0.0)))
-	# Kable do piast kół.
-	_body.add_child(LowPoly.tube(Vector3(-0.25, 1.0, -0.5), Vector3(-0.9, WHEEL_RADIUS, axle_z), 0.03, _coil_mat))
-	_body.add_child(LowPoly.tube(Vector3(0.25, 1.0, -0.5), Vector3(0.9, WHEEL_RADIUS, axle_z), 0.03, _coil_mat))
+	for side: float in [-1.0, 1.0]:
+		_crank.add_child(LowPoly.box(Vector3(0.05, 0.34, 0.06), rim, Vector3(side * 0.3, side * 0.08, 0.0)))
+		_crank.add_child(LowPoly.box(Vector3(0.16, 0.04, 0.09), accent, Vector3(side * 0.36, CRANK_RADIUS * side, 0.0)))
+	_body.add_child(LowPoly.tube(Vector3(-0.25, 1.0, -0.5), Vector3(-0.95, WHEEL_RADIUS, axle_z), 0.03, _coil_mat))
+	_body.add_child(LowPoly.tube(Vector3(0.25, 1.0, -0.5), Vector3(0.95, WHEEL_RADIUS, axle_z), 0.03, _coil_mat))
 
-	# Kierowca: tułów, głowa w kasku z goglami, ręce na kierownicy, nogi kręcą korbą.
-	var cloth := Palette.mat(Color("7a5b3f"))
-	var skin := Palette.mat(Color("c48a64"))
+	# Kierowca: pochylony tułów, naramienniki z blachy, kask z goglami, chusta.
 	var rider := Node3D.new()
 	rider.position = Vector3(0, 1.1, 0.3)
 	_body.add_child(rider)
-	rider.add_child(LowPoly.box(Vector3(0.42, 0.62, 0.3), cloth, Vector3(0, 0.38, -0.05), Vector3(-0.35, 0, 0)))
+	rider.add_child(LowPoly.box(Vector3(0.46, 0.62, 0.3), cloth, Vector3(0, 0.4, -0.06), Vector3(-0.35, 0, 0)))
+	rider.add_child(LowPoly.box(Vector3(0.5, 0.2, 0.2), leather, Vector3(0, 0.26, 0.06), Vector3(-0.35, 0, 0)))
+	for side: float in [-1.0, 1.0]:
+		rider.add_child(LowPoly.box(Vector3(0.2, 0.08, 0.26), rust, Vector3(side * 0.28, 0.7, -0.18), Vector3(-0.3, 0, side * -0.35)))
+		rider.add_child(LowPoly.tube(Vector3(side * 0.26, 0.62, -0.18), Vector3(side * 0.34, 0.42, -0.5), 0.06, cloth))
+		rider.add_child(LowPoly.tube(Vector3(side * 0.34, 0.42, -0.5), Vector3(side * 0.3, 0.22, -0.78), 0.05, skin))
 	var head := MeshInstance3D.new()
 	var sphere := SphereMesh.new()
 	sphere.radius = 0.17
@@ -264,47 +301,79 @@ func _build() -> void:
 	sphere.rings = 4
 	head.mesh = sphere
 	head.material_override = skin
-	head.position = Vector3(0, 0.82, -0.22)
+	head.position = Vector3(0, 0.86, -0.26)
 	rider.add_child(head)
 	var helmet := MeshInstance3D.new()
 	var hs := SphereMesh.new()
-	hs.radius = 0.19
-	hs.height = 0.24
+	hs.radius = 0.2
+	hs.height = 0.26
 	hs.radial_segments = 8
 	hs.rings = 3
 	hs.is_hemisphere = true
 	helmet.mesh = hs
-	helmet.material_override = accent
-	helmet.position = Vector3(0, 0.86, -0.22)
+	helmet.material_override = frame
+	helmet.position = Vector3(0, 0.89, -0.26)
 	rider.add_child(helmet)
-	rider.add_child(LowPoly.box(Vector3(0.3, 0.07, 0.06), Palette.glow(Color("9fe8ff"), 0.8), Vector3(0, 0.84, -0.38)))
-	for side in [-1.0, 1.0]:
-		rider.add_child(LowPoly.tube(Vector3(side * 0.22, 0.55, -0.15), Vector3(side * 0.28, 0.2, -0.75), 0.05, cloth))
-		var leg := Node3D.new()
-		leg.position = Vector3(side * 0.14, 0.05, 0.0)
-		leg.add_child(LowPoly.tube(Vector3.ZERO, Vector3(0, -0.15, -0.6), 0.07, cloth))
-		rider.add_child(leg)
-		_legs.append(leg)
+	rider.add_child(LowPoly.box(Vector3(0.06, 0.1, 0.36), accent, Vector3(0, 1.01, -0.26)))
+	rider.add_child(LowPoly.box(Vector3(0.3, 0.07, 0.06), Palette.glow(Color("9fe8ff"), 0.8), Vector3(0, 0.87, -0.42)))
+	rider.add_child(LowPoly.box(Vector3(0.36, 0.1, 0.2), Palette.mat(Palette.PAINT_RED), Vector3(0, 0.7, -0.2)))
 	rider.add_child(LowPoly.box(Vector3(0.7, 0.05, 0.05), frame, Vector3(0, 0.2, -0.78)))
+	# Nogi: udo i łydka prowadzone za pedałami (ustawiane co klatkę w sync).
+	for i in 2:
+		var thigh := LowPoly.unit_tube(0.085, cloth)
+		var shin := LowPoly.unit_tube(0.07, leather)
+		_body.add_child(thigh)
+		_body.add_child(shin)
+		_thighs.append(thigh)
+		_shins.append(shin)
+	_pose_legs()
 
-	# Wieżyczka na dachu klatki (etap 2): podstawa + lufa, obraca się do celu.
+	# Tył: kanistry, zapasowa opona, zrolowany koc.
+	for side: float in [-1.0, 1.0]:
+		_body.add_child(LowPoly.box(Vector3(0.18, 0.42, 0.3), Palette.mat(Palette.PAINT_RED, 0.7, 0.3), Vector3(side * 0.52, 0.95, 0.98)))
+		_body.add_child(LowPoly.box(Vector3(0.08, 0.08, 0.12), frame, Vector3(side * 0.52, 1.2, 0.98)))
+	var spare := MeshInstance3D.new()
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.2
+	torus.outer_radius = 0.42
+	torus.rings = 12
+	torus.ring_segments = 6
+	spare.mesh = torus
+	spare.material_override = tire
+	spare.position = Vector3(0, 1.3, 1.24)
+	spare.rotation = Vector3(PI * 0.5, 0, 0)
+	_body.add_child(spare)
+	_body.add_child(LowPoly.cylinder(0.14, 0.9, cloth, Vector3(0, 1.85, 0.7), Vector3(0, 0, PI * 0.5), 8))
+
+	# Wieżyczka na dachu klatki: podstawa + lufa, obraca się do celu.
 	_turret = Node3D.new()
-	_turret.position = Vector3(0, 2.12, 0.1)
+	_turret.position = Vector3(0, 2.14, 0.1)
 	_body.add_child(_turret)
 	_turret.add_child(LowPoly.cylinder(0.28, 0.16, frame, Vector3.ZERO, Vector3.ZERO, 10))
-	_turret.add_child(LowPoly.box(Vector3(0.36, 0.22, 0.42), accent, Vector3(0, 0.17, 0.0)))
-	_turret.add_child(LowPoly.cylinder(0.06, 0.9, rim, Vector3(0, 0.2, -0.55), Vector3(PI * 0.5, 0, 0), 8))
+	_turret.add_child(LowPoly.box(Vector3(0.36, 0.24, 0.46), rust, Vector3(0, 0.18, 0.0)))
+	_turret.add_child(LowPoly.box(Vector3(0.5, 0.3, 0.05), frame, Vector3(0, 0.22, -0.22)))
+	_turret.add_child(LowPoly.cylinder(0.06, 0.95, rim, Vector3(0, 0.2, -0.6), Vector3(PI * 0.5, 0, 0), 8))
+	_turret.add_child(LowPoly.box(Vector3(0.14, 0.2, 0.3), frame, Vector3(0.24, 0.2, 0.05)))
 	_muzzle = MeshInstance3D.new()
 	var flash_mesh := SphereMesh.new()
-	flash_mesh.radius = 0.18
-	flash_mesh.height = 0.36
+	flash_mesh.radius = 0.2
+	flash_mesh.height = 0.4
 	flash_mesh.radial_segments = 6
 	flash_mesh.rings = 3
 	_muzzle.mesh = flash_mesh
 	_muzzle.material_override = Palette.glow(Color("ffe08a"), 8.0)
-	_muzzle.position = Vector3(0, 0.2, -1.05)
+	_muzzle.position = Vector3(0, 0.2, -1.12)
 	_muzzle.visible = false
 	_turret.add_child(_muzzle)
+	var line := BoxMesh.new()
+	line.size = Vector3(0.05, 0.05, 22.0)
+	_aim_line = MeshInstance3D.new()
+	_aim_line.mesh = line
+	_aim_line.material_override = Palette.translucent(Color(1.0, 0.35, 0.2, 0.55))
+	_aim_line.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_aim_line.position = Vector3(0, 0.2, -12.2)
+	_aim_line.visible = false
+	_turret.add_child(_aim_line)
 
 	# Wyładowanie tarczy: iskry i niebieskawy błysk (bez bańki pola siłowego).
 	_sparks = CPUParticles3D.new()
@@ -336,12 +405,14 @@ func _build() -> void:
 	_spark_light.position = Vector3(0, 1.8, 0)
 	add_child(_spark_light)
 
-	# Maszt z flagą.
-	_body.add_child(LowPoly.tube(Vector3(0.45, 2.0, 0.6), Vector3(0.45, 3.1, 0.75), 0.025, frame))
+	# Maszt z postrzępioną flagą i antena.
+	_body.add_child(LowPoly.tube(Vector3(0.45, 2.0, 0.6), Vector3(0.45, 3.3, 0.78), 0.025, frame))
+	_body.add_child(LowPoly.tube(Vector3(-0.45, 2.0, 0.6), Vector3(-0.5, 2.9, 0.85), 0.015, rim))
 	_flag = Node3D.new()
-	_flag.position = Vector3(0.45, 3.05, 0.75)
+	_flag.position = Vector3(0.45, 3.25, 0.78)
 	_body.add_child(_flag)
-	_flag.add_child(LowPoly.box(Vector3(0.03, 0.34, 0.55), Palette.mat(Palette.PAINT_RED), Vector3(0, -0.17, 0.27)))
+	_flag.add_child(LowPoly.box(Vector3(0.03, 0.36, 0.5), Palette.mat(Palette.PAINT_RED), Vector3(0, -0.18, 0.25)))
+	_flag.add_child(LowPoly.box(Vector3(0.03, 0.2, 0.25), Palette.mat(Palette.PAINT_RED), Vector3(0, -0.1, 0.6)))
 
 	# Kurz spod kół (cząsteczki lecą do tyłu względem pojazdu).
 	_dust = CPUParticles3D.new()
@@ -357,7 +428,7 @@ func _build() -> void:
 	_dust.scale_amount_min = 0.25
 	_dust.scale_amount_max = 0.6
 	_dust.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
-	_dust.emission_box_extents = Vector3(1.0, 0.05, 0.1)
+	_dust.emission_box_extents = Vector3(1.1, 0.05, 0.1)
 	var puff := SphereMesh.new()
 	puff.radius = 0.22
 	puff.height = 0.44
@@ -378,3 +449,24 @@ func _build() -> void:
 	ramp.set_color(1, Color(1, 1, 1, 0.0))
 	_dust.color_ramp = ramp
 	add_child(_dust)
+
+
+## Nogi kierowcy: biodro stałe, stopa na pedale, kolano z prostej kinematyki odwrotnej.
+func _pose_legs() -> void:
+	const THIGH := 0.56
+	const SHIN := 0.56
+	for i in _thighs.size():
+		var side := -1.0 if i == 0 else 1.0
+		var hip := Vector3(side * 0.16, 1.22, 0.3)
+		var pedal := CRANK_CENTER + Vector3(side * 0.36, side * CRANK_RADIUS * cos(_crank_angle), side * CRANK_RADIUS * sin(_crank_angle))
+		var v := Vector2(pedal.z - hip.z, pedal.y - hip.y)
+		var dist := clampf(v.length(), 0.25, THIGH + SHIN - 0.01)
+		var base := v.angle()
+		var bend := acos(clampf((THIGH * THIGH + dist * dist - SHIN * SHIN) / (2.0 * THIGH * dist), -1.0, 1.0))
+		# Z dwóch rozwiązań wybieramy kolano wyżej.
+		var a1 := Vector2.from_angle(base + bend) * THIGH
+		var a2 := Vector2.from_angle(base - bend) * THIGH
+		var k2 := a1 if a1.y > a2.y else a2
+		var knee := Vector3(side * 0.26, hip.y + k2.y, hip.z + k2.x)
+		LowPoly.place_tube(_thighs[i], hip, knee)
+		LowPoly.place_tube(_shins[i], knee, pedal)

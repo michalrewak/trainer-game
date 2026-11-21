@@ -156,3 +156,35 @@ func test_encounters_happen_and_never_end_the_run() -> void:
 	assert_true(spawned[0] >= 1, "w 4 minuty pojawia się gang (%d)" % spawned[0])
 	assert_true(sim.expedition.finished, "wyprawa kończy się po czasie mimo przegranych potyczek")
 	assert_true(sim.expedition.scrap >= 0, "złom nigdy ujemny")
+
+
+func test_free_fire_without_target_shoots_where_the_stick_points() -> void:
+	var sim := _quiet_sim(200.0)
+	var shots: Array = []
+	sim.combat.shot_fired.connect(func(p: Dictionary) -> void: shots.append(p))
+	sim.combat.fire_held = true
+	sim.step(DT, 200.0)
+	assert_eq(shots.size(), 1, "LT strzela także bez wroga")
+	assert_near(float(shots[0]["vx"]), 0.0, 0.01, "bez wychylenia gałki – prosto")
+	sim.combat.aim = Vector2(1.0, 0.0)
+	_run(sim, 1.0, 200.0)
+	assert_true(float(shots[shots.size() - 1]["vx"]) > 50.0, "gałka w prawo – strzał w prawo")
+	assert_true(sim.combat.is_aiming())
+	sim.combat.aim = Vector2.ZERO
+	sim.combat.fire_held = false
+	assert_false(sim.combat.is_aiming())
+	assert_true(sim.combat.aim_point() == null, "wieżyczka w spoczynku")
+
+
+func test_two_hits_destroy_a_wreck_in_my_lane() -> void:
+	var sim := _quiet_sim(200.0)
+	var wreck := TrackItem.new(700, TrackItem.Kind.WRECK, sim.lanes.target_lane, sim.vehicle.distance_m + 45.0, 0, 0)
+	sim.add_items([wreck] as Array[TrackItem])
+	var destroyed: Array = []
+	sim.combat.wreck_destroyed.connect(func(item: TrackItem) -> void: destroyed.append(item.id))
+	var hits := [0]
+	sim.wreck_hit.connect(func(_i: TrackItem, _l: int) -> void: hits[0] += 1)
+	sim.combat.fire_held = true
+	_run(sim, 6.0, 200.0)
+	assert_eq(destroyed, [700], "wrak rozbity ostrzałem")
+	assert_eq(hits[0], 0, "przejazd przez rozbity wrak bez zderzenia")

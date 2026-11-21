@@ -12,6 +12,8 @@ var distance_m := 0.0
 var value := 1
 var variant := 0
 var consumed := false
+## Wytrzymałość wraku na ostrzał z wieżyczki.
+var hp := 2
 
 
 func _init(p_id: int = 0, p_kind: Kind = Kind.SCRAP, p_lane: int = 1, p_distance_m: float = 0.0, p_value: int = 1, p_variant: int = 0) -> void:
