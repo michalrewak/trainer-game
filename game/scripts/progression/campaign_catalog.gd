@@ -43,7 +43,7 @@ const DEFS := {
 			["Kadencja 6×1", "wu8 20@65 6x(1@85 r2) 5@65 cd5", Kind.RIDE, "Brat Obrót patrzy: sześć minut na wysokich obrotach."],
 			["Wytrzymałość 50", EASY_50, Kind.RIDE, "Kurs do dalszej osady. Spokojnie, cały czas w drugiej strefie."],
 			["Tempo 3×10", "wu8 3x(10@82 r4) cd6", Kind.RIDE, "Dłuższe odcinki tempa. Karawana Smalca jest już blisko."],
-			["Karawana Smalca: tempo 2×20", "wu8 2x(20@85 r5) cd6", Kind.BOSS, "Dogoniłeś karawanę. Dwa razy po 20 minut równego tempa i wozy są twoje."],
+			["Karawana Smalca: 2×20 pod progiem", "wu8 2x(20@88 r5) cd6", Kind.BOSS, "Dogoniłeś karawanę. Dwa razy po 20 minut tuż pod progiem i wozy są twoje."],
 			["Wytrzymałość 55", "wu5 50@67 cd5", Kind.RIDE, "Odwozisz uwolnionych do osady. Długo i równo."],
 			["Słodki punkt 2×12", "wu10 2x(12@90 r5) cd8", Kind.RIDE, "Pierwszy raz tuż pod progiem. Tu rośnie FTP."],
 			["Tempo z przyspieszeniami", "wu8 3x(8@80 1@100 r4) cd6", Kind.RIDE, "Tempo, a na końcu każdego odcinka minuta na progu."],

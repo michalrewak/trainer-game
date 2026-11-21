@@ -86,6 +86,19 @@ dla tego pada (inaczej pad udaje mysz).
   nachylenie (symulacja trenażera), ucieczka przed gangiem w burzy piaskowej i sprint za
   ciężarówką to ERG. Cele liczone są od FTP. Nagrody: złom i paliwo, a nieudana ucieczka
   sprowadza gang. Na padzie ERG jest symulowany (tempomat sam ustawia moc celu).
+- **Kampanie treningowe**: w garażu przycisk trybu przełącza jazdę swobodną, kampanię
+  i pojedyncze plany. Kampania to 4 tygodnie po 3 sesje z prawdziwych protokołów:
+  - **Baza Pustkowi** – wytrzymałość, tempo, pierwszy słodki punkt;
+  - **Droga do Progu** – słodki punkt, nad-i-pod progiem, klasyczne 2×20 na progu;
+  - **Kuźnia VO2** – 5×3, norweskie 4×4, 4×8 Seilera, 30/15 Rønnestada.
+
+  Sesje jedzie się po kolei (liczy się sesja dojechana do końca), każda kampania ma własny
+  postęp i mapę w garażu. Dwie sesje to **bossowie** – machiny Barona Smalca: każdy ciężki
+  interwał to natarcie, a każda sekunda natarcia z mocą w widełkach zadaje obrażenia
+  (85% czasu natarć w widełkach rozbija machinę; słabszy wynik to boss ranny i mniejszy
+  łup). Nie trzeba kierować ani strzelać – trening jest realizowany w 100%. Ostatnia sesja
+  to **Rytuał Progu**: test narastający (co minutę +7,5% FTP), który kończy się sam, gdy
+  nie utrzymasz stopnia; nowe FTP = 75% najlepszej minuty i od razu zmienia rangę.
 - **Napady i zwiad**: ok. 500 m przed zjazdem karta zwiadu pokazuje łup, obronę i koszt
   wysiłku liczony od FTP. Zjazd na skrajny pas = napad: podjazd pod ostrzałem z wież, brama
   (rozstrzelana, wyważona taranem albo sforsowana), plądrowanie, a potem dowiezienie łupu
@@ -105,7 +118,7 @@ dla tego pada (inaczej pad udaje mysz).
   Chudy (pedalarz z galery), Zębatka (mechaniczka z osady, podpowiada taktykę), Brat Obrót
   (Kościół Świętej Kadencji, komentuje kadencję) i Iskra (gang). W spokojnych chwilach
   opowiadają historię świata.
-- **Passa**: zębatki, uniki i rozbite cele bez wpadki podbijają mnożnik złomu (do ×3). Zegar
+- **Passa**: zębatki, uniki i rozbite cele bez wpadki podbijają mnożnik złomu (do ×2). Zegar
   passy odnawia każdy punkt; zderzenie, rabunek albo mina zerują ją.
 - **Zlecenia**: trzy cele na wyprawę widoczne w prawym górnym rogu (jedno treningowe, np.
   czas w widełkach, i dwa zręcznościowe albo „duże”: konwój, osada). Nagroda w złomie,
@@ -138,9 +151,8 @@ dla tego pada (inaczej pad udaje mysz).
 Cel mocy zawsze ma **widełki**: za mało i za dużo to błąd. W treningu obowiązuje ±5%, w
 wyzwaniach ±8%. Powyżej górnej granicy generator się przegrzewa (wolniej ładują się kondensatory, wolniejszy ogień).
 
-Następne kroki: nowy wygląd menu i HUD, kampanie treningowe (kilka tygodni, prawdziwe
-protokoły, bossowie), ramp test FTP jako walka z bossem, napady i konwoje w trybie
-treningowym (dziś są tylko w jeździe swobodnej).
+Następne kroki: napady i konwoje w trybie treningowym (dziś są tylko w jeździe swobodnej),
+więcej kampanii i krótsze warianty sesji, balans ekonomii po prawdziwych jazdach.
 
 ## Trenażer Elite Suito (etap 5)
 
@@ -169,6 +181,7 @@ wtedy mostek z `--port 8766`, a grę z `-- --bridge-port=8766`; gra zapamięta p
 `--screenshots=KATALOG --shot-times=4,12`, `--combat-test`, `--no-combat`,
 `--terrain=city`, `--all-upgrades`, `--challenge-test`, `--no-challenges`, `--raid-test`,
 `--no-raids`, `--convoy-test` (konwój po 5 s, bez zwiadów i wyzwań), `--no-convoys`, `--mute`,
+`--campaign=prog:5` (sesja kampanii: baza/prog/kuznia i numer od 0; 11 = test FTP),
 `--window=1920x1080` (okno zamiast pełnego ekranu, np. podgląd układu telewizora), `--trainer`,
 `--plan=res://plans/kanion_4x4.json`, `--time=cycle|day|dusk|night|storm`.
 Szczegóły: `game/scripts/app/launch_options.gd`.

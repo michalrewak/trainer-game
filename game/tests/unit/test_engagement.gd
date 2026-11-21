@@ -48,21 +48,21 @@ func test_streak_tiers_timer_and_reset() -> void:
 	s.add(4)
 	assert_eq(s.tier(), 0, "cztery punkty to jeszcze nie próg")
 	s.add(1)
-	assert_near(s.multiplier(), 1.2, 1e-6, "pięć punktów = ×1,2")
+	assert_near(s.multiplier(), 1.1, 1e-6, "pięć punktów = ×1,1")
 	assert_eq(_events, [[1, true]])
 	s.add(10)
-	assert_near(s.multiplier(), 1.5, 1e-6)
+	assert_near(s.multiplier(), 1.3, 1e-6)
 	assert_near(s.progress_to_next(), 0.0, 1e-6, "początek nowego progu")
 	assert_near(s.time_ratio(), 1.0, 1e-6, "każdy punkt odnawia zegar")
 	s.step(Streak.HOLD_S + 0.1)
-	assert_near(s.multiplier(), 1.2, 1e-6, "zegar minął: spadek o jeden próg, nie do zera")
+	assert_near(s.multiplier(), 1.1, 1e-6, "zegar minął: spadek o jeden próg, nie do zera")
 	assert_eq(_events[2], [1, false])
 	s.reset()
 	assert_eq(s.points, 0, "wpadka zeruje passę")
 	assert_eq(_events[3], ["koniec", 5])
 	assert_eq(s.best_tier, 2, "najlepszy próg zostaje w pamięci")
 	s.add(500)
-	assert_near(s.multiplier(), 3.0, 1e-6, "mnożnik ma sufit ×3")
+	assert_near(s.multiplier(), 2.0, 1e-6, "mnożnik ma sufit ×2")
 
 
 func test_clean_collecting_multiplies_scrap_and_crash_ends_it() -> void:
@@ -72,14 +72,14 @@ func test_clean_collecting_multiplies_scrap_and_crash_ends_it() -> void:
 		_put(sim, TrackItem.Kind.SCRAP, sim.lanes.target_lane, 6.0 + i * 3.0)
 	_run(sim, 13.0)
 	var got := sim.expedition.scrap - before
-	# 5 × 1,0 + 10 × 1,2 + 15 × 1,5 = 39,5
-	assert_between(float(got), 38.0, 40.0, "30 zębatek z passą daje ok. 39 złomu (jest %d)" % got)
-	assert_near(sim.streak.multiplier(), 2.0, 1e-6, "30 punktów = ×2")
-	assert_near(sim.expedition.best_streak, 2.0, 1e-6)
+	# 5 × 1,0 + 10 × 1,1 + 15 × 1,3 = 35,5
+	assert_between(float(got), 34.0, 36.5, "30 zębatek z passą daje ok. 35 złomu (jest %d)" % got)
+	assert_near(sim.streak.multiplier(), 1.5, 1e-6, "30 punktów = ×1,5")
+	assert_near(sim.expedition.best_streak, 1.5, 1e-6)
 	_put(sim, TrackItem.Kind.WRECK, sim.lanes.target_lane, 5.0)
 	_run(sim, 1.5)
 	assert_eq(sim.streak.points, 0, "zderzenie z wrakiem przerywa passę")
-	assert_near(sim.expedition.best_streak, 2.0, 1e-6, "rekord wyprawy zostaje")
+	assert_near(sim.expedition.best_streak, 1.5, 1e-6, "rekord wyprawy zostaje")
 
 
 func test_streak_can_be_switched_off_for_exact_counts() -> void:
@@ -173,7 +173,7 @@ func test_contract_progress_reward_and_full_set_bonus() -> void:
 	assert_eq(sim.expedition.contracts_done, 3)
 	assert_eq(sim.expedition.scrap - scrap0, 3 + 50 + 40 + 40, "zębatki plus nagrody")
 	assert_eq(sim.expedition.fuel, 1 + ContractBoard.ALL_DONE_FUEL, "paliwo ze zlecenia i premia za komplet")
-	assert_eq(ContractBoard.progress_text({"kind": ContractBoard.Kind.STREAK, "goal": 3.0, "progress": 1.0}), "×1.2/×2.0")
+	assert_eq(ContractBoard.progress_text({"kind": ContractBoard.Kind.STREAK, "goal": 3.0, "progress": 1.0}), "×1.1/×1.5")
 	assert_eq(ContractBoard.progress_text({"kind": ContractBoard.Kind.ZONE, "goal": 180.0, "progress": 80.0}), "1:20/3:00")
 	assert_eq(board.to_summary().size(), 3)
 

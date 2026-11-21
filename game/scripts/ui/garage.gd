@@ -16,6 +16,10 @@ var _week_label: Label
 var _week_fill: ColorRect
 var _records_label: Label
 var _slogan: Label
+var _campaign_box: Control
+var _campaign_title: Label
+var _campaign_strip: CampaignStrip
+var _campaign_line: Label
 var _terrain_button: Button
 var _duration_button: Button
 var _ftp_button: Button
@@ -139,12 +143,14 @@ func _build() -> void:
 	col.add_child(UiStyle.section("WYPRAWA"))
 	_mode_button = _option("Jazda swobodna: gra proponuje wyzwania, napady i konwoje. Trening: plan (JSON/ZWO/FIT) prowadzi jazdę – interwały to burze piaskowe z polem bezpiecznym, cel ±5%.")
 	_mode_button.pressed.connect(_cycle_mode)
+	_mode_button.focus_entered.connect(_show_mode_help)
 	_terrain_button = _option("")
 	_terrain_button.pressed.connect(_cycle_terrain)
 	_terrain_button.focus_entered.connect(func() -> void: _detail.text = TerrainCatalog.description(TerrainCatalog.ORDER[_terrain_index]))
 	col.add_child(_row([_mode_button, _terrain_button]))
 	_duration_button = _option("Długość wyprawy. Test 2 min – do szybkiego sprawdzenia sterowania.")
 	_duration_button.pressed.connect(_cycle_duration)
+	_duration_button.focus_entered.connect(_show_mode_help)
 	_time_button = _option("Pora wyprawy. Zmienna: start za dnia, w połowie zachód słońca, końcówka nocą w reflektorach.")
 	_time_button.pressed.connect(func() -> void:
 		var modes: Array[String] = ["cycle", "day", "night"]
@@ -209,6 +215,21 @@ func _build_vehicle_card() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 2)
 	card.add_child(col)
+	# Kampania: mapa sesji i najbliższa sesja (widoczna tylko w trybie kampanii).
+	var camp := VBoxContainer.new()
+	camp.add_theme_constant_override("separation", 2)
+	camp.add_child(UiStyle.caption("KAMPANIA", 20, Palette.UI_ACCENT))
+	_campaign_title = UiStyle.label("", 28, Palette.UI_TEXT)
+	camp.add_child(_campaign_title)
+	_campaign_strip = CampaignStrip.new()
+	_campaign_strip.custom_minimum_size = Vector2(640, 62)
+	camp.add_child(_campaign_strip)
+	_campaign_line = UiStyle.label("", 24, Palette.UI_DIM)
+	_campaign_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_campaign_line.custom_minimum_size = Vector2(640, 0)
+	camp.add_child(_campaign_line)
+	_campaign_box = camp
+	col.add_child(camp)
 	col.add_child(UiStyle.caption("POJAZD", 20, Palette.UI_ACCENT))
 	_vehicle_line = UiStyle.label("", 26, Palette.UI_TEXT)
 	col.add_child(_vehicle_line)
@@ -293,7 +314,11 @@ func _refresh() -> void:
 	if not missing.is_empty() and _terrain_button.has_focus():
 		_detail.text = "%s wymaga: %s." % [TerrainCatalog.display_name(tid), ", ".join(missing)]
 	var plan := App.selected_plan()
-	if plan != null:
+	var session := App.campaign_session()
+	if not session.is_empty():
+		_mode_button.text = "Kampania: %s" % str(session["name"])
+		_duration_button.text = "Sesja %d/%d  ·  %s" % [int(session["index"]) + 1, int(session["sessions"]), WorkoutStep.format_duration(plan.total_duration_s()) if int(session["kind"]) != CampaignCatalog.Kind.TEST else "test FTP"]
+	elif plan != null:
 		_mode_button.text = "Trening: %s" % plan.name
 		_duration_button.text = "Czas: %s (z planu)" % WorkoutStep.format_duration(plan.total_duration_s())
 	else:
@@ -310,6 +335,12 @@ func _refresh() -> void:
 	_sound_button.text = "Dźwięk: %s" % ("TAK" if bool(App.settings.get("sound", true)) else "nie")
 	_go_button.disabled = not missing.is_empty()
 	_go_button.text = "WYRUSZ!  →  %s" % TerrainCatalog.display_name(tid) if missing.is_empty() else "TEREN ZABLOKOWANY"
+	if missing.is_empty() and not session.is_empty():
+		match int(session["kind"]):
+			CampaignCatalog.Kind.BOSS:
+				_go_button.text = "NA BOSSA!  →  %s" % CampaignCatalog.boss_name(str(session["id"]))
+			CampaignCatalog.Kind.TEST:
+				_go_button.text = "RYTUAŁ PROGU  →  test FTP"
 	if _buggy != null:
 		_buggy.apply_loadout(App.run_loadout())
 	_refresh_card(load)
@@ -318,6 +349,18 @@ func _refresh() -> void:
 ## Karta po lewej: napęd pojazdu, cel tygodnia, dni z rzędu, rekordy i hasło.
 func _refresh_card(load: Loadout) -> void:
 	var p := App.progress
+	var session := App.campaign_session()
+	_campaign_box.visible = not session.is_empty()
+	if not session.is_empty():
+		var id := str(session["id"])
+		var done := p.campaign_next_index(id)
+		_campaign_strip.set_campaign(id, done)
+		if bool(session["finished"]):
+			_campaign_title.text = "%s  ·  UKOŃCZONA (%d×)" % [str(session["name"]), p.campaign_completions(id)]
+			_campaign_line.text = "Wszystkie sesje zaliczone. WYRUSZ zaczyna kampanię od nowa – z nowym FTP będzie cięższa."
+		else:
+			_campaign_title.text = "%s  ·  tydzień %d/%d  ·  sesja %d/%d" % [str(session["name"]), int(session["week"]), CampaignCatalog.weeks(id), int(session["index"]) + 1, int(session["sessions"])]
+			_campaign_line.text = "Następna: %s. %s" % [str(session["title"]), str(session["story"])]
 	_vehicle_line.text = "Moc na kołach ×%.2f  ·  dopalacz %d× +%d%% na %d s" % [load.accelerator_multiplier(), load.boost_charges(), roundi(load.boost_gain() * 100.0), roundi(load.boost_duration_s())]
 	var week := p.recent_stats(7)
 	var goal := App.weekly_tss_goal()
@@ -377,18 +420,36 @@ func _cycle_terrain() -> void:
 func _cycle_mode() -> void:
 	if _plans.is_empty():
 		_plans = App.available_plans()
-	var options: Array[String] = [""]
+	var options: Array[String] = ["", App.CAMPAIGN_PLAN]
 	options.append_array(_plans)
 	var i := options.find(App.selected_plan_path)
 	App.selected_plan_path = options[(i + 1) % options.size()]
 	var plan := App.selected_plan()
 	_detail.text = plan.describe() if plan != null else "Jazda swobodna – gra sama proponuje wyzwania, napady i konwoje."
 	_refresh()
+	_show_mode_help()
 
 
 func _cycle_duration() -> void:
+	if App.selected_plan_path == App.CAMPAIGN_PLAN:
+		# W trybie kampanii ten przycisk przełącza kampanię (każda ma własny postęp).
+		var i := CampaignCatalog.ORDER.find(App.campaign_id())
+		App.progress.set_campaign_active(CampaignCatalog.ORDER[(i + 1) % CampaignCatalog.ORDER.size()])
+		App.progress.save_data()
+		_refresh()
+		_show_mode_help()
+		return
 	_duration_index = (_duration_index + 1) % DURATIONS.size()
 	_refresh()
+
+
+## Opis trybu w polu szczegółów: w kampanii – jej cel i najbliższa sesja.
+func _show_mode_help() -> void:
+	var session := App.campaign_session()
+	if session.is_empty():
+		return
+	var id := str(session["id"])
+	_detail.text = "Kampania „%s”: %s Cztery tygodnie po trzy sesje, dwóch bossów i test FTP na koniec. Przycisk „Sesja” zmienia kampanię.\nNastępna sesja: %s." % [str(session["name"]), CampaignCatalog.goal(id), str(session["title"])]
 
 
 func _on_ftp_input(event: InputEvent) -> void:
@@ -406,6 +467,13 @@ func _change_ftp(delta_w: float) -> void:
 
 
 func _on_go() -> void:
+	var session := App.campaign_session()
+	if not session.is_empty():
+		# Ukończona kampania zaczyna się od nowa; wybór kampanii zostaje zapamiętany.
+		if bool(session["finished"]):
+			App.progress.restart_campaign(str(session["id"]))
+		App.progress.set_campaign_active(str(session["id"]))
+		App.progress.save_data()
 	App.selected_terrain = TerrainCatalog.ORDER[_terrain_index]
 	App.start_run(DURATIONS[_duration_index])
 

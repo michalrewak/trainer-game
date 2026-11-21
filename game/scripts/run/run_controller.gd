@@ -239,6 +239,9 @@ func _ride(delta: float) -> void:
 		_checkpoint_t = 0.0
 		App.write_checkpoint(_summary(false))
 	if e.finished:
+		# Boss, którego nie udało się rozbić, ucieka ranny: część łupu za zadane obrażenia.
+		if boss.active and not boss.defeated:
+			e.add_scrap(boss.partial_scrap())
 		_state = State.FINISHING
 		_finish_left = FINISH_DELAY_S
 		hud.show_message("W OSADZIE!\n+%d złomu do magazynu" % e.scrap, FINISH_DELAY_S + 1.0)
@@ -317,6 +320,7 @@ func _setup_workout() -> void:
 	sim.challenges.enabled = false
 	hud.set_workout(workout.blocks(), plan.name)
 	workout.step_changed.connect(_on_workout_step)
+	_setup_campaign()
 
 
 func _on_workout_step(index: int, step: WorkoutStep) -> void:
@@ -325,7 +329,11 @@ func _on_workout_step(index: int, step: WorkoutStep) -> void:
 	# Ciężki interwał = burza piaskowa i pole bezpieczne: tylko pedałujesz, bez klikania.
 	sim.set_safe_zone(hard)
 	weather.set_storm(0.85 if hard or App.time_mode() == "storm" else 0.0)
-	power.set_erg_target(workout.target_w(t))
+	var erg_w := workout.target_w(t)
+	if autopilot != null and ramp != null:
+		# Autopilot na teście FTP "pęka" przy 135% FTP, żeby rytuał miał koniec.
+		erg_w = minf(erg_w, App.ftp_w() * 1.35)
+	power.set_erg_target(erg_w)
 	_erg_refresh = 0.0
 	var title := "INTERWAŁ – BURZA PIASKOWA" if hard else step.display_label().to_upper()
 	hud.show_message("%s\n%s · %s" % [title, TargetBand.range_text(workout.target_w(t), workout.tol, workout.tol), WorkoutStep.format_duration(step.duration_s)], 3.0)
@@ -341,9 +349,93 @@ func _tick_workout(delta: float, power_w: float) -> void:
 		var i := workout.plan.step_index_at(t)
 		if i >= 0 and workout.plan.steps[i].is_ramp():
 			power.set_erg_target(workout.target_w(t))
+	if boss.active:
+		boss.step(delta, workout.is_hard_now(t), TargetBand.is_in_band(power_w, workout.target_w(t), workout.tol, workout.tol))
+	if ramp != null and ramp.step(delta, t, power_w, sim.expedition.metrics):
+		_on_ramp_finished()
 	var info := workout.info(t)
 	info["safe"] = sim.safe_zone
 	hud.update_workout(info)
+
+
+# --- Kampania: boss i test FTP ----------------------------------------------------
+
+var _campaign: Dictionary = {}
+var boss := BossFight.new()
+var ramp: RampTest = null
+
+
+func _setup_campaign() -> void:
+	_campaign = App.campaign_session()
+	if _campaign.is_empty():
+		return
+	match int(_campaign["kind"]):
+		CampaignCatalog.Kind.BOSS:
+			var blocks := workout.plan.hard_blocks()
+			var hard_s := 0.0
+			for b in blocks:
+				hard_s += float(b["end_s"]) - float(b["start_s"])
+			boss.setup(sim, CampaignCatalog.boss_name(str(_campaign["id"])), hard_s, blocks.size())
+			sim.combat.auto_fire = true
+			boss.round_started.connect(func(index: int) -> void:
+				sfx.play("warn")
+				hud.show_message("NATARCIE %d z %d\nTrzymaj moc w widełkach – działko pali samo" % [index + 1, boss.rounds], 3.5)
+				_say("boss_round", 2))
+			boss.round_ended.connect(func(_index: int) -> void:
+				if not boss.defeated:
+					_say("boss_rest", 1))
+			boss.destroyed.connect(func() -> void:
+				var at := Vector3(boss.boss.x, 0.0, -(boss.boss.d - sim.vehicle.distance_m))
+				for k: float in [-3.0, 0.0, 3.0]:
+					combat_view.explode_at(at + Vector3(0, 0, k))
+				camera.shake(1.8)
+				sfx.play("boom", 0.7)
+				sfx.play("fanfare")
+				hud.show_message("%s ROZBITY!\n+%d złomu  ·  +%d paliwa  ·  +%d do załogi" % [boss.boss_name.to_upper(), BossFight.REWARD_SCRAP, BossFight.REWARD_FUEL, BossFight.REWARD_CREW], 5.0)
+				_say("boss_dead", 2))
+			hud.show_message("BOSS: %s\nKażde natarcie w widełkach zadaje obrażenia" % boss.boss_name.to_upper(), 4.0)
+			_say("boss_start", 2)
+		CampaignCatalog.Kind.TEST:
+			ramp = RampTest.new(workout.plan, App.ftp_w())
+			ramp.step_reached.connect(func(number: int, target_w: float) -> void:
+				sfx.play("tier", 1.0 + 0.02 * number)
+				hud.show_popup("STOPIEŃ %d  ·  %d W" % [number, roundi(target_w)], Palette.UI_ACCENT, 2.0)
+				_say("ramp_step", 1, 110.0))
+			hud.show_message("RYTUAŁ PROGU\nCo minutę ciężej. Kręć, aż nogi powiedzą dość", 4.5)
+			_say("ramp_start", 2)
+
+
+## Test FTP zakończony: plan został obcięty, wyprawa trwa jeszcze tylko schłodzenie.
+func _on_ramp_finished() -> void:
+	var t := sim.expedition.elapsed_s
+	sim.expedition.duration_s = maxf(t + 1.0, workout.plan.total_duration_s())
+	hud.set_workout(workout.blocks(), workout.plan.name)
+	power.set_erg_target(workout.target_w(t))
+	if ramp.result_ftp_w > 0.0:
+		sfx.play("fanfare")
+		var rank := Lore.rank(ramp.result_ftp_w)
+		hud.show_message("RYTUAŁ ZAKOŃCZONY\nNowe FTP: %d W (było %d W)  ·  ranga: %s" % [roundi(ramp.result_ftp_w), roundi(App.ftp_w()), str(rank["name"]).to_upper()], 6.0)
+		_say("ramp_done", 2)
+	else:
+		hud.show_message("RYTUAŁ PRZERWANY ZA WCZEŚNIE\nZa mało stopni – FTP zostaje bez zmian", 5.0)
+
+
+## Pasek stanu kampanii: wytrzymałość bossa albo stopień testu. True, gdy zajmuje linię.
+func _update_campaign_hud() -> bool:
+	if boss.active:
+		if boss.defeated:
+			hud.update_challenge("%s ROZBITY – dojedź trening do końca" % boss.boss_name.to_upper(), Palette.UI_GOOD)
+		else:
+			var cells := roundi(boss.hp * 10.0)
+			hud.update_challenge("%s  %s  %d%%  ·  natarcie %d/%d" % [boss.boss_name.to_upper(), "■".repeat(cells) + "□".repeat(10 - cells), roundi(boss.hp * 100.0), maxi(1, boss.round_index + 1), boss.rounds], Palette.UI_BAD if workout.is_hard_now(sim.expedition.elapsed_s) else Palette.UI_ACCENT)
+		return true
+	if ramp != null:
+		if ramp.done:
+			hud.update_challenge("RYTUAŁ ZAKOŃCZONY  ·  FTP %d W" % roundi(ramp.result_ftp_w) if ramp.result_ftp_w > 0.0 else "RYTUAŁ PRZERWANY", Palette.UI_GOOD)
+		else:
+			hud.update_challenge("RYTUAŁ PROGU  ·  stopień %d  ·  %d W" % [ramp.steps_done + 1, roundi(workout.target_w(sim.expedition.elapsed_s))], Palette.UI_ACCENT)
+		return true
+	return false
 
 
 # --- Napady na osady: zwiad, zjazd, brama, łup ---------------------------------
@@ -813,6 +905,9 @@ func _on_challenge_finished(c: Dictionary, success: bool) -> void:
 
 
 func _update_challenge_hud() -> void:
+	if _update_campaign_hud():
+		hud.update_scout(false)
+		return
 	if _update_convoy_hud():
 		hud.update_scout(false)
 		return
@@ -938,6 +1033,16 @@ func _summary(completed: bool) -> Dictionary:
 	var s := sim.expedition.to_summary(completed)
 	s["source"] = App.power_source_tag()
 	s["contracts"] = sim.contracts.to_summary()
+	if not _campaign.is_empty():
+		s["campaign"] = {
+			"id": _campaign["id"], "index": _campaign["index"], "title": _campaign["title"], "name": _campaign["name"],
+			"sessions": _campaign["sessions"], "kind": _campaign["kind"],
+			"boss": boss.boss_name, "boss_defeated": boss.defeated, "boss_damage_pct": roundi((1.0 - boss.hp) * 100.0),
+		}
+	if ramp != null and ramp.done:
+		s["new_ftp_w"] = roundi(ramp.result_ftp_w)
+		s["old_ftp_w"] = roundi(App.ftp_w())
+		s["ramp_steps"] = ramp.steps_done
 	if workout != null:
 		s["workout"] = workout.plan.name
 		s["workout_in_band_pct"] = roundi(workout.compliance() * 100.0)

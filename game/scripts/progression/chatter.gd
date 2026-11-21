@@ -195,6 +195,36 @@ const LINES := {
 		[PRIEST, "Nowy rekord. Nogi rosną, synu."],
 		[BARON, "Rekord? Phi. Moi ludzie kręcą tyle przez sen."],
 	],
+	"boss_start": [
+		[BARON, "Ty?! Na MOJEJ drodze? Zmielę cię na smar!"],
+		[MECH, "To machina Barona. Trzymaj widełki w każdym natarciu, resztę zrobi działko."],
+	],
+	"boss_round": [
+		[BARON, "Gazu, chudzielce! Rozjechać go!"],
+		[MECH, "Natarcie! Równo, w widełkach. Każda sekunda go kruszy."],
+		[BARON, "Jeszcze dyszysz? Zaraz przestaniesz!"],
+		[SLAVE, "Wal w niego! Trzymamy kciuki zza krat!"],
+	],
+	"boss_rest": [
+		[MECH, "Oddychaj. Odjechał, ale wróci. Zbierz siły."],
+		[BARON, "Uciekam? Ja tylko nabieram rozpędu!"],
+	],
+	"boss_dead": [
+		[BARON, "Moja machina! Moi ludzie! To się nie godzi!"],
+		[SLAVE, "Wolni! Baron leży w piachu!"],
+	],
+	"ramp_start": [
+		[PRIEST, "Cała osada patrzy. Kręć równo, stopień po stopniu."],
+	],
+	"ramp_step": [
+		[PRIEST, "Kolejny stopień. Nie patrz w dół, patrz na obroty."],
+		[MECH, "Jeszcze jeden! Każdy stopień to waty do twojej rangi."],
+		[PRIEST, "Piecze? To znaczy, że próg jest blisko."],
+	],
+	"ramp_done": [
+		[PRIEST, "Stało się. Osada zna twoją liczbę. Nosisz ją z dumą."],
+		[MECH, "Zapisane na bramie. Tyle ciągniesz i ani wata mniej."],
+	],
 	"raid_scout": [
 		[MECH, "Osada przy zjeździe. Zerknij na kartę zwiadu i zdecyduj."],
 	],

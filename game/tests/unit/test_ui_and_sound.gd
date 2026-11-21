@@ -41,7 +41,7 @@ func test_hud_builds_and_shows_streak_contracts_and_convoy() -> void:
 	hud.ftp_w = 200.0
 	hud.update_from(sim, power, 0.1)
 	hud.update_combat(sim.combat, 200.0, 0.0, 0.1)
-	assert_eq(hud._streak_label.text, "×1.2", "mnożnik passy przy złomie")
+	assert_eq(hud._streak_label.text, "×1.1", "mnożnik passy przy złomie")
 	assert_true(hud._contract_box.visible, "zlecenia widoczne")
 	assert_true(hud._contract_labels[0].text.begins_with("□ "), "zlecenie w toku ma pustą kratkę")
 	assert_eq(hud._power_value.text, "200")

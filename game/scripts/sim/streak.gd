@@ -11,7 +11,7 @@ signal tier_changed(tier: int, up: bool)
 signal broken(points: int)
 
 ## Progi: [punkty, mnożnik złomu].
-const TIERS: Array = [[0, 1.0], [5, 1.2], [15, 1.5], [30, 2.0], [50, 2.5], [80, 3.0]]
+const TIERS: Array = [[0, 1.0], [5, 1.1], [15, 1.3], [30, 1.5], [50, 1.8], [80, 2.0]]
 const HOLD_S := 12.0
 
 var points := 0

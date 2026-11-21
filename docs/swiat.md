@@ -103,7 +103,8 @@ to przeczytać z 3 metrów. Kwestie: `game/scripts/progression/chatter.gd`.
 | Interwał = burza piaskowa | burza iskrowa ładuje kondensatory |
 | Paliwo jako druga waluta | czyste paliwo w zaplombowanych kanistrach |
 | Tereny odblokowane przez FTP | waty to ranga, słabszych nie wpuszcza się dalej |
-| Bossowie w kampanii | Tłuści i ich machiny na galerach pedałowych |
+| Bossowie w kampanii | Tłuści i ich machiny na galerach pedałowych; interwał w widełkach = obrażenia |
+| Test FTP ustawia rangę | Rytuał Progu: publiczny test narastający na koniec kampanii |
 | Przegrana nigdy nie kończy jazdy | kto stanie, ten ginie, więc zawsze jedzie się dalej |
 | Wyprawa na czas, bez mety | okno między burzami albo rozkład kursu; na końcu czeka osada |
 | Dopalacz (chwilowy zastrzyk mocy) | wtrysk świeżo otwartego kanistra czystego paliwa |
@@ -219,7 +220,7 @@ Gra ma wciągać, a nie tylko towarzyszyć pedałowaniu. Mechanizmy, które za t
 | Mechanizm | Jak działa w grze |
 |---|---|
 | Zawsze widoczny najbliższy cel | trzy zlecenia na wyprawę z postępem w HUD, nagroda co kilka minut |
-| Rosnąca stawka | passa: czysta jazda podbija mnożnik złomu do ×3, wpadka go zeruje |
+| Rosnąca stawka | passa: czysta jazda podbija mnożnik złomu do ×2, wpadka go zeruje |
 | Niespodzianka | skrzynie z losową nagrodą |
 | Popis umiejętności | unik o włos, celowanie w sprzęg, odcinanie konwoju |
 | Łup trzeba zdobyć | złom leży w slalomie, przy krawędzi i w przesmykach obok wraków; wypada z rozbitych wraków i wrogów; zasięg zbierania jest wąski |
@@ -232,7 +233,28 @@ Interfejs: stalowe płyty ze ściętymi rogami i pomarańczowy akcent. HUD to de
 na dole (prędkość, moc, strefy Z1–Z7, wskaźnik widełek, zasilanie, kondensatory), a góra ekranu
 zostaje wolna, żeby było widać drogę przed pojazdem.
 
-### 5. Trening zawsze w 100%
+### 5. Kampanie: droga do twierdzy Barona
+
+Kampania to czterotygodniowy blok treningowy opowiedziany jako pościg za Baronem Smalcem.
+
+- Trzy kampanie z prawdziwych, sprawdzonych protokołów: **Baza Pustkowi** (wytrzymałość
+  i tempo), **Droga do Progu** (słodki punkt, nad-i-pod progiem, 2×20 na progu), **Kuźnia
+  VO2** (5×3, 4×4, 4×8 Seilera, 30/15 Rønnestada). Po trzy sesje w tygodniu, w tym lekkie
+  dni wytrzymałości.
+- Sesje jedzie się po kolei; każda ma krótkie wprowadzenie Zębatki. Mapa kampanii w garażu
+  pokazuje, co zaliczone, co następne i gdzie czekają bossowie.
+- **Bossowie** (dwóch na kampanię) to machiny Barona. Walka nie dokłada żadnego wysiłku
+  ponad plan: ciężki interwał to natarcie, moc w widełkach to obrażenia, regeneracja to
+  chwila, gdy machina odjeżdża. Wygrywa ten, kto zrobi trening tak, jak jest zapisany.
+  Nagroda: złom, paliwo i uwolnieni pedalarze. Niedobity boss ucieka ranny.
+- **Rytuał Progu** zamyka każdą kampanię: test narastający na oczach osady. Wynik ustawia
+  nowe FTP i rangę, a od FTP zależą cele wszystkich kolejnych sesji – ta sama kampania
+  przejechana drugi raz jest odpowiednio cięższa.
+
+Stan wdrożenia (2026-11-21): wszystko powyżej działa. Do zrobienia: krótsze warianty
+sesji, napady i konwoje jako interwały, osobna scena twierdzy na finał.
+
+### 6. Trening zawsze w 100%
 
 Nadrzędna zasada z CLAUDE.md zostaje. W trybie treningowym o wysiłku decyduje plan, a gracz
 wybiera tylko, co robi w tym czasie: napad wypada na interwał, objazd na regenerację.

@@ -27,6 +27,8 @@ static func default_data() -> Dictionary:
 		"fuel": 0,
 		"crew": 0,
 		"records": {},
+		"campaigns": {},
+		"campaign_active": "",
 		"total_energy_kj": 0,
 		"upgrades": {},
 		"runs_completed": 0,
@@ -78,6 +80,76 @@ func recent_stats(days: int = 7) -> Dictionary:
 
 
 ## Łączna praca wykonana na wszystkich wyprawach [kJ] – odblokowuje większe podwozia.
+# --- Kampanie treningowe ---
+
+## Wybrana kampania ("" = żadna jeszcze nie wybrana).
+func campaign_active() -> String:
+	var id := str(data.get("campaign_active", ""))
+	return id if CampaignCatalog.has(id) else ""
+
+
+func set_campaign_active(id: String) -> void:
+	if CampaignCatalog.has(id):
+		data["campaign_active"] = id
+
+
+## Zaliczone sesje kampanii, po kolei: [{"index", "date", "in_band_pct", "tss", "boss_defeated"}].
+func campaign_done(id: String) -> Array:
+	var all: Variant = data.get("campaigns", {})
+	if not (all is Dictionary) or not ((all as Dictionary).get(id) is Dictionary):
+		return []
+	var done: Variant = ((all as Dictionary)[id] as Dictionary).get("done", [])
+	return done if done is Array else []
+
+
+## Numer następnej sesji do przejechania (= liczba zaliczonych).
+func campaign_next_index(id: String) -> int:
+	return mini(campaign_done(id).size(), CampaignCatalog.session_count(id)) if CampaignCatalog.has(id) else 0
+
+
+func campaign_finished(id: String) -> bool:
+	return CampaignCatalog.has(id) and campaign_done(id).size() >= CampaignCatalog.session_count(id)
+
+
+## Ile razy kampania została ukończona w całości.
+func campaign_completions(id: String) -> int:
+	var all: Variant = data.get("campaigns", {})
+	if all is Dictionary and (all as Dictionary).get(id) is Dictionary:
+		return int(((all as Dictionary)[id] as Dictionary).get("completions", 0))
+	return 0
+
+
+## Zaczyna kampanię od pierwszej sesji (licznik ukończeń zostaje).
+func restart_campaign(id: String) -> void:
+	if not CampaignCatalog.has(id):
+		return
+	var all: Dictionary = data.get("campaigns", {}) if data.get("campaigns") is Dictionary else {}
+	all[id] = {"done": [], "completions": campaign_completions(id)}
+	data["campaigns"] = all
+
+
+## Zalicza sesję kampanii, jeśli to ta, która była następna w kolejce.
+func _record_campaign_session(info: Dictionary, summary: Dictionary, date: String) -> void:
+	var id := str(info.get("id", ""))
+	var index := int(info.get("index", -1))
+	if not CampaignCatalog.has(id) or index != campaign_next_index(id) or campaign_finished(id):
+		return
+	var all: Dictionary = data.get("campaigns", {}) if data.get("campaigns") is Dictionary else {}
+	var mine: Dictionary = all.get(id, {}) if all.get(id) is Dictionary else {}
+	var done: Array = mine.get("done", []) if mine.get("done") is Array else []
+	done.append({
+		"index": index, "date": date,
+		"in_band_pct": int(summary.get("workout_in_band_pct", 0)), "tss": float(summary.get("tss", 0.0)),
+		"boss_defeated": bool(info.get("boss_defeated", false)),
+	})
+	mine["done"] = done
+	if done.size() >= CampaignCatalog.session_count(id):
+		mine["completions"] = int(mine.get("completions", 0)) + 1
+	all[id] = mine
+	data["campaigns"] = all
+	data["campaign_active"] = id
+
+
 ## Klucze rekordów i ich nazwy do ekranów. Moc liczona osobno dla każdego źródła
 ## ("pad", "trainer"), żeby symulacja na triggerze nie mieszała się z prawdziwymi watami.
 const RECORD_NAMES := {
@@ -214,6 +286,9 @@ func record_run(summary: Dictionary, timestamp: String = "") -> void:
 	summary["new_records"] = broken
 	var run := summary.duplicate(true)
 	run["date"] = timestamp if timestamp != "" else Time.get_datetime_string_from_system(false, true)
+	# Kampania: sesja liczy się tylko przejechana do końca.
+	if summary.get("campaign") is Dictionary and bool(summary.get("completed", false)):
+		_record_campaign_session(summary["campaign"], summary, str(run["date"]))
 	var scrap := int(run.get("scrap", 0))
 	data["total_scrap"] = total_scrap() + scrap
 	data["fuel"] = fuel() + int(run.get("fuel", 0))
@@ -289,6 +364,8 @@ static func _sanitize(raw: Dictionary) -> Dictionary:
 	clean["fuel"] = maxi(0, int(raw.get("fuel", 0)))
 	clean["crew"] = maxi(0, int(raw.get("crew", 0)))
 	clean["records"] = (raw.get("records") as Dictionary).duplicate(true) if raw.get("records") is Dictionary else {}
+	clean["campaigns"] = (raw.get("campaigns") as Dictionary).duplicate(true) if raw.get("campaigns") is Dictionary else {}
+	clean["campaign_active"] = str(raw.get("campaign_active", ""))
 	if raw.has("total_energy_kj"):
 		clean["total_energy_kj"] = maxi(0, int(raw["total_energy_kj"]))
 	elif raw.get("runs") is Array:

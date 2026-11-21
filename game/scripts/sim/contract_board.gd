@@ -34,14 +34,14 @@ func setup(minutes: float, ftp_w: float, seed_value: int, opts: Dictionary = {})
 		training.append(_make(Kind.ZONE, snappedf(seconds * 0.2, 10.0), reward, 0))
 		training.append(_make(Kind.KJ, maxf(5.0, roundf(ftp_w * 0.7 * seconds / 1000.0)), reward, 0))
 	var action: Array[Dictionary] = [
-		_make(Kind.SCRAP, maxf(10.0, roundf(minutes * 8.0)), reward, 0),
+		_make(Kind.SCRAP, clampf(roundf(minutes * 8.0), 10.0, 240.0), reward, 0),
 		_make(Kind.STREAK, 2.0 if minutes < 10.0 else 3.0, reward, 0),
-		_make(Kind.NEAR_MISS, 2.0 + floorf(minutes / 6.0), reward, 0),
+		_make(Kind.NEAR_MISS, minf(8.0, 2.0 + floorf(minutes / 6.0)), reward, 0),
 		_make(Kind.SPEED, 45.0, reward, 0),
 	]
 	if combat:
-		action.append(_make(Kind.RAIDERS, maxf(1.0, roundf(minutes / 4.0)), reward, 0))
-		action.append(_make(Kind.WRECKS, 2.0 + floorf(minutes / 5.0), reward, 0))
+		action.append(_make(Kind.RAIDERS, clampf(roundf(minutes / 4.0), 1.0, 8.0), reward, 0))
+		action.append(_make(Kind.WRECKS, minf(8.0, 2.0 + floorf(minutes / 5.0)), reward, 0))
 	var big: Array[Dictionary] = []
 	if bool(opts.get("convoys", false)) and minutes >= 6.0:
 		big.append(_make(Kind.CONVOY, 1.0, reward * 2, 1))
@@ -125,7 +125,7 @@ static func _text(kind: Kind, goal: float) -> String:
 		Kind.SCRAP:
 			return "Zbierz %d zębatek" % roundi(goal)
 		Kind.RAIDERS:
-			return "Rozbij %d %s gangu" % [roundi(goal), "wóz" if roundi(goal) == 1 else "wozy"]
+			return "Rozbij %d %s gangu" % [roundi(goal), _plural(roundi(goal), "wóz", "wozy", "wozów")]
 		Kind.IN_BAND:
 			return "Jedź %s w widełkach celu" % _clock(goal)
 		Kind.ZONE:
@@ -133,7 +133,7 @@ static func _text(kind: Kind, goal: float) -> String:
 		Kind.STREAK:
 			return "Rozkręć passę do ×%.1f" % Streak.tier_multiplier(roundi(goal))
 		Kind.NEAR_MISS:
-			return "Omiń %d wraki o włos" % roundi(goal)
+			return "Omiń %d %s o włos" % [roundi(goal), _plural(roundi(goal), "wrak", "wraki", "wraków")]
 		Kind.CONVOY:
 			return "Przejmij galerę z konwoju"
 		Kind.RAID:
@@ -143,8 +143,17 @@ static func _text(kind: Kind, goal: float) -> String:
 		Kind.KJ:
 			return "Wykręć %d kJ pracy" % roundi(goal)
 		Kind.WRECKS:
-			return "Rozbij %d wraki (strzał, taran)" % roundi(goal)
+			return "Rozbij %d %s (strzał, taran)" % [roundi(goal), _plural(roundi(goal), "wrak", "wraki", "wraków")]
 	return ""
+
+
+## Polska odmiana po liczebniku: 1 wrak, 2–4 wraki, 5+ wraków (12–14 też „wraków”).
+static func _plural(n: int, one: String, few: String, many: String) -> String:
+	if n == 1:
+		return one
+	if n % 10 >= 2 and n % 10 <= 4 and (n % 100 < 12 or n % 100 > 14):
+		return few
+	return many
 
 
 static func _clock(seconds: float) -> String:

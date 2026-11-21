@@ -49,6 +49,8 @@ var no_raids := false
 var convoy_test := false
 var no_convoys := false
 var mute := false
+## Sesja kampanii do testów: "id:numer" (numer od 0), np. prog:5.
+var campaign := ""
 ## Okno o zadanym rozmiarze zamiast pełnego ekranu (np. 1920x1080 – podgląd układu 16:9).
 var window_size := Vector2i.ZERO
 var no_challenges := false
@@ -111,6 +113,8 @@ static func parse(args: PackedStringArray) -> LaunchOptions:
 				o.no_convoys = true
 			"--mute":
 				o.mute = true
+			"--campaign":
+				o.campaign = value
 			"--window":
 				var wh := value.split("x")
 				if wh.size() == 2 and int(wh[0]) > 0 and int(wh[1]) > 0:

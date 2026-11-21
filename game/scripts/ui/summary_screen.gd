@@ -36,7 +36,7 @@ func _ready() -> void:
 	if not bool(s.get("saved", true)):
 		col.add_child(UiStyle.label("Uwaga: nie udało się zapisać postępu!", 40, Palette.UI_BAD, HORIZONTAL_ALIGNMENT_CENTER))
 
-	var again := UiStyle.button("JESZCZE RAZ (%s)" % _minutes_label(App.selected_minutes), 560)
+	var again := UiStyle.button("NASTĘPNA SESJA" if s.get("campaign") is Dictionary else "JESZCZE RAZ (%s)" % _minutes_label(App.selected_minutes), 560)
 	again.custom_minimum_size.y = 84
 	again.pressed.connect(func() -> void: App.start_run(App.selected_minutes))
 	var menu := UiStyle.button("GARAŻ", 360)
@@ -63,6 +63,24 @@ func _training_panel(s: Dictionary) -> Control:
 	col.add_theme_constant_override("separation", 6)
 	col.custom_minimum_size = Vector2(840, 0)
 	plate.add_child(col)
+	# Kampania: która sesja, co z bossem, nowe FTP z rytuału.
+	var camp: Variant = s.get("campaign")
+	if camp is Dictionary:
+		var c: Dictionary = camp
+		col.add_child(UiStyle.section("KAMPANIA"))
+		var counted := bool(s.get("completed", false))
+		col.add_child(UiStyle.label("%s  ·  sesja %d/%d: %s%s" % [str(c.get("name", "")), int(c.get("index", 0)) + 1, int(c.get("sessions", 0)), str(c.get("title", "")), "" if counted else "  (przerwana – nie zaliczona)"], 28, Palette.UI_TEXT))
+		if int(c.get("kind", 0)) == CampaignCatalog.Kind.BOSS:
+			if bool(c.get("boss_defeated", false)):
+				col.add_child(UiStyle.label("★ %s ROZBITY!" % str(c.get("boss", "")).to_upper(), 32, GOLD))
+			else:
+				col.add_child(UiStyle.label("%s uciekł ranny: %d%% obrażeń. Trzymaj widełki w natarciach." % [str(c.get("boss", "")), int(c.get("boss_damage_pct", 0))], 26, Palette.UI_ACCENT))
+	if s.has("new_ftp_w"):
+		if int(s["new_ftp_w"]) > 0:
+			var rank := Lore.rank(float(s["new_ftp_w"]))
+			col.add_child(UiStyle.label("★ NOWE FTP: %d W (było %d W)  ·  ranga: %s" % [int(s["new_ftp_w"]), int(s.get("old_ftp_w", 0)), str(rank["name"]).to_upper()], 32, GOLD))
+		else:
+			col.add_child(UiStyle.label("Rytuał przerwany za wcześnie – FTP bez zmian.", 26, Palette.UI_ACCENT))
 	col.add_child(UiStyle.section("TRENING"))
 	col.add_child(UiStyle.label("NP %d W   ·   IF %.2f   ·   TSS %d   ·   %d kJ" % [int(s.get("np_w", 0)), float(s.get("intensity_factor", 0.0)), roundi(float(s.get("tss", 0.0))), int(s.get("energy_kj", 0))], 40, Palette.UI_TEXT))
 	col.add_child(_zone_bar(s.get("zones_s", [])))
@@ -123,7 +141,8 @@ func _run_panel(s: Dictionary) -> Control:
 	if int(s.get("pedalers_freed", 0)) > 0:
 		stats.append(["Uwolnieni", "+%d" % int(s.get("pedalers_freed", 0))])
 	if s.has("workout"):
-		stats.append(["Trening", str(s["workout"])])
+		if not (s.get("campaign") is Dictionary):
+			stats.append(["Plan", str(s["workout"]).left(22)])
 		stats.append(["W widełkach", "%d%% czasu" % int(s.get("workout_in_band_pct", 0))])
 	for pair: Array in stats:
 		grid.add_child(UiStyle.label(pair[0], 26, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_RIGHT))
