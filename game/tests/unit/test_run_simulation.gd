@@ -19,6 +19,7 @@ func test_wreck_in_my_lane_costs_speed_and_scrap_but_not_the_run() -> void:
 	var sim := RunSimulation.new(900.0, 1)
 	sim.generator.warmup_m = 1e9
 	_cruise(sim, 20.0, 200.0)
+	sim.expedition.scrap = 0
 	sim.expedition.add_scrap(40)
 	var speed_before := sim.vehicle.speed_mps
 	var hits: Array[int] = []

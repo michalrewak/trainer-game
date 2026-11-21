@@ -143,7 +143,7 @@ func test_ram_smashes_wreck_then_needs_to_recharge() -> void:
 	sim.items.append(TrackItem.new(801, TrackItem.Kind.WRECK, 1, sim.vehicle.distance_m + 3.0, 0, 0))
 	_cruise(sim, 1.0)
 	assert_eq(rammed[0], 1, "naładowany taran rozbija wrak")
-	assert_eq(sim.expedition.scrap, 40, "bez straty złomu")
+	assert_true(sim.expedition.scrap >= 40, "bez straty złomu (rozbity wrak sypie jeszcze złomem)")
 	assert_false(sim.ram_ready(), "taran się ładuje")
 	_cruise(sim, 2.0)
 	sim.items.append(TrackItem.new(802, TrackItem.Kind.WRECK, 1, sim.vehicle.distance_m + 3.0, 0, 0))
@@ -166,6 +166,7 @@ func test_grabber_collects_from_the_next_lane() -> void:
 		sim.add_items([right, left] as Array[TrackItem])
 		_cruise(sim, 1.0)
 		taken[sim] = int(right.consumed) + int(left.consumed)
+	assert_near(plain.scrap_half_width_m, 0.3, 1e-6, "bez chwytaka po złom trzeba podjechać dokładnie")
 	assert_eq(taken[plain], 0, "bez chwytaka złom z sąsiednich pasów zostaje")
 	assert_eq(taken[grab], 2, "chwytak zgarnia z obu sąsiednich pasów")
 

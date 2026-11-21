@@ -103,9 +103,15 @@ static func make_crate() -> Node3D:
 static func make_scrap(big: bool) -> Node3D:
 	var kenney := KenneyModels.scrap(big)
 	if kenney != null:
+		# Kupka złomu: zębatka wbita ukosem w stertę pordzewiałych blach.
+		var heap := Node3D.new()
+		kenney.position = Vector3(0, 0.34 if big else 0.26, 0)
+		kenney.rotation = Vector3(-1.05, 0, 0.25)
+		heap.add_child(kenney)
+		_add_junk(heap, 1.5 if big else 1.0)
 		if big:
-			kenney.add_child(_beam(Palette.SCRAP_BIG_GLOW))
-		return kenney
+			heap.add_child(_beam(Palette.SCRAP_BIG_GLOW))
+		return heap
 	var root := Node3D.new()
 	var color := Palette.SCRAP_BIG_GLOW if big else Palette.SCRAP_GLOW
 	var glow := Palette.glow(color, 3.0 if big else 2.2)
@@ -120,6 +126,15 @@ static func make_scrap(big: bool) -> Node3D:
 	if big:
 		root.add_child(_beam(color))
 	return root
+
+
+## Pordzewiałe blachy i rurka wokół zębatki – złom ma wyglądać jak złom.
+static func _add_junk(heap: Node3D, size: float) -> void:
+	var rust := Palette.mat(Palette.RUST, 0.9, 0.3)
+	var steel := Palette.mat(Palette.METAL, 0.5, 0.7)
+	heap.add_child(LowPoly.box(Vector3(0.7, 0.05, 0.5) * size, rust, Vector3(0.12, 0.05, 0.08) * size, Vector3(0.12, 0.6, 0.1)))
+	heap.add_child(LowPoly.box(Vector3(0.5, 0.05, 0.4) * size, steel, Vector3(-0.2, 0.09, -0.12) * size, Vector3(-0.2, -0.4, 0.15)))
+	heap.add_child(LowPoly.cylinder(0.04 * size, 0.6 * size, rust, Vector3(-0.05, 0.1, 0.25) * size, Vector3(0.2, 0.9, PI * 0.5), 6))
 
 
 ## Świetlna kolumna nad dużym złomem – widać go z daleka.

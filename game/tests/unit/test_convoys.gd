@@ -9,6 +9,7 @@ var _events: Array = []
 func _sim() -> RunSimulation:
 	var sim := RunSimulation.new(1800.0, 11)
 	sim.generator.wrecks_enabled = false
+	sim.generator.pickups_enabled = false
 	sim.items.clear()
 	sim.combat.set_first_encounter(1e9)
 	sim.combat.auto_fire = true

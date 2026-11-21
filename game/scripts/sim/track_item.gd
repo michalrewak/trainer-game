@@ -11,6 +11,8 @@ var kind: Kind = Kind.SCRAP
 var lane := 1
 var distance_m := 0.0
 var value := 1
+## Przesunięcie w bok od środka pasa [m] – złom leży też między pasami i przy krawędzi.
+var offset_x := 0.0
 var variant := 0
 var consumed := false
 ## Wytrzymałość wraku na ostrzał z wieżyczki.

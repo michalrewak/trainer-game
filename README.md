@@ -66,7 +66,10 @@ dla tego pada (inaczej pad udaje mysz).
   „mety” ani porażki. Zderzenie z wrakiem kosztuje prędkość i część złomu.
 - **Nawierzchnia** zmienia się co 200 m: stary asfalt, szuter z koleinami, betonowe płyty,
   stalowe maty.
-- **Złom** (cyjanowe zębatki) i **paliwo** (czerwone kanistry) to waluty garażu.
+- **Złom** (kupki złomu ze świecącą zębatką) i **paliwo** (czerwone kanistry) to waluty garażu.
+  Złom nie leży na środku pasa: układa się w slalom między pasami, przy samej krawędzi
+  jezdni i w przesmykach tuż obok wraków (te kawałki są cenniejsze), a rozbity wrak sypie
+  nim na drogę. Bez chwytaka trzeba po niego naprawdę podjechać.
 - **Wraki można rozstrzelać**: dwa trafienia rozbijają wrak i zwalniają pas.
 - **Gangi** dojeżdżają z boku i taranują. Obrona: wieżyczka, unik zmianą pasa po ostrzeżeniu
   „!” albo wyładowanie kondensatorów. Kondensatory ładują się i działko strzela szybciej, gdy trzymasz moc docelową

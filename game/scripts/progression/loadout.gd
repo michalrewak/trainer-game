@@ -82,7 +82,7 @@ func lane_speed_multiplier() -> float:
 
 ## Połowa szerokości, z jakiej pojazd zgarnia złom i paliwo [m].
 func pickup_half_width_m() -> float:
-	return [1.2, 1.9, 4.0][level(UpgradeCatalog.GRABBER)]
+	return [0.3, 1.0, 2.7][level(UpgradeCatalog.GRABBER)]
 
 
 ## Czas ładowania tarana [s]; 0 = brak tarana.

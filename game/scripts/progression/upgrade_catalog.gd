@@ -70,8 +70,8 @@ const DEFS := {
 	},
 	GRABBER: {
 		"name": "Chwytak",
-		"desc": "Wysięgnik z hakiem zgarnia złom i paliwo leżące obok toru jazdy.",
-		"levels": ["zbiera z szerszego pasa", "zbiera także z sąsiedniego pasa"],
+		"desc": "Bez chwytaka po złom trzeba podjechać dokładnie. Wysięgnik z hakiem zgarnia złom, paliwo i skrzynie leżące obok kół.",
+		"levels": ["zgarnia z metra obok kół", "zgarnia z całego pasa i z sąsiednich"],
 		"costs": [[200, 1], [650, 4]],
 	},
 }

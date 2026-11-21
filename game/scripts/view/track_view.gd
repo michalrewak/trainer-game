@@ -434,7 +434,7 @@ func _sync_items(sim: RunSimulation, d: float, delta: float) -> void:
 			node = _make_item_node(item)
 			_item_nodes[item.id] = node
 			add_child(node)
-		var base := Vector3(sim.lane_x(item.lane), 0.0, -(item.distance_m - d))
+		var base := Vector3(sim.item_x(item), 0.0, -(item.distance_m - d))
 		if item.is_pickup():
 			_animate_pickup(node, item, base, delta)
 		else:
@@ -460,8 +460,9 @@ func _animate_scrap(node: Node3D, item: TrackItem, base: Vector3, delta: float) 
 		node.scale = Vector3.ONE * maxf(0.01, 1.0 - k)
 		node.visible = k < 1.0
 		return
-	node.position = base + Vector3(0, 0.9 + 0.18 * sin(_time * 3.0 + item.id), 0)
-	node.rotation.y = _time * 2.2 + item.id
+	# Leży na ziemi, każdy kawałek obrócony inaczej; bez wirowania i unoszenia się.
+	node.position = base
+	node.rotation.y = fmod(item.id * 2.399, TAU)
 
 
 func _animate_wreck(node: Node3D, item: TrackItem, base: Vector3, delta: float) -> void:

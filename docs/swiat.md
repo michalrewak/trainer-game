@@ -222,6 +222,7 @@ Gra ma wciągać, a nie tylko towarzyszyć pedałowaniu. Mechanizmy, które za t
 | Rosnąca stawka | passa: czysta jazda podbija mnożnik złomu do ×3, wpadka go zeruje |
 | Niespodzianka | skrzynie z losową nagrodą |
 | Popis umiejętności | unik o włos, celowanie w sprzęg, odcinanie konwoju |
+| Łup trzeba zdobyć | złom leży w slalomie, przy krawędzi i w przesmykach obok wraków; wypada z rozbitych wraków i wrogów; zasięg zbierania jest wąski |
 | Bicie własnych wyników | rekordy mocy 20 s / 1 min / 5 min / 20 min, komunikat na żywo |
 | Powód, żeby wrócić jutro | cel tygodnia w TSS i dni z rzędu w garażu, załoga i kilodżule do podwozia |
 | Rytm napięcia i oddechu | potyczki, wyzwania, napady, konwoje na zmianę ze spokojnym zbieraniem |

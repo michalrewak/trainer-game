@@ -58,7 +58,8 @@ var vehicle_half_width_m := 0.95
 var wreck_half_length_m := 1.6
 var wreck_half_width_m := 1.3
 var scrap_half_length_m := 0.9
-var scrap_half_width_m := 1.2
+## Wąsko: po złom trzeba naprawdę podjechać (chwytak poszerza zasięg).
+var scrap_half_width_m := 0.3
 
 ## Taran (moduł): czas ładowania [s]; 0 = brak. Naładowany rozbija wrak bez straty złomu.
 var ram_cooldown_s := 0.0
@@ -85,7 +86,8 @@ func _init(duration_s: float = 900.0, seed_value: int = 0) -> void:
 		if not r.is_convoy_part():
 			_streak_add(5)
 			contracts.add(ContractBoard.Kind.RAIDERS))
-	combat.wreck_destroyed.connect(func(_item: TrackItem) -> void:
+	combat.wreck_destroyed.connect(func(item: TrackItem) -> void:
+		_spill_scrap(item)
 		_streak_add(2)
 		contracts.add(ContractBoard.Kind.WRECKS))
 	combat.ram_resolved.connect(func(_r: RaiderModel, outcome: int, _lost: int) -> void:
@@ -236,6 +238,11 @@ func is_invulnerable() -> bool:
 	return invulnerable_left_s > 0.0
 
 
+## Położenie obiektu w poprzek jezdni [m]: środek pasa plus przesunięcie (złom).
+func item_x(item: TrackItem) -> float:
+	return lanes.lane_center(item.lane) + item.offset_x
+
+
 func lane_x(lane: int) -> float:
 	return lanes.lane_center(lane)
 
@@ -260,13 +267,14 @@ func _resolve_contacts(d0: float, d1: float) -> void:
 			continue
 		if item.distance_m - half_len > d1 + vehicle_half_length_m:
 			continue
-		if absf(lane_x(item.lane) - x) > half_w + vehicle_half_width_m:
+		if absf(item_x(item) - x) > half_w + vehicle_half_width_m:
 			continue
 		if item.is_wreck():
 			if is_invulnerable():
 				continue
 			if ram_ready():
 				item.consumed = true
+				_spill_scrap(item)
 				_streak_add(2)
 				contracts.add(ContractBoard.Kind.WRECKS)
 				ram_left_s = ram_cooldown_s
@@ -328,6 +336,18 @@ func _clear_road_to_settlement() -> void:
 			kept.append(item)
 	if kept.size() != items.size():
 		items = kept
+
+
+## Rozbity wrak (strzałem albo taranem) sypie złomem na drogę przed pojazdem – złom
+## trzeba sobie zdobyć, nie tylko zebrać.
+func _spill_scrap(wreck: TrackItem) -> void:
+	var base := maxf(wreck.distance_m, vehicle.distance_m) + 9.0
+	var spill: Array[TrackItem] = []
+	for i in 3:
+		var piece := TrackItem.new(4_000_000 + wreck.id * 8 + i, TrackItem.Kind.SCRAP, clampi(wreck.lane + i - 1, 0, lanes.lane_count - 1), base + i * 4.0, 1, 0)
+		piece.offset_x = _rng.randf_range(-1.0, 1.0)
+		spill.append(piece)
+	add_items(spill)
 
 
 func _streak_add(amount: int) -> void:

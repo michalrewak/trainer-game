@@ -287,3 +287,64 @@ func test_day_streak_counts_consecutive_days() -> void:
 	assert_eq(store.day_streak("2026-11-22"), 0, "dzień przerwy zeruje")
 	store.record_run({"scrap": 1}, "2026-11-16 18:00:00")
 	assert_eq(store.day_streak("2026-11-20"), 3, "luka 17.11 oddziela starszą jazdę")
+
+
+# --- Złom, po który trzeba się postarać -------------------------------------------
+
+func test_scrap_needs_precise_driving_without_grabber() -> void:
+	var sim := _quiet_sim()
+	# Kawałek 1,6 m w bok od środka pasa: jadąc środkiem, mija się go.
+	var far := _put(sim, TrackItem.Kind.SCRAP, sim.lanes.target_lane, 6.0)
+	far.offset_x = 1.6
+	var near := _put(sim, TrackItem.Kind.SCRAP, sim.lanes.target_lane, 9.0)
+	near.offset_x = 0.9
+	_run(sim, 2.0)
+	assert_false(far.consumed, "złom obok toru jazdy zostaje na drodze")
+	assert_true(near.consumed, "złom pod kołami jest zbierany")
+	assert_near(sim.item_x(far), sim.lanes.lane_center(far.lane) + 1.6, 1e-6)
+
+
+func test_generator_spreads_scrap_across_the_road() -> void:
+	var gen := TrackGenerator.new(9, 3)
+	var items := gen.generate_until(6000.0)
+	var centered := 0
+	var off_center := 0
+	var needs_steering := 0
+	var squeezed := 0
+	var wrecks: Array[TrackItem] = []
+	for item in items:
+		if item.is_wreck():
+			wrecks.append(item)
+	for item in items:
+		if item.kind != TrackItem.Kind.SCRAP:
+			continue
+		if absf(item.offset_x) < 0.05:
+			centered += 1
+		else:
+			off_center += 1
+		# Ze środka pasa sięga się na 1,25 m (pół pojazdu + zasięg bez chwytaka).
+		if absf(item.offset_x) > 1.25:
+			needs_steering += 1
+		var x := (item.lane - 1) * 3.6 + item.offset_x
+		for w in wrecks:
+			if absf(w.distance_m - item.distance_m) < 4.0:
+				var gap := absf(x - (w.lane - 1) * 3.6)
+				assert_true(gap > 1.9, "złom nie leży w bryle wraku (%.1f m)" % gap)
+				if gap < 2.6:
+					squeezed += 1
+	assert_true(off_center > centered * 0.8, "dużo złomu leży poza środkiem pasa (%d vs %d)" % [off_center, centered])
+	assert_true(needs_steering * 6 > off_center + centered, "spora część złomu wymaga zjechania ze środka pasa (%d z %d)" % [needs_steering, off_center + centered])
+	assert_true(centered > 20, "część zostaje na pasach – da się grać krzyżakiem")
+	assert_true(squeezed > 10, "są przesmyki tuż przy wrakach (%d kawałków)" % squeezed)
+
+
+func test_destroyed_wreck_spills_scrap() -> void:
+	var sim := _quiet_sim()
+	sim.ram_cooldown_s = 30.0
+	_put(sim, TrackItem.Kind.WRECK, sim.lanes.target_lane, 4.0)
+	_run(sim, 1.0)
+	var spilled := 0
+	for item in sim.items:
+		if item.is_scrap() and not item.consumed:
+			spilled += 1
+	assert_eq(spilled, 3, "rozbity taranem wrak sypie trzema kawałkami złomu")

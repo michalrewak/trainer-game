@@ -9,19 +9,22 @@ extends RefCounted
 ## Trudność 0..1 (postęp wyprawy) zagęszcza rzędy i częściej blokuje dwa pasy.
 
 var lane_count := 3
+var lane_width_m := 3.6
 var warmup_m := 150.0
 var min_row_gap_m := 30.0
 var min_reaction_s := 2.4
 var row_gap_easy_m := 75.0
 var row_gap_hard_m := 34.0
-var scrap_gap_easy_m := 55.0
-var scrap_gap_hard_m := 38.0
+var scrap_gap_easy_m := 78.0
+var scrap_gap_hard_m := 56.0
 var scrap_spacing_m := 3.5
 var scrap_clearance_m := 6.0
 var big_scrap_chance := 0.18
 var wreck_variants := 4
 ## Wyłączenie wraków (testy, później np. „pola bezpieczne” na ciężkich interwałach).
 var wrecks_enabled := true
+## Wyłączenie złomu, paliwa i skrzyń (testy, które liczą łup co do sztuki).
+var pickups_enabled := true
 ## Kanister paliwa średnio co tyle metrów (etap 3: druga waluta).
 var fuel_every_m := 420.0
 ## Skrzynia z niespodzianką średnio co tyle metrów.
@@ -65,8 +68,12 @@ func generate_until(distance_m: float) -> Array[TrackItem]:
 	while _next_row_m < distance_m + ROW_LOOKAHEAD_M:
 		_place_row(_next_row_m, out)
 		_next_row_m += _row_gap()
+	if not pickups_enabled:
+		_next_scrap_m = maxf(_next_scrap_m, distance_m)
+		_next_fuel_m = maxf(_next_fuel_m, distance_m)
+		_next_crate_m = maxf(_next_crate_m, distance_m)
 	while _next_scrap_m < distance_m:
-		_place_scrap_line(_next_scrap_m, out)
+		_place_scrap(_next_scrap_m, out)
 		_next_scrap_m += _scrap_gap()
 	while _next_fuel_m < distance_m:
 		_place_fuel(_next_fuel_m, out)
@@ -114,8 +121,81 @@ func _place_row(d: float, out: Array[TrackItem]) -> void:
 			out.append(_make(TrackItem.Kind.SCRAP_BIG, lane, big_d, 5, 0))
 
 
+## Złom nie leży „za darmo” na środku pasa. Układy:
+## - PRZESMYK: tuż obok wraku, od jego strony – trzeba przejechać o włos (cenniejszy),
+## - SLALOM: wężyk między dwoma pasami – trzeba płynnie kierować,
+## - KRAWĘDŹ: przy samym skraju jezdni (cenniejszy),
+## - LINIA: krótki rząd na pasie (zostaje dla jazdy krzyżakiem i klawiaturą).
+func _place_scrap(d: float, out: Array[TrackItem]) -> void:
+	var roll := _rng.randf()
+	if roll < 0.26 and _place_squeeze(d, out):
+		return
+	if roll < 0.6:
+		_place_weave(d, out)
+	elif roll < 0.82:
+		_place_edge(d, out)
+	else:
+		_place_scrap_line(d, out)
+
+
+func _center(lane: int) -> float:
+	return (lane - (lane_count - 1) * 0.5) * lane_width_m
+
+
+## Kawałek złomu w dowolnym miejscu w poprzek jezdni (x w metrach od środka).
+func _scrap_at(x: float, d: float, value: int, out: Array[TrackItem]) -> void:
+	var lane := clampi(roundi(x / lane_width_m + (lane_count - 1) * 0.5), 0, lane_count - 1)
+	var offset := x - _center(lane)
+	if _blocked_near(lane, d, scrap_clearance_m):
+		return
+	# Między pasami: obok nie może stać wrak.
+	var neighbor := lane + (1 if offset > 0.0 else -1)
+	if absf(offset) > 0.9 and neighbor >= 0 and neighbor < lane_count and _blocked_near(neighbor, d, scrap_clearance_m):
+		return
+	var item := _make(TrackItem.Kind.SCRAP, lane, d, value, 0)
+	item.offset_x = offset
+	out.append(item)
+
+
+func _place_weave(d: float, out: Array[TrackItem]) -> void:
+	var a := _rng.randi_range(0, lane_count - 2)
+	var mid := (_center(a) + _center(a + 1)) * 0.5
+	var side := -1.0 if _rng.randf() < 0.5 else 1.0
+	for i in 7:
+		_scrap_at(mid + side * lane_width_m * 0.5 * cos(PI * i / 3.0), d + i * 4.5, 1, out)
+
+
+func _place_edge(d: float, out: Array[TrackItem]) -> void:
+	var side := -1.0 if _rng.randf() < 0.5 else 1.0
+	# Na samej linii krawędzi: ze środka skrajnego pasa się nie sięgnie.
+	var x := _center(0 if side < 0.0 else lane_count - 1) + side * 2.0
+	for i in 4:
+		_scrap_at(x, d + i * 3.5, 2, out)
+
+
+## Złom w przesmyku: na wolnym pasie, dociśnięty do wraku stojącego obok. False, gdy
+## w pobliżu nie ma pasującego rzędu wraków.
+func _place_squeeze(d: float, out: Array[TrackItem]) -> bool:
+	for row in _rows:
+		var rd: float = row["d"]
+		if rd < d or rd > d + 30.0:
+			continue
+		var blocked: Array = row["blocked"]
+		for lane in lane_count:
+			if blocked.has(lane):
+				continue
+			for dir: int in [-1, 1]:
+				if blocked.has(lane + dir):
+					for k in 3:
+						var item := _make(TrackItem.Kind.SCRAP, lane, rd + (k - 1) * 3.5, 2, 0)
+						item.offset_x = dir * 1.6
+						out.append(item)
+					return true
+	return false
+
+
 func _place_scrap_line(d: float, out: Array[TrackItem]) -> void:
-	var count := _rng.randi_range(3, 5)
+	var count := _rng.randi_range(3, 4)
 	var length := (count - 1) * scrap_spacing_m
 	var candidates: Array[int] = []
 	for lane in lane_count:
