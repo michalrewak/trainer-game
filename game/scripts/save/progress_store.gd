@@ -140,7 +140,7 @@ func _record_campaign_session(info: Dictionary, summary: Dictionary, date: Strin
 	done.append({
 		"index": index, "date": date,
 		"in_band_pct": int(summary.get("workout_in_band_pct", 0)), "tss": float(summary.get("tss", 0.0)),
-		"boss_defeated": bool(info.get("boss_defeated", false)),
+		"boss_defeated": bool(info.get("boss_defeated", false)), "short": bool(info.get("short", false)),
 	})
 	mine["done"] = done
 	if done.size() >= CampaignCatalog.session_count(id):

@@ -25,6 +25,7 @@ var _duration_button: Button
 var _ftp_button: Button
 var _goal_button: Button
 var _assist_button: Button
+var _length_button: Button
 var _autofire_button: Button
 var _source_button: Button
 var _sound_button: Button
@@ -156,7 +157,11 @@ func _build() -> void:
 		var modes: Array[String] = ["cycle", "day", "night"]
 		App.set_time_mode(modes[(modes.find(App.time_mode()) + 1) % modes.size()])
 		_refresh())
-	col.add_child(_row([_duration_button, _time_button]))
+	_length_button = _option("Długość sesji kampanii. Pełna: 35–72 min. Krótka: 26–40 min – te same intensywności i układ interwałów, mniejsza objętość. Postęp kampanii jest wspólny.")
+	_length_button.pressed.connect(func() -> void:
+		App.set_campaign_short(not App.campaign_short())
+		_refresh())
+	col.add_child(_row([_duration_button, _length_button, _time_button]))
 	_ftp_button = _option("Twoje FTP: ←/→ zmienia o 5 W. Od niego liczą się strefy, cele mocy, tempo konwojów i ranga; niektóre tereny wymagają wyższego FTP.")
 	_ftp_button.gui_input.connect(_on_ftp_input)
 	_ftp_button.pressed.connect(func() -> void: _change_ftp(5.0))
@@ -325,7 +330,9 @@ func _refresh() -> void:
 		_mode_button.text = "Tryb: jazda swobodna"
 		var minutes := DURATIONS[_duration_index]
 		_duration_button.text = "Czas: %s" % ("TEST 2 min" if minutes < 5.0 else "%d min" % roundi(minutes))
-	_time_button.text = "Pora: %s" % {"cycle": "zmienna (dzień → noc)", "day": "dzień", "night": "noc"}.get(App.time_mode(), "zmienna (dzień → noc)")
+	_time_button.text = "Pora: %s" % {"cycle": "zmienna", "day": "dzień", "night": "noc"}.get(App.time_mode(), "zmienna")
+	_length_button.visible = not session.is_empty()
+	_length_button.text = "Długość: %s" % ("krótka" if App.campaign_short() else "pełna")
 	_frame_vehicle(App.run_loadout())
 	_ftp_button.text = "FTP: %d W  ← →" % roundi(App.ftp_w())
 	_goal_button.text = "Tydzień: %d TSS" % App.weekly_tss_goal()

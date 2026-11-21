@@ -93,7 +93,9 @@ dla tego pada (inaczej pad udaje mysz).
   - **Kuźnia VO2** – 5×3, norweskie 4×4, 4×8 Seilera, 30/15 Rønnestada.
 
   Sesje jedzie się po kolei (liczy się sesja dojechana do końca), każda kampania ma własny
-  postęp i mapę w garażu. Dwie sesje to **bossowie** – machiny Barona Smalca: każdy ciężki
+  postęp i mapę w garażu. Każda sesja ma dwa warianty, przełączane w garażu przyciskiem
+  „Długość”: pełny (35–72 min) i krótki (26–40 min, te same intensywności i układ
+  interwałów, mniejsza objętość). Postęp jest wspólny dla obu. Dwie sesje to **bossowie** – machiny Barona Smalca: każdy ciężki
   interwał to natarcie, a każda sekunda natarcia z mocą w widełkach zadaje obrażenia
   (85% czasu natarć w widełkach rozbija machinę; słabszy wynik to boss ranny i mniejszy
   łup). Nie trzeba kierować ani strzelać – trening jest realizowany w 100%. Ostatnia sesja
@@ -152,7 +154,7 @@ Cel mocy zawsze ma **widełki**: za mało i za dużo to błąd. W treningu obowi
 wyzwaniach ±8%. Powyżej górnej granicy generator się przegrzewa (wolniej ładują się kondensatory, wolniejszy ogień).
 
 Następne kroki: napady i konwoje w trybie treningowym (dziś są tylko w jeździe swobodnej),
-więcej kampanii i krótsze warianty sesji, balans ekonomii po prawdziwych jazdach.
+więcej kampanii, balans ekonomii po prawdziwych jazdach.
 
 ## Trenażer Elite Suito (etap 5)
 
@@ -181,7 +183,7 @@ wtedy mostek z `--port 8766`, a grę z `-- --bridge-port=8766`; gra zapamięta p
 `--screenshots=KATALOG --shot-times=4,12`, `--combat-test`, `--no-combat`,
 `--terrain=city`, `--all-upgrades`, `--challenge-test`, `--no-challenges`, `--raid-test`,
 `--no-raids`, `--convoy-test` (konwój po 5 s, bez zwiadów i wyzwań), `--no-convoys`, `--mute`,
-`--campaign=prog:5` (sesja kampanii: baza/prog/kuznia i numer od 0; 11 = test FTP),
+`--campaign=prog:5` (sesja kampanii: baza/prog/kuznia i numer od 0; 11 = test FTP), `--campaign-short` (krótkie warianty),
 `--window=1920x1080` (okno zamiast pełnego ekranu, np. podgląd układu telewizora), `--trainer`,
 `--plan=res://plans/kanion_4x4.json`, `--time=cycle|day|dusk|night|storm`.
 Szczegóły: `game/scripts/app/launch_options.gd`.

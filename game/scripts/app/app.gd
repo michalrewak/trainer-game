@@ -125,6 +125,16 @@ func campaign_id() -> String:
 	return saved if saved != "" else CampaignCatalog.ORDER[0]
 
 
+## Długość sesji kampanii: krótki wariant (26–40 min) zamiast pełnego (35–72 min).
+func campaign_short() -> bool:
+	return options.campaign_short or bool(settings.get("campaign_short", false))
+
+
+func set_campaign_short(enabled: bool) -> void:
+	settings["campaign_short"] = enabled
+	_save_settings()
+
+
 ## Sesja kampanii, którą teraz jedzie gracz: pola CampaignCatalog.session plus "id",
 ## "name" (kampanii), "sessions" (liczba) i "finished". {} poza trybem kampanii.
 func campaign_session() -> Dictionary:
@@ -135,7 +145,7 @@ func campaign_session() -> Dictionary:
 	var index := mini(progress.campaign_next_index(id), count - 1)
 	if options.campaign.get_slice_count(":") >= 2 and CampaignCatalog.has(options.campaign.get_slice(":", 0)):
 		index = clampi(int(options.campaign.get_slice(":", 1)), 0, count - 1)
-	var s := CampaignCatalog.session(id, index)
+	var s := CampaignCatalog.session(id, index, campaign_short())
 	s["id"] = id
 	s["name"] = CampaignCatalog.display_name(id)
 	s["sessions"] = count
@@ -149,7 +159,7 @@ func selected_plan() -> WorkoutPlan:
 	if selected_plan_path == CAMPAIGN_PLAN:
 		# Bez pamięci podręcznej: test FTP obcina swój plan w trakcie jazdy.
 		var session := campaign_session()
-		return CampaignCatalog.plan(str(session["id"]), int(session["index"]))
+		return CampaignCatalog.plan(str(session["id"]), int(session["index"]), bool(session["short"]))
 	if not _plan_cache.has(selected_plan_path):
 		var res: Dictionary = WorkoutLoader.load_file(selected_plan_path, ftp_w())
 		_plan_cache[selected_plan_path] = res.get("plan")

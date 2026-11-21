@@ -6,6 +6,10 @@ extends RefCounted
 ## Barona Smalca, które rozbija się trzymaniem mocy w interwałach – a ostatnia to TEST FTP
 ## („Rytuał Progu”, test narastający), który ustawia nowe FTP i rangę.
 ##
+## Każda sesja ma dwa warianty: PEŁNY (35–72 min) i KRÓTKI (26–40 min). Krótki trzyma te
+## same intensywności i układ interwałów, ma mniejszą objętość i krótszą rozgrzewkę.
+## Postęp kampanii jest wspólny – sesja liczy się w obu wariantach.
+##
 ## Trening jest zapisany krótkim opisem:
 ##   wu10            rozgrzewka 10 min (50→75% FTP)
 ##   cd8             schłodzenie 8 min (60→45%)
@@ -30,26 +34,30 @@ const RAMP_WARMUP_MIN := 5.0
 
 const EASY_45 := "wu5 40@68 cd5"
 const EASY_50 := "wu5 45@68 cd5"
+const EASY_SHORT := "wu4 24@68 cd4"
 const OPENERS := "wu5 15@60 3x(1@100 r2) 5@60 cd5"
+const OPENERS_SHORT := "wu5 8@60 3x(1@100 r2) cd4"
+const TEST_STORY := "Test na oczach całej osady: co minutę ciężej, aż nogi powiedzą dość. Wynik ustawi twoje FTP."
 
+## Sesja: [tytuł, opis treningu, rodzaj, wprowadzenie, tytuł krótkiego wariantu, opis krótkiego].
 const DEFS := {
 	BAZA: {
 		"name": "Baza Pustkowi",
 		"goal": "Fundament: wytrzymałość i tempo. Dobra na początek albo po przerwie.",
 		"boss": "Karawana Smalca",
 		"sessions": [
-			["Wytrzymałość 40", "wu5 35@66 cd5", Kind.RIDE, "Długi, równy kurs. Uczysz nogi palić mało i jechać długo."],
-			["Tempo 3×8", "wu8 3x(8@80 r4) cd6", Kind.RIDE, "Trzy odcinki w tempie karawany. Równo, bez szarpania."],
-			["Kadencja 6×1", "wu8 20@65 6x(1@85 r2) 5@65 cd5", Kind.RIDE, "Brat Obrót patrzy: sześć minut na wysokich obrotach."],
-			["Wytrzymałość 50", EASY_50, Kind.RIDE, "Kurs do dalszej osady. Spokojnie, cały czas w drugiej strefie."],
-			["Tempo 3×10", "wu8 3x(10@82 r4) cd6", Kind.RIDE, "Dłuższe odcinki tempa. Karawana Smalca jest już blisko."],
-			["Karawana Smalca: 2×20 pod progiem", "wu8 2x(20@88 r5) cd6", Kind.BOSS, "Dogoniłeś karawanę. Dwa razy po 20 minut tuż pod progiem i wozy są twoje."],
-			["Wytrzymałość 55", "wu5 50@67 cd5", Kind.RIDE, "Odwozisz uwolnionych do osady. Długo i równo."],
-			["Słodki punkt 2×12", "wu10 2x(12@90 r5) cd8", Kind.RIDE, "Pierwszy raz tuż pod progiem. Tu rośnie FTP."],
-			["Tempo z przyspieszeniami", "wu8 3x(8@80 1@100 r4) cd6", Kind.RIDE, "Tempo, a na końcu każdego odcinka minuta na progu."],
-			["Brama Twierdzy: słodki punkt 3×12", "wu10 3x(12@90 r5) cd8", Kind.BOSS, "Brama twierdzy Barona. Trzy natarcia po 12 minut tuż pod progiem."],
-			["Rozruch przed rytuałem", OPENERS, Kind.RIDE, "Lekko, trzy krótkie przebudzenia nóg. Jutro rytuał."],
-			["Rytuał Progu", "", Kind.TEST, "Test na oczach całej osady: co minutę ciężej, aż nogi powiedzą dość. Wynik ustawi twoje FTP."],
+			["Wytrzymałość 40", "wu5 35@66 cd5", Kind.RIDE, "Długi, równy kurs. Uczysz nogi palić mało i jechać długo.", "Wytrzymałość 30", "wu4 22@66 cd4"],
+			["Tempo 3×8", "wu8 3x(8@80 r4) cd6", Kind.RIDE, "Odcinki w tempie karawany. Równo, bez szarpania.", "Tempo 2×8", "wu6 2x(8@80 r3) cd4"],
+			["Kadencja 6×1", "wu8 20@65 6x(1@85 r2) 5@65 cd5", Kind.RIDE, "Brat Obrót patrzy: minutowe odcinki na wysokich obrotach.", "Kadencja 5×1", "wu6 8@65 5x(1@85 r2) cd4"],
+			["Wytrzymałość 50", EASY_50, Kind.RIDE, "Kurs do dalszej osady. Spokojnie, cały czas w drugiej strefie.", "Wytrzymałość 32", EASY_SHORT],
+			["Tempo 3×10", "wu8 3x(10@82 r4) cd6", Kind.RIDE, "Dłuższe odcinki tempa. Karawana Smalca jest już blisko.", "Tempo 2×10", "wu6 2x(10@82 r3) cd4"],
+			["Karawana Smalca: 2×20 pod progiem", "wu8 2x(20@88 r5) cd6", Kind.BOSS, "Dogoniłeś karawanę. Dwa natarcia tuż pod progiem i wozy są twoje.", "Karawana Smalca: 2×11 pod progiem", "wu6 2x(11@88 r4) cd4"],
+			["Wytrzymałość 55", "wu5 50@67 cd5", Kind.RIDE, "Odwozisz uwolnionych do osady. Długo i równo.", "Wytrzymałość 36", "wu4 28@67 cd4"],
+			["Słodki punkt 2×12", "wu10 2x(12@90 r5) cd8", Kind.RIDE, "Pierwszy raz tuż pod progiem. Tu rośnie FTP.", "Słodki punkt 2×9", "wu6 2x(9@90 r4) cd4"],
+			["Tempo z przyspieszeniami 3×9", "wu8 3x(8@80 1@100 r4) cd6", Kind.RIDE, "Tempo, a na końcu każdego odcinka minuta na progu.", "Tempo z przyspieszeniami 2×9", "wu6 2x(8@80 1@100 r3) cd4"],
+			["Brama Twierdzy: słodki punkt 3×12", "wu10 3x(12@90 r5) cd8", Kind.BOSS, "Brama twierdzy Barona. Trzy natarcia tuż pod progiem.", "Brama Twierdzy: słodki punkt 3×7", "wu6 3x(7@90 r3) cd4"],
+			["Rozruch przed rytuałem", OPENERS, Kind.RIDE, "Lekko, trzy krótkie przebudzenia nóg. Jutro rytuał.", "Rozruch przed rytuałem", OPENERS_SHORT],
+			["Rytuał Progu", "", Kind.TEST, TEST_STORY, "Rytuał Progu", ""],
 		],
 	},
 	PROG: {
@@ -57,18 +65,18 @@ const DEFS := {
 		"goal": "Wyższe FTP: słodki punkt i długie odcinki na progu (klasyczne 2×20).",
 		"boss": "Walec Smalca",
 		"sessions": [
-			["Słodki punkt 3×10", "wu10 3x(10@90 r5) cd8", Kind.RIDE, "Zaczynamy spokojnie: trzy równe pociągnięcia tuż pod progiem."],
-			["Wytrzymałość 45", EASY_45, Kind.RIDE, "Dzień na długi, lekki kurs. Nogi mają odpocząć w ruchu."],
-			["Próg 3×8", "wu10 3x(8@98 r4) cd8", Kind.RIDE, "Trzy razy po osiem minut na samym progu. Tak jeździ Walec."],
-			["Słodki punkt 3×12", "wu10 3x(12@90 r5) cd8", Kind.RIDE, "Dłuższe odcinki. Baron już wie, że ktoś za nim jedzie."],
-			["Tempo 2×15", "wu10 2x(15@83 r5) cd8", Kind.RIDE, "Spokojniejszy dzień przed walką. Równe tempo."],
-			["Walec Smalca: 2×15 na progu", "wu10 2x(15@97 r8) cd6", Kind.BOSS, "Walec toczy się przed tobą. Dwa razy po kwadrans na progu i pęknie mu oś."],
-			["Nad i pod progiem 3×12", "wu10 3x(4x(2@95 1@105) r5) cd8", Kind.RIDE, "Dwie minuty pod progiem, minuta nad. Uczysz się jechać, gdy piecze."],
-			["Wytrzymałość 50", EASY_50, Kind.RIDE, "Długi kurs z łupem z Walca. Lekko."],
-			["Słodki punkt 2×20", "wu10 2x(20@90 r5) cd8", Kind.RIDE, "Dwa razy po 20 minut. Próba generalna przed twierdzą."],
-			["Twierdza Barona: 2×20 na progu", "wu10 2x(20@98 r8) cd6", Kind.BOSS, "Klasyka: dwa razy po 20 minut na progu. Tyle trzeba, żeby wyważyć bramę."],
-			["Rozruch przed rytuałem", OPENERS, Kind.RIDE, "Lekko, trzy krótkie przebudzenia nóg. Jutro rytuał."],
-			["Rytuał Progu", "", Kind.TEST, "Test na oczach całej osady: co minutę ciężej, aż nogi powiedzą dość. Wynik ustawi twoje FTP."],
+			["Słodki punkt 3×10", "wu10 3x(10@90 r5) cd8", Kind.RIDE, "Zaczynamy spokojnie: równe pociągnięcia tuż pod progiem.", "Słodki punkt 2×10", "wu6 2x(10@90 r4) cd4"],
+			["Wytrzymałość 45", EASY_45, Kind.RIDE, "Dzień na długi, lekki kurs. Nogi mają odpocząć w ruchu.", "Wytrzymałość 32", EASY_SHORT],
+			["Próg 3×8", "wu10 3x(8@98 r4) cd8", Kind.RIDE, "Trzy odcinki na samym progu. Tak jeździ Walec.", "Próg 3×5", "wu6 3x(5@98 r3) cd4"],
+			["Słodki punkt 3×12", "wu10 3x(12@90 r5) cd8", Kind.RIDE, "Dłuższe odcinki. Baron już wie, że ktoś za nim jedzie.", "Słodki punkt 2×11", "wu6 2x(11@90 r4) cd4"],
+			["Tempo 2×15", "wu10 2x(15@83 r5) cd8", Kind.RIDE, "Spokojniejszy dzień przed walką. Równe tempo.", "Tempo 2×10", "wu6 2x(10@83 r3) cd4"],
+			["Walec Smalca: 2×15 na progu", "wu10 2x(15@97 r8) cd6", Kind.BOSS, "Walec toczy się przed tobą. Dwa natarcia na progu i pęknie mu oś.", "Walec Smalca: 2×9 na progu", "wu6 2x(9@97 r5) cd4"],
+			["Nad i pod progiem 3×12", "wu10 3x(4x(2@95 1@105) r5) cd8", Kind.RIDE, "Dwie minuty pod progiem, minuta nad. Uczysz się jechać, gdy piecze.", "Nad i pod progiem 2×9", "wu6 2x(3x(2@95 1@105) r4) cd4"],
+			["Wytrzymałość 50", EASY_50, Kind.RIDE, "Długi kurs z łupem z Walca. Lekko.", "Wytrzymałość 32", EASY_SHORT],
+			["Słodki punkt 2×20", "wu10 2x(20@90 r5) cd8", Kind.RIDE, "Długie odcinki pod progiem. Próba generalna przed twierdzą.", "Słodki punkt 1×22", "wu6 22@90 cd4"],
+			["Twierdza Barona: 2×20 na progu", "wu10 2x(20@98 r8) cd6", Kind.BOSS, "Klasyka: dwa długie natarcia na progu. Tyle trzeba, żeby wyważyć bramę.", "Twierdza Barona: 2×10 na progu", "wu6 2x(10@98 r5) cd4"],
+			["Rozruch przed rytuałem", OPENERS, Kind.RIDE, "Lekko, trzy krótkie przebudzenia nóg. Jutro rytuał.", "Rozruch przed rytuałem", OPENERS_SHORT],
+			["Rytuał Progu", "", Kind.TEST, TEST_STORY, "Rytuał Progu", ""],
 		],
 	},
 	KUZNIA: {
@@ -76,18 +84,18 @@ const DEFS := {
 		"goal": "Wyższy pułap: krótkie, bardzo mocne interwały (4×4, 4×8, 30/15).",
 		"boss": "Młot Barona",
 		"sessions": [
-			["Pułap 5×3", "wu12 5x(3@115 r3) cd8", Kind.RIDE, "Pięć razy po trzy minuty powyżej progu. Kuźnia rozpala piec."],
-			["Wytrzymałość 45", EASY_45, Kind.RIDE, "Lekki kurs między ciężkimi dniami."],
-			["Zrywy 2×10×30/15", "wu12 2x(10x(30s@120 15s@50) r4) cd8", Kind.RIDE, "Trzydzieści sekund ognia, piętnaście oddechu. Dziesięć razy, dwie serie."],
-			["Norweskie 4×4", "wu12 4x(4@110 r3) cd8", Kind.RIDE, "Cztery razy po cztery minuty. Stara szkoła z północy."],
-			["Wytrzymałość 50", EASY_50, Kind.RIDE, "Długo i lekko. Jutro Młot."],
-			["Młot Barona: 3×13×30/15", "wu12 3x(13x(30s@120 15s@50) r3) cd8", Kind.BOSS, "Młot bije co 45 sekund. Trzy serie po trzynaście uderzeń – oddaj każde."],
-			["Seiler 4×8", "wu12 4x(8@105 r2) cd8", Kind.RIDE, "Cztery razy po osiem minut tuż nad progiem. Najwięcej czasu przy pułapie."],
-			["Wytrzymałość 45", EASY_45, Kind.RIDE, "Lekki kurs. Piec ma ostygnąć."],
-			["Pułap 6×3", "wu12 6x(3@115 r3) cd8", Kind.RIDE, "Sześć razy po trzy minuty. O jedno więcej niż na początku."],
-			["Kuźnia w ogniu: 5×5", "wu12 5x(5@108 r3) cd8", Kind.BOSS, "Serce kuźni Barona. Pięć razy po pięć minut i piec gaśnie na dobre."],
-			["Rozruch przed rytuałem", OPENERS, Kind.RIDE, "Lekko, trzy krótkie przebudzenia nóg. Jutro rytuał."],
-			["Rytuał Progu", "", Kind.TEST, "Test na oczach całej osady: co minutę ciężej, aż nogi powiedzą dość. Wynik ustawi twoje FTP."],
+			["Pułap 5×3", "wu12 5x(3@115 r3) cd8", Kind.RIDE, "Trzyminutowe odcinki powyżej progu. Kuźnia rozpala piec.", "Pułap 4×3", "wu8 4x(3@115 r3) cd4"],
+			["Wytrzymałość 45", EASY_45, Kind.RIDE, "Lekki kurs między ciężkimi dniami.", "Wytrzymałość 32", EASY_SHORT],
+			["Zrywy 2×10×30/15", "wu12 2x(10x(30s@120 15s@50) r4) cd8", Kind.RIDE, "Trzydzieści sekund ognia, piętnaście oddechu. Dwie serie.", "Zrywy 2×8×30/15", "wu8 2x(8x(30s@120 15s@50) r3) cd4"],
+			["Norweskie 4×4", "wu12 4x(4@110 r3) cd8", Kind.RIDE, "Czterominutowe odcinki. Stara szkoła z północy.", "Norweskie 3×4", "wu8 3x(4@110 r3) cd4"],
+			["Wytrzymałość 50", EASY_50, Kind.RIDE, "Długo i lekko. Jutro Młot.", "Wytrzymałość 32", EASY_SHORT],
+			["Młot Barona: 3×13×30/15", "wu12 3x(13x(30s@120 15s@50) r3) cd8", Kind.BOSS, "Młot bije co 45 sekund. Oddaj każde uderzenie.", "Młot Barona: 2×13×30/15", "wu8 2x(13x(30s@120 15s@50) r3) cd4"],
+			["Seiler 4×8", "wu12 4x(8@105 r2) cd8", Kind.RIDE, "Długie odcinki tuż nad progiem. Najwięcej czasu przy pułapie.", "Seiler 3×6", "wu8 3x(6@105 r2) cd4"],
+			["Wytrzymałość 45", EASY_45, Kind.RIDE, "Lekki kurs. Piec ma ostygnąć.", "Wytrzymałość 32", EASY_SHORT],
+			["Pułap 6×3", "wu12 6x(3@115 r3) cd8", Kind.RIDE, "Trzyminutowe odcinki, o jeden więcej niż na początku.", "Pułap 5×3", "wu8 5x(3@115 r2) cd4"],
+			["Kuźnia w ogniu: 5×5", "wu12 5x(5@108 r3) cd8", Kind.BOSS, "Serce kuźni Barona. Wytrzymaj wszystkie natarcia i piec gaśnie na dobre.", "Kuźnia w ogniu: 3×5", "wu8 3x(5@108 r3) cd4"],
+			["Rozruch przed rytuałem", OPENERS, Kind.RIDE, "Lekko, trzy krótkie przebudzenia nóg. Jutro rytuał.", "Rozruch przed rytuałem", OPENERS_SHORT],
+			["Rytuał Progu", "", Kind.TEST, TEST_STORY, "Rytuał Progu", ""],
 		],
 	},
 }
@@ -117,17 +125,22 @@ static func weeks(id: String) -> int:
 	return ceili(session_count(id) / float(SESSIONS_PER_WEEK))
 
 
-## Sesja kampanii: {"index", "week", "title", "spec", "kind", "story"}; {} gdy brak.
-static func session(id: String, index: int) -> Dictionary:
+## Sesja kampanii: {"index", "week", "title", "spec", "kind", "story", "short"}; {} gdy brak.
+## short = true daje krótki wariant (inny tytuł i opis treningu, ta sama sesja).
+static func session(id: String, index: int, short: bool = false) -> Dictionary:
 	if not DEFS.has(id) or index < 0 or index >= session_count(id):
 		return {}
 	var s: Array = DEFS[id]["sessions"][index]
-	return {"index": index, "week": floori(index / float(SESSIONS_PER_WEEK)) + 1, "title": s[0], "spec": s[1], "kind": s[2], "story": s[3]}
+	return {
+		"index": index, "week": floori(index / float(SESSIONS_PER_WEEK)) + 1,
+		"title": s[4] if short else s[0], "spec": s[5] if short else s[1],
+		"kind": s[2], "story": s[3], "short": short,
+	}
 
 
-## Plan treningowy sesji (dla testu FTP – plan testu narastającego).
-static func plan(id: String, index: int) -> WorkoutPlan:
-	var s := session(id, index)
+## Plan treningowy sesji (dla testu FTP – plan testu narastającego, taki sam w obu wariantach).
+static func plan(id: String, index: int, short: bool = false) -> WorkoutPlan:
+	var s := session(id, index, short)
 	if s.is_empty():
 		return null
 	var p := ramp_test_plan() if int(s["kind"]) == Kind.TEST else parse_spec(str(s["spec"]))

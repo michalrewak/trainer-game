@@ -1036,7 +1036,7 @@ func _summary(completed: bool) -> Dictionary:
 	if not _campaign.is_empty():
 		s["campaign"] = {
 			"id": _campaign["id"], "index": _campaign["index"], "title": _campaign["title"], "name": _campaign["name"],
-			"sessions": _campaign["sessions"], "kind": _campaign["kind"],
+			"sessions": _campaign["sessions"], "kind": _campaign["kind"], "short": _campaign.get("short", false),
 			"boss": boss.boss_name, "boss_defeated": boss.defeated, "boss_damage_pct": roundi((1.0 - boss.hp) * 100.0),
 		}
 	if ramp != null and ramp.done:

@@ -281,3 +281,62 @@ func test_campaign_session_in_app_follows_progress() -> void:
 	App.progress = old_progress
 	if not had_options:
 		App.options = null
+
+
+# --- Krótkie warianty sesji ---------------------------------------------------------
+
+func test_short_variants_keep_intensity_and_cut_volume() -> void:
+	for id in CampaignCatalog.ORDER:
+		for i in CampaignCatalog.session_count(id):
+			var full := CampaignCatalog.session(id, i)
+			var short := CampaignCatalog.session(id, i, true)
+			assert_eq(short["kind"], full["kind"], "%s #%d: ten sam rodzaj sesji" % [id, i])
+			assert_true(bool(short["short"]) and not bool(full["short"]))
+			assert_eq(short["story"], full["story"], "to ta sama sesja fabularnie")
+			if int(full["kind"]) == CampaignCatalog.Kind.TEST:
+				assert_near(CampaignCatalog.plan(id, i, true).total_duration_s(), CampaignCatalog.plan(id, i).total_duration_s(), 0.01, "test FTP jest jeden")
+				continue
+			var fp := CampaignCatalog.plan(id, i)
+			var sp := CampaignCatalog.plan(id, i, true)
+			var minutes := sp.total_duration_s() / 60.0
+			assert_between(minutes, 24.0, 42.0, "%s „%s”: krótka sesja ma %.0f min" % [id, short["title"], minutes])
+			assert_true(sp.total_duration_s() < fp.total_duration_s() * 0.85, "%s „%s” jest wyraźnie krótsza od pełnej" % [id, short["title"]])
+			assert_near(float(sp.summary()["max_intensity"]), float(fp.summary()["max_intensity"]), 1e-6, "%s „%s”: ta sama najwyższa intensywność" % [id, short["title"]])
+			assert_true(float(sp.summary()["tss"]) >= 12.0, "krótka sesja to nadal trening")
+			assert_eq(sp.name, str(short["title"]))
+			if int(full["kind"]) == CampaignCatalog.Kind.BOSS:
+				assert_true(sp.hard_blocks().size() >= 2, "%s: krótki boss też ma co najmniej dwa natarcia" % short["title"])
+				assert_true(str(short["title"]).contains(":") and str(short["title"]) != str(full["title"]), "krótki boss ma własny tytuł z protokołem")
+
+
+func test_short_setting_changes_the_campaign_plan() -> void:
+	var had_options := App.options != null
+	var old_progress: ProgressStore = App.progress
+	if not had_options:
+		App.options = LaunchOptions.new()
+	App.progress = ProgressStore.new("user://test_saves/%d/app_short.json" % OS.get_process_id())
+	var saved_path := App.selected_plan_path
+	var saved_campaign := App.options.campaign
+	var saved_short := App.options.campaign_short
+	App.selected_plan_path = App.CAMPAIGN_PLAN
+	App.options.campaign = "prog:9"
+	App.options.campaign_short = false
+	var was_setting: Variant = App.settings.get("campaign_short")
+	App.settings["campaign_short"] = false
+	var full_s := App.selected_plan().total_duration_s()
+	assert_eq(App.selected_plan().name, "Twierdza Barona: 2×20 na progu")
+	App.options.campaign_short = true
+	assert_true(bool(App.campaign_session()["short"]))
+	assert_eq(App.selected_plan().name, "Twierdza Barona: 2×10 na progu")
+	assert_true(App.selected_plan().total_duration_s() < full_s * 0.6, "krótki wariant skraca wyprawę")
+	assert_near(App.run_duration_s(), App.selected_plan().total_duration_s(), 0.01, "wyprawa trwa tyle, co plan")
+	App.options.campaign_short = saved_short
+	App.options.campaign = saved_campaign
+	App.selected_plan_path = saved_path
+	if was_setting == null:
+		App.settings.erase("campaign_short")
+	else:
+		App.settings["campaign_short"] = was_setting
+	App.progress = old_progress
+	if not had_options:
+		App.options = null

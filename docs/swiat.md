@@ -241,6 +241,8 @@ Kampania to czterotygodniowy blok treningowy opowiedziany jako pościg za Barone
   i tempo), **Droga do Progu** (słodki punkt, nad-i-pod progiem, 2×20 na progu), **Kuźnia
   VO2** (5×3, 4×4, 4×8 Seilera, 30/15 Rønnestada). Po trzy sesje w tygodniu, w tym lekkie
   dni wytrzymałości.
+- Każda sesja ma wariant pełny (35–72 min) i krótki (26–40 min): te same intensywności
+  i układ interwałów, mniejsza objętość. Postęp kampanii jest wspólny.
 - Sesje jedzie się po kolei; każda ma krótkie wprowadzenie Zębatki. Mapa kampanii w garażu
   pokazuje, co zaliczone, co następne i gdzie czekają bossowie.
 - **Bossowie** (dwóch na kampanię) to machiny Barona. Walka nie dokłada żadnego wysiłku
@@ -251,8 +253,8 @@ Kampania to czterotygodniowy blok treningowy opowiedziany jako pościg za Barone
   nowe FTP i rangę, a od FTP zależą cele wszystkich kolejnych sesji – ta sama kampania
   przejechana drugi raz jest odpowiednio cięższa.
 
-Stan wdrożenia (2026-11-21): wszystko powyżej działa. Do zrobienia: krótsze warianty
-sesji, napady i konwoje jako interwały, osobna scena twierdzy na finał.
+Stan wdrożenia (2026-11-21): wszystko powyżej działa. Do zrobienia: napady i konwoje
+jako interwały, osobna scena twierdzy na finał.
 
 ### 6. Trening zawsze w 100%
 
