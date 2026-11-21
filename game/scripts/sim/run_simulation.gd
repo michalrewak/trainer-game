@@ -25,6 +25,12 @@ var combat: CombatModel
 var challenges := ChallengeDirector.new()
 ## Napady na osady (zwiad i decyzja na zjeździe). Domyślnie wyłączone.
 var raids: RaidDirector
+## Konwoje Tłustych: pościg, odcinanie sprzęgów, przesiadka. Domyślnie wyłączone.
+var convoys: ConvoyDirector
+## Układ napędowy: załoga (akcelerator) i dopalacz. Generator siedzi w VehicleModel.
+var power_train := PowerTrain.new()
+## Moc na kołach z ostatniego kroku [W] (moc z nóg × akceleratory × dopalacz).
+var last_wheel_power_w := 0.0
 ## Wzniesienia i doliny (CourseProfile). W grze włączone, w czystej symulacji domyślnie płasko.
 var course: CourseProfile
 var course_enabled := false
@@ -56,6 +62,7 @@ func _init(duration_s: float = 900.0, seed_value: int = 0) -> void:
 	combat = CombatModel.new(self, seed_value)
 	course = CourseProfile.new(seed_value)
 	raids = RaidDirector.new(self, seed_value)
+	convoys = ConvoyDirector.new(self, seed_value)
 	challenges.enabled = false
 	challenges.finished.connect(_on_challenge_finished)
 	_refill()
@@ -109,18 +116,23 @@ func step(delta: float, power_w: float) -> void:
 	if expedition.finished or delta <= 0.0:
 		return
 	last_power_w = power_w
+	# Na koła idzie moc z nóg wzmocniona przez załogę i dopalacz; trening liczy samą moc z nóg.
+	power_train.step(delta)
+	var drive_w := power_w * power_train.multiplier()
+	last_wheel_power_w = drive_w * vehicle.engine_multiplier
 	var d0 := vehicle.distance_m
-	vehicle.step(delta, power_w)
+	vehicle.step(delta, drive_w)
 	lanes.step(delta)
 	invulnerable_left_s = maxf(0.0, invulnerable_left_s - delta)
 	ram_left_s = maxf(0.0, ram_left_s - delta)
 	expedition.tick(delta, power_w, vehicle.speed_mps, vehicle.distance_m)
 	_resolve_contacts(d0, vehicle.distance_m)
 	combat.step(delta, power_w)
-	# Wyzwania nie nakładają się na zwiad i napad – jedno zadanie naraz.
-	if raids.state == RaidDirector.State.IDLE:
+	# Wyzwania nie nakładają się na zwiad, napad ani konwój – jedno zadanie naraz.
+	if raids.state == RaidDirector.State.IDLE and not convoys.is_active():
 		challenges.step(delta, expedition.elapsed_s, expedition.time_left_s(), power_w)
 	raids.step(delta, power_w)
+	convoys.step(delta)
 	vehicle.grade = current_grade()
 	generator.difficulty = expedition.progress()
 	generator.speed_hint_mps = maxf(vehicle.speed_mps, 8.0)
@@ -137,6 +149,19 @@ func current_grade() -> float:
 	if course_enabled:
 		return course.grade_at(vehicle.distance_m)
 	return 0.0
+
+
+## Łączny mnożnik mocy: generator × załoga × dopalacz.
+func power_multiplier() -> float:
+	return vehicle.engine_multiplier * power_train.multiplier()
+
+
+## Odpala dopalacz (wtrysk czystego paliwa). False, gdy brak ładunków.
+func trigger_boost() -> bool:
+	if expedition.finished or not power_train.trigger():
+		return false
+	expedition.boosts_used += 1
+	return true
 
 
 func ram_ready() -> bool:
@@ -191,6 +216,7 @@ func _resolve_contacts(d0: float, d1: float) -> void:
 		elif item.is_fuel():
 			item.consumed = true
 			expedition.add_fuel(item.value)
+			power_train.refill(item.value)
 			fuel_collected.emit(item)
 		else:
 			item.consumed = true

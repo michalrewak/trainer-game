@@ -22,6 +22,8 @@ var _muzzle: MeshInstance3D
 var _muzzle_t := 0.0
 var _aim_line: MeshInstance3D
 var _towing := false
+var _boost_flame: Node3D
+var _boosting := false
 var _rear_m := 0.0
 var _sparks: CPUParticles3D
 var _spark_light: OmniLight3D
@@ -62,11 +64,19 @@ func sync(sim: RunSimulation, cadence_rpm: float, power_w: float, delta: float) 
 	# Kurz spod kół.
 	_dust.emitting = v > 1.0
 	_dust.speed_scale = clampf(v / 9.0, 0.3, 1.5)
+	if _boost_flame != null:
+		_boost_flame.visible = _boosting
+		_boost_flame.scale = Vector3(1.0 + 0.15 * sin(_time * 53.0), 1.0 + 0.15 * sin(_time * 47.0), 1.0 + 0.3 * sin(_time * 41.0))
 	# Błysk po uderzeniu.
 	if _flash > 0.0:
 		_flash = maxf(0.0, _flash - delta)
 		# Po końcu migania pojazd MUSI być widoczny (wcześniej znikał na resztę wyprawy).
 		_body.visible = _flash <= 0.0 or fmod(_flash, 0.14) > 0.05
+
+
+## Dopalacz: płomień z dyszy podczas wtrysku czystego paliwa.
+func set_boost(on: bool) -> void:
+	_boosting = on
 
 
 func on_hit() -> void:
@@ -197,6 +207,38 @@ func apply_loadout(loadout: Loadout) -> void:
 		mods.add_child(LowPoly.tube(Vector3(side * 0.6, 1.7, 0.3), Vector3(side * 1.7, 1.5, -0.3), 0.05, frame))
 		mods.add_child(LowPoly.tube(Vector3(side * 1.7, 1.5, -0.3), Vector3(side * 1.95, 0.45, -0.5), 0.035, steel))
 		mods.add_child(LowPoly.box(Vector3(0.3, 0.08, 0.3), Palette.glow(Palette.SCRAP_GLOW, 0.8), Vector3(side * 1.95, 0.4, -0.5)))
+
+	# Dopalacz: zaplombowane kanistry czystego paliwa i dysza z tyłu (jeden jest zawsze).
+	var boost := loadout.level(UpgradeCatalog.BOOSTER)
+	var bz := 1.3 if chassis < 2 else 2.7
+	var seal := Palette.glow(Color("ff8a3a"), 1.4)
+	for i in boost + 1:
+		var bx := (i - boost * 0.5) * 0.34
+		mods.add_child(LowPoly.box(Vector3(0.28, 0.5, 0.2), Palette.mat(Palette.PAINT_RED, 0.7, 0.3), Vector3(bx, 0.95, bz)))
+		mods.add_child(LowPoly.box(Vector3(0.3, 0.07, 0.22), seal, Vector3(bx, 1.05, bz)))
+	mods.add_child(LowPoly.cylinder(0.11 + 0.02 * boost, 0.45, frame, Vector3(0, 0.62, bz + 0.2), Vector3(PI * 0.5, 0, 0), 8))
+	_boost_flame = Node3D.new()
+	_boost_flame.position = Vector3(0, 0.62, bz + 0.45)
+	var cone := CylinderMesh.new()
+	cone.top_radius = 0.0
+	cone.bottom_radius = 0.2 + 0.04 * boost
+	cone.height = 1.6 + 0.3 * boost
+	cone.radial_segments = 8
+	_boost_flame.add_child(LowPoly.mesh_instance(cone, Palette.glow(Color("ff7a1a"), 6.0), Vector3(0, 0, cone.height * 0.5), Vector3.ONE, Vector3(PI * 0.5, 0, 0)))
+	var core := CylinderMesh.new()
+	core.top_radius = 0.0
+	core.bottom_radius = 0.1
+	core.height = 0.9
+	core.radial_segments = 6
+	_boost_flame.add_child(LowPoly.mesh_instance(core, Palette.glow(Color("9fe8ff"), 8.0), Vector3(0, 0, 0.45), Vector3.ONE, Vector3(PI * 0.5, 0, 0)))
+	var flame_light := OmniLight3D.new()
+	flame_light.light_color = Color(1.0, 0.55, 0.2)
+	flame_light.light_energy = 6.0
+	flame_light.omni_range = 9.0
+	flame_light.position = Vector3(0, 0.3, 0.8)
+	_boost_flame.add_child(flame_light)
+	_boost_flame.visible = false
+	mods.add_child(_boost_flame)
 
 	# Wieżyczka: osłona, podwójna lufa, ciężka lufa.
 	var old_turret_mods := _turret.get_node_or_null("TurretMods")

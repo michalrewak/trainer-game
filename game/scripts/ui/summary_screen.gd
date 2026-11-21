@@ -41,6 +41,10 @@ func _ready() -> void:
 		["Wyzwania", str(int(s.get("challenges_completed", 0)))],
 		["Napady", str(int(s.get("raids_done", 0)))],
 	]
+	if int(s.get("convoys_captured", 0)) + int(s.get("convoys_lost", 0)) > 0:
+		stats.append(["Konwoje", "%d przejęte, %d uciekło" % [int(s.get("convoys_captured", 0)), int(s.get("convoys_lost", 0))]])
+	if int(s.get("pedalers_freed", 0)) > 0:
+		stats.append(["Uwolnieni", "+%d do załogi" % int(s.get("pedalers_freed", 0))])
 	if s.has("workout"):
 		stats.append(["Trening", str(s["workout"])])
 		stats.append(["W widełkach", "%d%% czasu" % int(s.get("workout_in_band_pct", 0))])

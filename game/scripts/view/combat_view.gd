@@ -28,13 +28,19 @@ func sync(sim: RunSimulation, delta: float) -> void:
 	var seen := {}
 	for r in combat.raiders:
 		seen[r.id] = true
-		var v: RaiderView = _raider_views.get(r.id)
+		var v: Node3D = _raider_views.get(r.id)
 		if v == null:
-			v = RaiderView.new()
-			v.build(r.variant, r.side)
+			if r.is_convoy_part():
+				var part := ConvoyPartView.new()
+				part.build(r)
+				v = part
+			else:
+				var car := RaiderView.new()
+				car.build(r.variant, r.side)
+				v = car
 			add_child(v)
 			_raider_views[r.id] = v
-		v.sync(r, pd, delta)
+		v.call(&"sync", r, pd, delta)
 	for id in _raider_views.keys():
 		if not seen.has(id):
 			_raider_views[id].queue_free()

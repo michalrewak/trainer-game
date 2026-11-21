@@ -65,6 +65,12 @@ var aim := Vector2.ZERO
 var fire_held := false
 var auto_fire := false
 var locked_target_id := -1
+## „Ściana” konwoju na środkowym pasie (ustawia ConvoyDirector): wozy gangu nie wjeżdżają
+## w nią, nie taranują przez nią i nie da się przez nią strzelać.
+var wall_active := false
+var wall_x := 0.0
+var wall_from_d := 0.0
+var wall_to_d := 0.0
 
 ## Harmonogram potyczek (sekundy wyprawy).
 var first_encounter_s := 50.0
@@ -140,9 +146,12 @@ func _schedule(delta: float) -> void:
 	if suppressed:
 		_pending_spawns.clear()
 		for r in raiders:
-			if r.is_alive() and r.state != RaiderModel.State.RETREAT:
+			if r.is_alive() and r.state != RaiderModel.State.RETREAT and not r.is_convoy_part():
 				r.set_state(RaiderModel.State.RETREAT)
 		return
+	# Konwój ma własną eskortę – zwykłe potyczki czekają, aż się skończy.
+	if sim.convoys.is_active():
+		_next_encounter_s = maxf(_next_encounter_s, e.elapsed_s + 25.0)
 	if e.elapsed_s >= _next_encounter_s and e.time_left_s() > 20.0:
 		var difficulty := e.progress()
 		var count := 1
@@ -174,6 +183,24 @@ func spawn_raider(attack_side: int) -> RaiderModel:
 	return r
 
 
+## Część konwoju (ciągnik, galera, ogon, sprzęg): duży cel na środkowym pasie.
+## Nie atakuje; pozycję i odsłonięcie na ostrzał ustawia ConvoyDirector.
+func add_convoy_part(part: RaiderModel.Part, hp: int, variant: int = 0) -> RaiderModel:
+	var r := RaiderModel.new(_next_id, 0, variant)
+	_next_id += 1
+	r.part = part
+	r.max_hp = hp
+	r.hp = hp
+	r.set_state(RaiderModel.State.CONVOY)
+	raiders.append(r)
+	raider_spawned.emit(r)
+	return r
+
+
+func remove_raider(r: RaiderModel) -> void:
+	raiders.erase(r)
+
+
 # --- Ruch wrogów -----------------------------------------------------------------
 
 func _update_raiders(delta: float) -> void:
@@ -188,6 +215,8 @@ func _update_raiders(delta: float) -> void:
 			r.speed = maxf(0.0, r.speed - 14.0 * delta)
 			r.d += r.speed * delta
 			continue
+		if r.state == RaiderModel.State.CONVOY:
+			continue
 		var old_x := r.x
 		match r.state:
 			RaiderModel.State.APPROACH:
@@ -201,7 +230,7 @@ func _update_raiders(delta: float) -> void:
 				_steer_to(r, _flank_x(r.side), delta)
 				if _overlaps_player(r, px, pd):
 					_counter_bump(r)
-				elif r.timer >= SHADOW_TIME_S:
+				elif r.timer >= SHADOW_TIME_S and not _behind_wall(r, px):
 					r.set_state(RaiderModel.State.TELEGRAPH)
 					# Cel ataku i pozycja zablokowane: zmiana pasa podczas ostrzeżenia = unik.
 					r.locked_flank_x = _flank_x(r.side)
@@ -250,8 +279,23 @@ func _flank_x(attack_side: int) -> float:
 	var player_lane := lanes.target_lane
 	var lane := player_lane + attack_side
 	if lane >= 0 and lane < lanes.lane_count:
-		return lanes.lane_center(lane)
+		var x := lanes.lane_center(lane)
+		# Pas zajęty przez konwój: napastnik zostaje na swoim poboczu.
+		var pd := sim.vehicle.distance_m
+		if wall_active and absf(x - wall_x) < 1.0 and pd > wall_from_d - 6.0 and pd < wall_to_d + 6.0:
+			return _shoulder_x(attack_side)
+		return x
 	return _shoulder_x(attack_side)
+
+
+## Czy między graczem a tym wozem stoi kolumna konwoju.
+func _behind_wall(r: RaiderModel, px: float) -> bool:
+	if not wall_active or r.is_convoy_part():
+		return false
+	var mid := (r.d + sim.vehicle.distance_m) * 0.5
+	if mid < wall_from_d - 2.0 or mid > wall_to_d + 2.0:
+		return false
+	return (r.x - wall_x) * (px - wall_x) < 0.0 and absf(r.x - wall_x) > 1.0 and absf(px - wall_x) > 1.0
 
 
 func _shoulder_x(attack_side: int) -> float:
@@ -320,7 +364,15 @@ const VISIBLE_BEHIND_M := 4.0
 
 
 func _targetable(r: RaiderModel, pd: float) -> bool:
-	return r.is_alive() and r.state != RaiderModel.State.RETREAT and r.d > pd - VISIBLE_BEHIND_M
+	if not r.is_alive() or not r.exposed or r.state == RaiderModel.State.RETREAT or r.d + r.half_length <= pd - VISIBLE_BEHIND_M:
+		return false
+	return not _behind_wall(r, sim.lanes.x_m)
+
+
+## Wektor od gracza do najbliższego punktu celu (długie wagony liczone od końca bryły).
+func _rel_to(r: RaiderModel, px: float, pd: float) -> Vector2:
+	var along := r.d - pd
+	return Vector2(r.x - px, signf(along) * maxf(0.0, absf(along) - r.half_length))
 
 
 ## Cel: przy wychylonej gałce – wróg najbliżej kierunku gałki (stożek ~50°),
@@ -335,7 +387,7 @@ func current_target() -> RaiderModel:
 		for r in raiders:
 			if not _targetable(r, pd):
 				continue
-			var rel := Vector2(r.x - px, r.d - pd)
+			var rel := _rel_to(r, px, pd)
 			if rel.length() < 0.5:
 				continue
 			var dot := dir.dot(rel.normalized())
@@ -347,10 +399,10 @@ func current_target() -> RaiderModel:
 	for r in raiders:
 		if not _targetable(r, pd):
 			continue
-		var dist := Vector2(r.x - px, r.d - pd).length()
+		var dist := _rel_to(r, px, pd).length()
 		if dist > 60.0:
 			continue
-		var score := dist - (100.0 if r.is_threatening() else 0.0)
+		var score := dist - (100.0 if r.is_threatening() else 0.0) - r.aim_priority
 		if score < best_score:
 			best_score = score
 			best = r
@@ -436,15 +488,12 @@ func _update_projectiles(delta: float) -> void:
 		p["x"] = x1
 		p["d"] = d1
 		p["age"] = float(p["age"]) + delta
-		for r in raiders:
-			if not r.is_alive():
-				continue
-			if _segment_point_distance(Vector2(x0, d0), Vector2(x1, d1), Vector2(r.x, r.d)) < HIT_RADIUS:
-				p["alive"] = false
-				r.hit_flash = 0.25
-				raider_hit.emit(r)
-				_damage(r, projectile_damage, DestroyCause.SHOT)
-				break
+		var struck := _first_hit(Vector2(x0, d0), Vector2(x1, d1), int(p["target"]))
+		if struck != null:
+			p["alive"] = false
+			struck.hit_flash = 0.25
+			raider_hit.emit(struck)
+			_damage(struck, projectile_damage, DestroyCause.SHOT)
 		var raids := sim.raids
 		if p["alive"] and raids.gate_hp > 0 and raids.is_raiding() and d0 < raids.gate_d and d1 >= raids.gate_d:
 			# Brama osady stoi w poprzek całej drogi.
@@ -454,6 +503,29 @@ func _update_projectiles(delta: float) -> void:
 			_hit_wrecks(p, Vector2(x0, d0), Vector2(x1, d1))
 		if float(p["age"]) > PROJECTILE_MAX_AGE_S:
 			p["alive"] = false
+
+
+## Kogo trafia odcinek lotu pocisku. Najpierw cele punktowe (wozy gangu, sprzęgi),
+## potem długie bryły wagonów – inaczej wagon „zasłaniałby” sprzęg tuż obok.
+## Pocisk wycelowany w sprzęg mija burty wagonów (strzelec mierzy w szczelinę między nimi).
+func _first_hit(from: Vector2, to: Vector2, target_id: int = -1) -> RaiderModel:
+	var at_hitch := false
+	if target_id >= 0:
+		for r in raiders:
+			if r.id == target_id:
+				at_hitch = r.is_hitch()
+				break
+	for r in raiders:
+		if r.is_alive() and r.half_length <= 0.0 and _segment_point_distance(from, to, Vector2(r.x, r.d)) < r.hit_radius:
+			return r
+	for r in raiders:
+		if not r.is_alive() or r.half_length <= 0.0 or at_hitch:
+			continue
+		for k in 5:
+			var c := Vector2(r.x, r.d + lerpf(-r.half_length, r.half_length, k / 4.0))
+			if _segment_point_distance(from, to, c) < r.hit_radius:
+				return r
+	return null
 
 
 ## Pocisk trafia we wrak: dwa trafienia rozbijają go i zwalniają pas.
@@ -474,10 +546,17 @@ func _hit_wrecks(p: Dictionary, from: Vector2, to: Vector2) -> void:
 func _damage(r: RaiderModel, amount: int, cause: int) -> void:
 	if not r.is_alive():
 		return
+	if r.invulnerable:
+		# Klatka z ludźmi: wagon stoi, ale trafienia liczy konwój.
+		r.hits_taken += amount
+		return
 	r.hp -= amount
 	if r.hp <= 0:
 		r.hp = 0
 		r.set_state(RaiderModel.State.DESTROYED)
+		if r.is_convoy_part():
+			raider_destroyed.emit(r, 0, cause)
+			return
 		raiders_destroyed += 1
 		sim.expedition.raiders_destroyed += 1
 		var dropped := _drop_scrap(r)

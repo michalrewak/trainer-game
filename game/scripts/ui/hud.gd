@@ -17,6 +17,12 @@ var _speed_value: Label
 var _distance_value: Label
 var _power_value: Label
 var _cadence_value: Label
+var _wheel_label: Label
+var _convoy_box: PanelContainer
+var _convoy_title: Label
+var _convoy_status: Label
+var _convoy_diagram: ConvoyDiagram
+var _head: TalkingHead
 var _hint: Label
 var _message: Label
 var _popup: Label
@@ -71,6 +77,15 @@ func update_from(sim: RunSimulation, power: PowerSource, delta: float) -> void:
 		_cadence_value.add_theme_color_override("font_color", TrainingMetrics.ZONE_COLORS[zone].lerp(Palette.UI_TEXT, 0.35))
 	else:
 		_cadence_value.text = ""
+	# Układ napędowy: co z mocy z nóg trafia na koła i ile ładunków ma dopalacz.
+	var train := sim.power_train
+	var pips := "■".repeat(train.charges) + "□".repeat(maxi(0, train.max_charges - train.charges))
+	if train.is_boosting():
+		_wheel_label.text = "DOPALACZ +%d%%  ·  %d s  ·  NA KOŁACH %d W" % [roundi(train.boost_gain * 100.0), ceili(train.boost_left_s), roundi(sim.last_wheel_power_w)]
+		_wheel_label.add_theme_color_override("font_color", Color("ff9a4a"))
+	else:
+		_wheel_label.text = "NA KOŁACH %d W (×%.2f)  ·  DOPALACZ %s" % [roundi(sim.last_wheel_power_w), sim.power_multiplier(), pips]
+		_wheel_label.add_theme_color_override("font_color", Palette.UI_DIM)
 	_hint.text = power.get_hint()
 	_hint.visible = _hint.text != ""
 	_speed_value.text = "%d" % roundi(sim.vehicle.speed_kmh())
@@ -124,6 +139,40 @@ func update_scout(visible_now: bool, side: int = 1, title: String = "", lines: S
 		_scout_card.grow_horizontal = Control.GROW_DIRECTION_END if side < 0 else Control.GROW_DIRECTION_BEGIN
 		_scout_card.grow_vertical = Control.GROW_DIRECTION_END
 		_scout_card.position += Vector2(48.0 if side < 0 else -48.0, 70.0)
+
+
+## Gadająca głowa: kwestia z Chatter.line(); priorytet 0 = tło, 1 = zwykła, 2 = ważna.
+func say(line: Dictionary, priority: int = 1) -> void:
+	_head.say(line, priority)
+
+
+func head_busy() -> bool:
+	return _head.is_busy()
+
+
+## Panel konwoju: schemat kolumny z pozycją gracza i podpowiedź, co robić. {} = ukryj.
+## d: title, status, color, rel, beside, has_guard, has_tractor, hitch_rear, hitch_front,
+## guard_hp, tractor_hp, hitch_rear_hp, hitch_front_hp, window, board.
+func update_convoy(d: Dictionary) -> void:
+	_convoy_box.visible = not d.is_empty()
+	if d.is_empty():
+		return
+	_convoy_title.text = str(d.get("title", ""))
+	_convoy_status.text = str(d.get("status", ""))
+	_convoy_status.add_theme_color_override("font_color", d.get("color", Palette.UI_TEXT))
+	var g := _convoy_diagram
+	g.rel_m = float(d.get("rel", 0.0))
+	g.beside = bool(d.get("beside", false))
+	g.has_guard = bool(d.get("has_guard", true))
+	g.has_tractor = bool(d.get("has_tractor", true))
+	g.hitch_rear_alive = bool(d.get("hitch_rear", true))
+	g.hitch_front_alive = bool(d.get("hitch_front", true))
+	g.guard_hp = float(d.get("guard_hp", 1.0))
+	g.tractor_hp = float(d.get("tractor_hp", 1.0))
+	g.hitch_rear_hp = float(d.get("hitch_rear_hp", 1.0))
+	g.hitch_front_hp = float(d.get("hitch_front_hp", 1.0))
+	g.window = int(d.get("window", 0))
+	g.board = float(d.get("board", -1.0))
 
 
 ## Etap 6: linia wyzwania trybu wolnego w panelu mocy (pusta = ukryta).
@@ -213,6 +262,7 @@ func set_persistent_message(text: String) -> void:
 
 
 func _tick_effects(delta: float) -> void:
+	_head.tick(delta)
 	if _message_left > 0.0:
 		_message_left -= delta
 		_message.visible = true
@@ -296,6 +346,8 @@ func _build() -> void:
 	row.add_child(unit)
 	_cadence_value = UiStyle.label("", 34, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER)
 	col.add_child(_cadence_value)
+	_wheel_label = UiStyle.label("", 28, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	col.add_child(_wheel_label)
 	# Etap 2: zasilanie względem celu i tarcza.
 	var combat_col := VBoxContainer.new()
 	combat_col.add_theme_constant_override("separation", 6)
@@ -365,6 +417,27 @@ func _build() -> void:
 	scout_col.add_child(_scout_lines)
 	_scout_card.visible = false
 	_root.add_child(_scout_card)
+
+	# Panel konwoju: pod licznikiem czasu (w treningu konwojów nie ma, więc miejsce jest wolne).
+	_convoy_box = UiStyle.panel(Palette.UI_PANEL_STRONG)
+	var convoy_col := VBoxContainer.new()
+	convoy_col.add_theme_constant_override("separation", 2)
+	convoy_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_convoy_box.add_child(convoy_col)
+	_convoy_title = UiStyle.label("", 30, Palette.UI_ACCENT)
+	convoy_col.add_child(_convoy_title)
+	_convoy_diagram = ConvoyDiagram.new()
+	_convoy_diagram.custom_minimum_size = Vector2(760, 190)
+	_convoy_diagram.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	convoy_col.add_child(_convoy_diagram)
+	_convoy_status = UiStyle.label("", 34, Palette.UI_TEXT)
+	convoy_col.add_child(_convoy_status)
+	_place(_convoy_box, Control.PRESET_TOP_LEFT, Vector2(48, 196))
+	_convoy_box.visible = false
+
+	# Gadająca głowa: lewy dół, nad prędkością.
+	_head = TalkingHead.new()
+	_place(_head, Control.PRESET_BOTTOM_LEFT, Vector2(48, -232))
 
 	# Ostrzeżenia o gangu po bokach ekranu.
 	_threat_left = UiStyle.label("", 96, Palette.UI_BAD)

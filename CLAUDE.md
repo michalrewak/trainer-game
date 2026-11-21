@@ -19,7 +19,8 @@ Fabuła (Żarłok, Tłuści, burze iskrowe), kierunek graficzny (dzień, burza, 
 
 ## Mechanika jazdy
 
-- Moc z trenażera = prędkość pojazdu (z uwzględnieniem ulepszeń silnika).
+- Moc z trenażera = prędkość pojazdu (z uwzględnieniem ulepszeń silnika). Moc na kołach =
+  moc z nóg × akceleratory (generator, załoga) × dopalacz; trening liczy samą moc z nóg.
 - Trasa oparta o pasy: szeroki kanion z 3–4 torami, zmiana pasa krzyżakiem/lewą gałką pada. Omijanie wraków, zbieranie złomu, wybór odnogi na rozwidleniach.
 - Kadencja pokazywana dyskretnie w HUD, nie jest mechaniką.
 
@@ -29,6 +30,9 @@ Fabuła (Żarłok, Tłuści, burze iskrowe), kierunek graficzny (dzień, burza, 
 - Przegrana potyczka = utrata części złomu, nigdy „śmierć” ani przerwanie treningu.
 - Trzymanie zadanej mocy = pełna tarcza i szybszy ogień; spadek poniżej celu = słabsze zasilanie, ale nadal można grać.
 - Na ciężkich interwałach opcjonalne „pola bezpieczne” bez konieczności klikania.
+- Konwoje Tłustych: kolumna spięta sprzęgami, celem jest odczepienie galery z niewolnikami.
+  Trzeba przyspieszać i zwalniać razem z konwojem; za mało mocy i konwój ucieka. Zasady
+  w [docs/swiat.md](docs/swiat.md).
 
 ## Trening
 

@@ -13,8 +13,9 @@ const TURRET := "turret"
 const RAM := "ram"
 const SUSPENSION := "suspension"
 const GRABBER := "grabber"
+const BOOSTER := "booster"
 
-const ORDER: Array[String] = [CHASSIS, GENERATOR, ARMOR, CAPACITOR, TURRET, RAM, SUSPENSION, GRABBER]
+const ORDER: Array[String] = [CHASSIS, GENERATOR, BOOSTER, ARMOR, CAPACITOR, TURRET, RAM, SUSPENSION, GRABBER]
 
 ## id -> definicja. costs[i] = koszt kupna poziomu i+1: [złom, paliwo].
 const DEFS := {
@@ -27,9 +28,15 @@ const DEFS := {
 	},
 	GENERATOR: {
 		"name": "Generator",
-		"desc": "Mocniejsze uzwojenia: ta sama moc z nóg daje większą prędkość.",
-		"levels": ["+5% prędkości", "+10% prędkości", "+15% prędkości", "+20% prędkości", "+25% prędkości"],
+		"desc": "Akcelerator: mocniejsze uzwojenia, więc z tej samej mocy z nóg więcej trafia na koła. Działa cały czas.",
+		"levels": ["+5% mocy na kołach", "+10% mocy na kołach", "+15% mocy na kołach", "+20% mocy na kołach", "+25% mocy na kołach"],
 		"costs": [[120, 0], [300, 2], [650, 4], [1200, 7], [2000, 10]],
+	},
+	BOOSTER: {
+		"name": "Dopalacz",
+		"desc": "Wtrysk czystego paliwa: chwilowy zastrzyk mocy na kołach (RB / X / B). Bez modułu masz jeden słaby ładunek. Ładunki uzupełniają kanistry z trasy.",
+		"levels": ["2 ładunki: +35% mocy przez 8 s", "3 ładunki: +45% mocy przez 9 s", "4 ładunki: +55% mocy przez 10 s"],
+		"costs": [[180, 2], [520, 5], [1150, 9]],
 	},
 	ARMOR: {
 		"name": "Pancerz",

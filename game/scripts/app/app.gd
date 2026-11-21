@@ -129,7 +129,9 @@ func run_loadout() -> Loadout:
 		var maxed := {}
 		for id in UpgradeCatalog.ORDER:
 			maxed[id] = UpgradeCatalog.max_level(id)
-		return Loadout.new(maxed)
+		var full := Loadout.new(maxed)
+		full.crew = full.crew_seats()
+		return full
 	return progress.loadout()
 
 

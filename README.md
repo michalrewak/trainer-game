@@ -34,6 +34,7 @@ Pełny opis założeń: [CLAUDE.md](CLAUDE.md).
 | Zmiana pasa | krzyżak **← / →**, lewa gałka | A / D, strzałki ← / → |
 | Celowanie wieżyczki | prawa gałka: czerwona linia pokazuje kierunek; blisko wroga celownik sam go łapie | auto-cel |
 | Strzał | **LT** – strzela zawsze: we wroga w celowniku, a bez niego tam, gdzie wskazuje gałka (bez wychylenia prosto) | F |
+| Dopalacz (wtrysk czystego paliwa) | **RB** albo **X** | B |
 | Pauza / menu wyprawy | **Start** | Esc / P |
 | Podgląd wejść pada | **Back / Select** | F3 |
 | Menu | krzyżak/gałka + **A**, **B** wstecz | strzałki + Enter, Esc |
@@ -52,7 +53,12 @@ dla tego pada (inaczej pad udaje mysz).
 ## Rozgrywka
 
 - **Moc → prędkość**: model rowerowy z bezwładnością (opór powietrza, toczenia, podjazdy).
-  200 W ≈ 31 km/h, 300 W ≈ 36 km/h. Moduł generatora podnosi prędkość przy tej samej mocy.
+  200 W ≈ 31 km/h, 300 W ≈ 36 km/h.
+- **Moc na kołach = moc z nóg × akceleratory × dopalacz.** Akceleratory działają stale:
+  generator (moduł, do +25%) i załoga uwolnionych pedalarzy (+2% za osobę, tyle osób, ile
+  ławek ma podwozie: 2, 4, 6). Dopalacz to chwilowy wtrysk czystego paliwa (+25–55% na
+  6–10 s); ładunki uzupełniają kanistry zebrane na trasie. HUD pokazuje obie liczby, a
+  wartości treningowe (kJ, NP, TSS, strefy) liczą się zawsze z samej mocy z nóg.
 - **Wyprawa** trwa zadany czas (15/30/45/60 min, test 2 min). Kończy się zawsze po czasie,
   nigdy porażką. Zderzenie z wrakiem kosztuje prędkość i część złomu.
 - **Złom** (cyjanowe zębatki) i **paliwo** (czerwone kanistry) to waluty garażu.
@@ -61,8 +67,9 @@ dla tego pada (inaczej pad udaje mysz).
   „!” albo tarcza. Tarcza ładuje się i działko strzela szybciej, gdy trzymasz moc docelową
   (65% FTP w jeździe swobodnej). Przegrana potyczka to rabunek części złomu.
 - **Garaż i rozwój pojazdu**: podwozie (druga i trzecia oś) oraz 8 modułów: generator,
-  pancerz, kondensator, wieżyczka, taran, zawieszenie, chwytak, przyczepy. Każdy poziom
-  widać na pojeździe, od jednoosiowego buggy do pociągu z trzema wagonami. Większe podwozie
+  dopalacz, pancerz, kondensator, wieżyczka, taran, zawieszenie, chwytak. Każdy poziom
+  widać na pojeździe. Przyczepa nie jest modułem: doczepiasz ją tylko na czas zadania
+  „dowieź łup” po napadzie. Większe podwozie
   pozwala montować wyższe poziomy modułów i wymaga wypracowanych kilodżuli (400 kJ i
   2000 kJ łącznej pracy), więc nie da się go kupić samym złomem. Podsumowanie wyprawy
   podpowiada najbliższy cel. Wybór terenu: Kanion Rdzy, Martwe Miasto (wymaga pancerza i
@@ -71,6 +78,27 @@ dla tego pada (inaczej pad udaje mysz).
   nachylenie (symulacja trenażera), ucieczka przed gangiem w burzy piaskowej i sprint za
   ciężarówką to ERG. Cele liczone są od FTP. Nagrody: złom i paliwo, a nieudana ucieczka
   sprowadza gang. Na padzie ERG jest symulowany (tempomat sam ustawia moc celu).
+- **Napady i zwiad**: ok. 500 m przed zjazdem karta zwiadu pokazuje łup, obronę i koszt
+  wysiłku liczony od FTP. Zjazd na skrajny pas = napad: podjazd pod ostrzałem z wież, brama
+  (rozstrzelana, wyważona taranem albo sforsowana), plądrowanie, a potem dowiezienie łupu
+  na doczepionej przyczepie.
+- **Konwoje Tłustych**: środkowym pasem jedzie kolumna spięta sprzęgami: ogon ze strażą,
+  galera (klatka z niewolnikami-pedalarzami i kanistrami) i ciągnik z tronem Barona Smalca.
+  Cel: odczepić galerę. Sprzęg widać tylko z bocznego pasa, tuż zza niego, a konwój na
+  zmianę ucieka (ok. 100% FTP) i hamuje (ok. 55% FTP), więc trzeba naprawdę przyspieszać
+  i zwalniać, żeby utrzymać się w oknie. Trzy drogi: tylny sprzęg, potem przedni (czyste
+  cięcie: pełny łup i dodatkowy uwolniony), od razu przedni (szybciej, ale ogon zabiera 30%
+  łupu) albo rozbicie ciągnika (łup ×1,5, najwięcej pancerza). W klatkę nie wolno strzelać:
+  trzy trafienia to jeden uwolniony mniej. Po odcięciu trzeba zwolnić poniżej 18 km/h
+  i przytrzymać się wagonu – wtedy pedalarze przeskakują do załogi. Za mało mocy i konwój
+  ucieka; po 3,5 min walki dojeżdża do twierdzy. Panel w lewym górnym rogu pokazuje schemat
+  kolumny, twoją pozycję i polecenie „przyspiesz / zwolnij”.
+- **Gadające głowy**: zdarzenia komentują postacie ze świata gry – Baron Smalec (Tłusty),
+  Chudy (pedalarz z galery), Zębatka (mechaniczka z osady, podpowiada taktykę), Brat Obrót
+  (Kościół Świętej Kadencji, komentuje kadencję) i Iskra (gang). W spokojnych chwilach
+  opowiadają historię świata.
+- **Wartości treningowe**: HUD pokazuje procent FTP i strefę mocy, podsumowanie – NP, IF,
+  TSS, kJ i czas w strefach Z1–Z7, garaż – rangę wynikającą z FTP i trening z 7 dni.
 - Postęp zapisuje się w `%APPDATA%\Godot\app_userdata\Wasteland Rider\progress.json`
   (zapis atomowy z kopią `.bak`), także przy przerwaniu wyprawy albo zamknięciu okna.
 
@@ -89,9 +117,9 @@ dla tego pada (inaczej pad udaje mysz).
 Cel mocy zawsze ma **widełki**: za mało i za dużo to błąd. W treningu obowiązuje ±5%, w
 wyzwaniach ±8%. Powyżej górnej granicy generator się przegrzewa (słabsza tarcza i ogień).
 
-Następne kroki: kampanie treningowe (kilka tygodni, prawdziwe protokoły, bossowie), ramp
-test FTP jako walka z bossem, zakręty, wzniesienia i doliny na trasie, tempo gry
-względem FTP.
+Następne kroki: nowy wygląd menu i HUD, kampanie treningowe (kilka tygodni, prawdziwe
+protokoły, bossowie), ramp test FTP jako walka z bossem, napady i konwoje w trybie
+treningowym (dziś są tylko w jeździe swobodnej).
 
 ## Trenażer Elite Suito (etap 5)
 
@@ -118,7 +146,8 @@ wtedy mostek z `--port 8766`, a grę z `-- --bridge-port=8766`; gra zapamięta p
 `--minutes=N`, `--test` (2 min), `--autostart`, `--autopilot` (jazda automatyczna),
 `--time-scale=K`, `--seed=N`, `--quit-on-finish`, `--save=user://plik.json`,
 `--screenshots=KATALOG --shot-times=4,12`, `--combat-test`, `--no-combat`,
-`--terrain=city`, `--all-upgrades`, `--challenge-test`, `--no-challenges`, `--trainer`,
+`--terrain=city`, `--all-upgrades`, `--challenge-test`, `--no-challenges`, `--raid-test`,
+`--no-raids`, `--convoy-test` (konwój po 5 s, bez zwiadów i wyzwań), `--no-convoys`, `--trainer`,
 `--plan=res://plans/kanion_4x4.json`, `--time=cycle|day|dusk|night|storm`.
 Szczegóły: `game/scripts/app/launch_options.gd`.
 
@@ -129,8 +158,10 @@ powershell -ExecutionPolicy Bypass -File tools/test.ps1
 ```
 
 Skrypt importuje projekt, kompiluje wszystkie skrypty i sceny, uruchamia testy jednostkowe
-(model mocy, pojazd, pasy, trasa, walka, progresja, zapis) i test dymny: pełną wyprawę
-autopilotem, przyspieszoną, z zapisem wyniku. Pojedynczo:
+(model mocy, pojazd, pasy, trasa, walka, napady, konwoje, układ napędowy, progresja, zapis)
+i dwa testy dymne: pełną wyprawę autopilotem oraz wyprawę z konwojem, przyspieszone,
+z zapisem wyniku. Podgląd gadających głów: `--script res://tests/show_busts.gd -- plik.png`.
+Pojedynczo:
 
 ```bash
 .tools/godot-4.7.2/Godot_v4.7.2-stable_win64_console.exe --headless --path game --script res://tests/run_tests.gd

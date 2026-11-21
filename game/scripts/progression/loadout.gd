@@ -4,6 +4,8 @@ extends RefCounted
 ## Jedno miejsce, które tłumaczy poziomy ulepszeń na liczby w symulacji.
 
 var levels: Dictionary = {}
+## Uwolnieni pedalarze w magazynie; na pokład wchodzi tylu, ile jest ławek.
+var crew := 0
 
 
 func _init(p_levels: Dictionary = {}) -> void:
@@ -17,6 +19,33 @@ func level(id: String) -> int:
 
 func engine_multiplier() -> float:
 	return 1.0 + 0.05 * level(UpgradeCatalog.GENERATOR)
+
+
+## Ławki dla załogi: buggy zabiera dwóch pedalarzy, każda kolejna oś – dwóch więcej.
+func crew_seats() -> int:
+	return 2 + 2 * level(UpgradeCatalog.CHASSIS)
+
+
+func active_crew() -> int:
+	return clampi(crew, 0, crew_seats())
+
+
+## Dopalacz: liczba ładunków, zysk mocy i czas działania.
+func boost_charges() -> int:
+	return [1, 2, 3, 4][level(UpgradeCatalog.BOOSTER)]
+
+
+func boost_gain() -> float:
+	return [0.25, 0.35, 0.45, 0.55][level(UpgradeCatalog.BOOSTER)]
+
+
+func boost_duration_s() -> float:
+	return [6.0, 8.0, 9.0, 10.0][level(UpgradeCatalog.BOOSTER)]
+
+
+## Stały mnożnik mocy na kołach: generator × załoga (bez dopalacza).
+func accelerator_multiplier() -> float:
+	return engine_multiplier() * (1.0 + PowerTrain.CREW_BONUS_EACH * active_crew())
 
 
 ## Mnożnik strat złomu (zderzenia z wrakami i rabunki).
@@ -68,6 +97,12 @@ func ram_keeps_speed() -> bool:
 ## Zapisuje parametry do świeżej symulacji wyprawy.
 func apply_to(sim: RunSimulation) -> void:
 	sim.vehicle.engine_multiplier = engine_multiplier()
+	sim.power_train.crew = active_crew()
+	sim.power_train.max_charges = boost_charges()
+	sim.power_train.charges = boost_charges()
+	sim.power_train.boost_gain = boost_gain()
+	sim.power_train.boost_duration_s = boost_duration_s()
+	sim.convoys.base_tier = level(UpgradeCatalog.CHASSIS)
 	sim.impact_speed_factor = impact_speed_factor()
 	sim.expedition.scrap_loss_factor = scrap_loss_factor()
 	sim.combat.shield_regen_multiplier = shield_regen_multiplier()

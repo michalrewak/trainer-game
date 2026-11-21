@@ -10,8 +10,8 @@ func _store_with(scrap: int, fuel: int, kj: int = 0, upgrades: Dictionary = {}) 
 	return s
 
 
-func test_catalog_has_chassis_and_seven_modules_with_costs() -> void:
-	assert_eq(UpgradeCatalog.ORDER.size(), 8)
+func test_catalog_has_chassis_and_eight_modules_with_costs() -> void:
+	assert_eq(UpgradeCatalog.ORDER.size(), 9)
 	assert_eq(UpgradeCatalog.ORDER[0], UpgradeCatalog.CHASSIS)
 	for id in UpgradeCatalog.ORDER:
 		assert_true(UpgradeCatalog.max_level(id) >= 2, "%s ma poziomy" % id)

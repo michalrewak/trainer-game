@@ -157,6 +157,10 @@ func _maybe_scout(sim: RunSimulation) -> void:
 	if not enabled or sim.expedition.finished or sim.safe_zone:
 		return
 	var d := sim.vehicle.distance_m
+	if sim.convoys.is_active():
+		# Konwój ma pierwszeństwo: rozwidlenie odsuwa się za pole walki.
+		_next_fork_m = maxf(_next_fork_m, d + SCOUT_M + 150.0)
+		return
 	if d < _next_fork_m - SCOUT_M or sim.challenges.phase != ChallengeDirector.Phase.IDLE:
 		return
 	# Osada musi zmieścić się w pozostałym czasie wyprawy (dojazd ~1 min + napad).

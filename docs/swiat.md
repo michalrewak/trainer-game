@@ -32,8 +32,9 @@ dołączyć do załogi gracza.
 ### Czyste paliwo
 
 Zaplombowane kanistry sprzed zarazy są święte i bezcenne. Po otwarciu Żarłok dobiera się
-do nich w kilka godzin, więc nikt nie spala ich w silniku. Służą za walutę, a w walce
-do miotaczy ognia i innych jednorazowych broni.
+do nich w kilka godzin, więc nikt nie jeździ na nich na co dzień. Służą za walutę, a w walce
+do miotaczy ognia, dopalaczy i innych jednorazowych zastosowań. Dopalacz to wtrysk
+otwartego właśnie kanistra prosto do silnika: kilka sekund potężnej mocy i po paliwie.
 
 ### Burze iskrowe
 
@@ -48,6 +49,36 @@ Fanatycy wierzą, że świat skończył się, bo ludzkość przestała kręcić.
 90 obr./min, noszą liczniki kadencji jak relikwie i gardzą każdym, kto „mieli”.
 Bywają sojusznikami albo wrogami, zależnie od tego, jak gracz jeździ.
 
+### Po co się rozwijać
+
+Słaby jeździ sam i oddaje złom każdemu, kto go dogoni. Żeby to zmienić, trzeba trzech
+rzeczy naraz, i wszystkie biorą się z nóg:
+
+- **Ranga (FTP).** Waty to status. Wyższe FTP to wyższa ranga (Piechur → Kręciciel →
+  Ciągnik → Lokomotywa → Turbina → Reaktor → Legenda Pustkowi), wstęp na dalsze tereny
+  i szacunek osady. FTP nie da się kupić za złom, trzeba je wyjeździć.
+- **Praca (kilodżule).** Większego podwozia nie udźwignie ktoś, kto mało jeździ: rama
+  wymaga wypracowanych kilodżuli. To jedyna waluta, której nie da się ukraść.
+- **Ludzie.** Każda rozbita galera to uwolnieni pedalarze. Siadają na ławkach twojego
+  pojazdu i dokładają swoje waty. Baron Smalec ma setki skutych nóg, ty masz na razie
+  dwie. Każda wyprawa zmienia ten rachunek.
+
+Cel na horyzoncie: zebrać załogę i machinę, przed którą Tłuści zamykają bramy, i rozbić
+twierdzę Barona.
+
+### Postacie (gadające głowy)
+
+Zdarzenia w grze komentują postacie w okienku z popiersiem. Mówią krótko, żeby dało się
+to przeczytać z 3 metrów. Kwestie: `game/scripts/progression/chatter.gd`.
+
+| Postać | Kim jest | Kiedy się odzywa |
+|---|---|---|
+| **Baron Smalec** | Tłusty, watażka. Sam nie pedałuje, jeździ na tronie na ciągniku. | pogania i hamuje konwój, drwi, rozpacza po stracie galery |
+| **Chudy** | pedalarz przykuty do korby na galerze, głos całej klatki | ostrzega przed tempem, krzyczy, gdy strzelasz w klatkę, woła o przesiadkę |
+| **Zębatka** | mechaniczka z osady gracza, głos w radiu | podpowiada taktykę, komentuje dopalacz i widełki, opowiada o świecie |
+| **Brat Obrót** | kaznodzieja Kościoła Świętej Kadencji | ocenia kadencję: gani mielenie, chwali równe 90 obr./min |
+| **Iskra** | gangster z pustkowi | zaczepia, gdy nadjeżdża gang albo eskorta, lamentuje po rozbiciu |
+
 ### Jak fabuła tłumaczy mechaniki
 
 | Mechanika | Wyjaśnienie w świecie |
@@ -60,6 +91,10 @@ Bywają sojusznikami albo wrogami, zależnie od tego, jak gracz jeździ.
 | Tereny odblokowane przez FTP | waty to ranga, słabszych nie wpuszcza się dalej |
 | Bossowie w kampanii | Tłuści i ich machiny na galerach pedałowych |
 | Przegrana nigdy nie kończy jazdy | kto stanie, ten ginie, więc zawsze jedzie się dalej |
+| Dopalacz (chwilowy zastrzyk mocy) | wtrysk świeżo otwartego kanistra czystego paliwa |
+| Załoga jako stały mnożnik mocy | uwolnieni pedalarze kręcą razem z tobą |
+| Konwój na zmianę ucieka i hamuje | Baron pogania skutych pedalarzy albo każe im stanąć, żebyś się wyłożył |
+| Trening liczy tylko moc z nóg | paliwo i załoga pomagają pojazdowi, nie twojej formie |
 
 ## Kierunek graficzny: dzień, burza i noc
 
@@ -100,11 +135,14 @@ płaska.
 Pojazd jest głównym bohaterem i główną nagrodą. Każda wyprawa ma przybliżać do kolejnej
 części, a każda część ma być widoczna na pojeździe i odczuwalna w jeździe.
 
-- Droga od jednoosiowego buggy do pustynnego pociągu pancernego: kolejne osie, przyczepy,
-  wieżyczki, pancerz, zawieszenie, generator, kondensatory.
+- Droga od jednoosiowego buggy do pustynnej machiny pancernej: kolejne osie, wieżyczki,
+  pancerz, zawieszenie, generator, kondensatory, dopalacz. Przyczepy nie ciąga się na
+  stałe: to tymczasowe zadanie („dowieź łup”) po napadzie.
 - Stan wdrożenia (2026-11-21): podwozie w trzech stopniach (buggy, druga oś, trzecia oś)
   i 8 modułów po 2–5 poziomów; podwozie wymaga łącznej pracy w kJ (400 i 2000) i
-  ogranicza poziomy modułów. Do zrobienia: załoga z uwolnionych pedalarzy, części
+  ogranicza poziomy modułów. Jest układ napędowy: moc na kołach = moc z nóg ×
+  akceleratory (generator, załoga) × dopalacz, a załoga rośnie z każdą przejętą galerą
+  (ławki: 2, 4, 6 według podwozia). Do zrobienia: załoga widoczna na pojeździe, części
   z napadów i od bossów.
 - Uwolnieni pedalarze jako załoga i źródło nowych możliwości.
 - Części zdobywane nie tylko za złom: z napadów, od bossów i za wyniki w kampanii.
@@ -123,9 +161,44 @@ Gracz wybiera, którędy jedzie i co atakuje, a z daleka widzi, czego się spodz
   Przegrana to odparcie i utrata części łupu, nigdy śmierć.
 - Bogatsze sterowanie: moduły na LB/RB (taran, dym, miny), zmiana broni, lornetka, hak.
 
-### 3. Trening zawsze w 100%
+Stan wdrożenia (2026-11-21): zwiad z kartą, zjazd skrajnym pasem, trzy stopnie osad,
+ostrzał z wież, brama, plądrowanie i dowiezienie łupu na doczepionej przyczepie – w jeździe
+swobodnej. Do zrobienia: lornetka, napady w trybie treningowym.
+
+### 3. Konwoje: walka o tempo i o ludzi
+
+Konwój to najważniejsza walka w grze i jedyna, w której wygrywa się głową i nogami naraz.
+
+- Kolumna jedzie środkowym pasem: **ogon** ze strażnikiem i zrzutnią min, **galera**
+  (klatka ze skutymi pedalarzami, którzy napędzają całość, i kanistry czystego paliwa),
+  **ciągnik** z tronem Barona. Wagony łączą sprzęgi.
+- Celem jest **odczepić galerę**, nie rozstrzelać wszystko. Sprzęg da się trafić tylko
+  z bocznego pasa, tuż zza niego. Kto strzela w klatkę, ten rani ludzi i uwalnia mniej.
+- **Tempo**: konwój jedzie rytmem liczonym od FTP gracza. Baron na zmianę pogania
+  (ok. 100% FTP) i każe hamować (ok. 55% FTP). Żeby utrzymać się przy sprzęgu, trzeba
+  naprawdę przyspieszać i zwalniać. Za mało mocy i konwój ucieka. Akceleratory i dopalacz
+  zmniejszają waty potrzebne do trzymania tempa.
+- **Trzy drogi**: chirurg (tylny sprzęg, potem przedni: pełny łup, jeden uwolniony
+  więcej), na skróty (tylko przedni: szybciej, ale ogon zabiera 30% łupu) i rzeźnik
+  (rozbić ciągnik: łup ×1,5).
+- **Przesiadka**: odcięty wagon wytraca prędkość. Trzeba zwolnić poniżej 18 km/h i zostać
+  przy nim kilka sekund. Kto przeleci, zgarnia resztki i nikogo nie uwalnia.
+- Zagrożenia: miny z ogona (unik zmianą pasa), wozy eskorty od zewnętrznej strony, zderzak
+  kolumny, limit czasu (konwój dojeżdża do twierdzy). Przegrana to utracony łup, nigdy
+  koniec jazdy.
+- Poziom konwoju rośnie z podwoziem gracza (Cysterna Tłustych, Galera Smalca, Skarbiec
+  Barona), a drugi konwój wyprawy jest o stopień cięższy.
+
+Stan wdrożenia (2026-11-21): wszystko powyżej działa w jeździe swobodnej. Do zrobienia:
+konwoje jako interwały w trybie treningowym, bossowie kampanii, załoga widoczna na pojeździe.
+
+### 4. Trening zawsze w 100%
 
 Nadrzędna zasada z CLAUDE.md zostaje. W trybie treningowym o wysiłku decyduje plan, a gracz
 wybiera tylko, co robi w tym czasie: napad wypada na interwał, objazd na regenerację.
 W jeździe swobodnej napad to interwał, który gracz sam sobie wybiera. Cel mocy ma widełki:
 za mało i za dużo to błąd.
+
+Gra pokazuje wartości treningowe wprost: procent FTP i strefę mocy w HUD, NP, IF, TSS, kJ
+i czas w strefach w podsumowaniu, rangę z FTP i trening z ostatnich 7 dni w garażu. Liczą
+się zawsze z mocy z nóg, bez akceleratorów i dopalacza.

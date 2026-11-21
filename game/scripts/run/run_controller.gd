@@ -13,6 +13,7 @@ const FINISH_DELAY_S := 2.5
 @onready var weather: WeatherFx = $Weather
 
 var raid_view: RaidView
+var convoy_view: ConvoyView
 var _loadout: Loadout
 @onready var camera: ChaseCamera = $Camera
 @onready var hud: Hud = $Hud
@@ -63,6 +64,8 @@ func _ready() -> void:
 	camera.extra_back = BuggyView.tail_length(loadout)
 	raid_view = RaidView.new()
 	add_child(raid_view)
+	convoy_view = ConvoyView.new()
+	add_child(convoy_view)
 	_apply_terrain_look(App.selected_terrain)
 	weather.setup($WorldEnvironment, sun)
 	weather.attach_headlights(buggy)
@@ -80,6 +83,8 @@ func _ready() -> void:
 	_setup_challenges()
 	_setup_workout()
 	_setup_raids()
+	_setup_convoys()
+	sim.combat.raider_spawned.connect(_on_raider_spawned)
 	pause_menu.resume_requested.connect(_resume)
 	pause_menu.end_requested.connect(_end_early)
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
@@ -88,6 +93,7 @@ func _ready() -> void:
 	if autopilot == null:
 		hud.set_persistent_message("Wciśnij RT albo W, żeby ruszyć")
 	_update_views(0.0, 0.0)
+	_say("start", 0)
 
 
 func _process(delta: float) -> void:
@@ -160,11 +166,20 @@ func _ride(delta: float) -> void:
 	# LT strzela zawsze; RT dodatkowo, gdy moc daje trenażer (RT nie jest wtedy „pedałem”).
 	var rt_fires := not (power is GamepadPowerSource) and Input.get_action_raw_strength(&"power_trigger") > 0.3
 	sim.combat.fire_held = Input.is_action_pressed(&"fire") or rt_fires
+	if Input.is_action_just_pressed(&"boost"):
+		_fire_boost(true)
+	elif autopilot != null and autopilot.wants_boost(sim):
+		_fire_boost(false)
+	if autopilot != null and sim.convoys.is_active():
+		power.set_erg_target(autopilot.convoy_power_w(sim, App.ftp_w()))
 	var p := power.get_power_watts()
 	sim.combat.target_power_w = _current_target_w()
 	if workout != null:
 		sim.combat.target_low_tol = TargetBand.WORKOUT_TOL
 		sim.combat.target_high_tol = TargetBand.WORKOUT_TOL
+	elif sim.convoys.is_active():
+		sim.combat.target_low_tol = sim.convoys.band_low()
+		sim.combat.target_high_tol = sim.convoys.band_high()
 	elif sim.challenges.is_active() or sim.raids.is_raiding():
 		sim.combat.target_low_tol = TargetBand.CHALLENGE_TOL
 		sim.combat.target_high_tol = TargetBand.CHALLENGE_TOL
@@ -178,12 +193,14 @@ func _ride(delta: float) -> void:
 		_send_terrain_grade()
 	_update_views(delta, p)
 	_update_challenge_hud()
+	_tick_chatter(delta, p)
 	if sim.vehicle.speed_mps > 1.5:
 		hud.set_persistent_message("")
 	var e := sim.expedition
 	if not _last_minute_shown and e.duration_s >= 120.0 and e.time_left_s() <= 60.0:
 		_last_minute_shown = true
 		hud.show_message("OSTATNIA MINUTA", 3.0)
+		_say("last_minute", 1)
 	_maybe_screenshot()
 	# Checkpoint co 60 s: po awarii (np. utrata GPU) złom z wyprawy nie przepada.
 	_checkpoint_t += delta
@@ -194,6 +211,7 @@ func _ride(delta: float) -> void:
 		_state = State.FINISHING
 		_finish_left = FINISH_DELAY_S
 		hud.show_message("META!  +%d złomu" % e.scrap, FINISH_DELAY_S + 1.0)
+		_say("finish", 2)
 
 
 func _update_views(delta: float, power_w: float) -> void:
@@ -201,6 +219,8 @@ func _update_views(delta: float, power_w: float) -> void:
 	buggy.sync(sim, power.get_cadence(), power_w, delta)
 	combat_view.sync(sim, delta)
 	raid_view.sync(sim, delta)
+	convoy_view.sync(sim, delta)
+	buggy.set_boost(sim.power_train.is_boosting())
 	var aim_at: Variant = sim.combat.aim_point()
 	var target_local: Variant = null
 	if aim_at is Vector2:
@@ -214,6 +234,11 @@ func _update_views(delta: float, power_w: float) -> void:
 	weather.set_time(_time_of_day())
 	RenderingServer.global_shader_parameter_set(&"track_d", sim.vehicle.distance_m)
 	RenderingServer.global_shader_parameter_set(&"climb_slope", _tilt)
+	# Przy konwoju kamera odsuwa się, żeby było widać całą kolumnę obok pojazdu.
+	var want_back := BuggyView.tail_length(_loadout, sim.raids.is_towing())
+	if sim.convoys.is_active() and sim.convoys.gap_m() < 45.0:
+		want_back += 7.0
+	camera.extra_back = lerpf(camera.extra_back, want_back, 1.0 - exp(-delta * 1.2))
 	camera.follow(sim.lanes.x_m, sim.vehicle.speed_mps, delta)
 	hud.update_from(sim, power, delta)
 	hud.update_combat(sim.combat, power_w, sim.lanes.x_m, delta)
@@ -224,6 +249,8 @@ func _current_target_w() -> float:
 	if workout != null:
 		var w := workout.target_w(sim.expedition.elapsed_s)
 		return w if w > 0.0 else App.free_ride_target_w()
+	if sim.convoys.is_active():
+		return sim.convoys.target_w()
 	if sim.raids.is_raiding():
 		return sim.raids.target_w()
 	if sim.challenges.is_active():
@@ -297,7 +324,8 @@ func _setup_raids() -> void:
 		if autopilot != null:
 			autopilot.take_raids = true
 	r.scouted.connect(func(s: Dictionary) -> void:
-		hud.show_message("ZWIAD: %s" % str(s["name"]), 2.5))
+		hud.show_message("ZWIAD: %s" % str(s["name"]), 2.5)
+		_say("raid_scout", 1, 240.0))
 	r.started.connect(_on_raid_started)
 	r.shell_landed.connect(_on_shell_landed)
 	r.gate_broken.connect(_on_gate_broken)
@@ -315,6 +343,7 @@ func _on_raid_started(s: Dictionary) -> void:
 	track.town_from = sim.raids.gate_d
 	track.town_to = sim.raids.gate_d + float(s["duration_s"]) * 11.0
 	hud.show_message("NAPAD: %s\nPodjazd pod ostrzałem – rozbij bramę" % str(s["name"]).to_upper(), 3.0)
+	_say("raid_start", 1)
 
 
 func _on_shell_landed(shell: Dictionary, hit: bool, blocked: bool, lost: int) -> void:
@@ -347,7 +376,6 @@ func _on_gate_broken(how: int) -> void:
 func _on_escape_started(_s: Dictionary, scrap: int, fuel: int) -> void:
 	power.set_erg_target(0.0)
 	buggy.set_loot_wagon(true)
-	camera.extra_back = BuggyView.tail_length(_loadout, true)
 	var cargo := "%d złomu" % scrap + (" i %d paliwa" % fuel if fuel > 0 else "")
 	hud.show_message("DOWIEŹ ŁUP!\n%s na przyczepie" % cargo, 3.0)
 
@@ -355,11 +383,11 @@ func _on_escape_started(_s: Dictionary, scrap: int, fuel: int) -> void:
 func _on_raid_finished(_s: Dictionary, scrap: int, fuel: int, repelled: bool) -> void:
 	power.set_erg_target(0.0)
 	buggy.set_loot_wagon(false)
-	camera.extra_back = BuggyView.tail_length(_loadout)
 	if repelled:
 		hud.show_message("ODPARCI – osada się obroniła", 3.0)
 	else:
 		hud.show_message("ŁUP DOWIEZIONY: +%d złomu%s" % [scrap, ", +%d paliwa" % fuel if fuel > 0 else ""], 3.5)
+		_say("raid_done", 1)
 
 
 ## Karta zwiadu i stan napadu w HUD. Zwraca true, gdy napad zajmuje linię statusu.
@@ -394,6 +422,246 @@ func _update_raid_hud() -> bool:
 			return true
 	hud.update_scout(false)
 	return false
+
+
+# --- Konwoje Tłustych: pościg, odcinanie sprzęgów, przesiadka --------------------
+
+func _setup_convoys() -> void:
+	var c := sim.convoys
+	c.enabled = workout == null and not App.options.no_convoys and sim.combat.enabled
+	c.ftp_w = App.ftp_w()
+	if App.options.convoy_test:
+		# Test konwoju: od razu, bez zwiadów i wyzwań w tle.
+		c.set_first_at(5.0)
+		sim.raids.enabled = false
+		sim.challenges.enabled = false
+	c.sighted.connect(func(info: Dictionary) -> void:
+		hud.show_message("KONWÓJ: %s\nDogoń go – jedź mocniej niż %d W" % [str(info["name"]).to_upper(), roundi(c.hold_power_w())], 3.5)
+		_say("convoy_sighted", 2))
+	c.engaged.connect(func(_info: Dictionary) -> void:
+		hud.show_message("ODCZEP GALERĘ!\nBoczny pas, zrównaj się ze sprzęgiem i strzelaj w sworzeń", 4.0)
+		_say("convoy_engaged", 2)
+		_say("convoy_hint", 1))
+	c.pace_warning.connect(func(fast: bool) -> void: _say("pace_fast" if fast else "pace_slow", 1))
+	c.pace_changed.connect(func(fast: bool) -> void:
+		if fast:
+			hud.show_popup("KONWÓJ UCIEKA – DOCIŚNIJ!", Palette.UI_ACCENT, 1.8)
+		else:
+			hud.show_popup("KONWÓJ HAMUJE – ODPUŚĆ!", Palette.UI_SCRAP, 1.8))
+	c.hitch_broken.connect(func(front: bool) -> void:
+		camera.shake(0.9)
+		hud.show_popup("PRZEDNI SPRZĘG PUŚCIŁ!" if front else "TYLNY SPRZĘG PUŚCIŁ – OGON ODPADA!", Palette.UI_GOOD, 2.2)
+		_say("hitch_front" if front else "hitch_rear", 2))
+	c.guard_lost.connect(func(destroyed: bool) -> void:
+		if destroyed:
+			camera.shake(1.0)
+			hud.show_popup("OGON ROZBITY!", Palette.UI_GOOD, 2.0)
+			_say("guard_destroyed", 2))
+	c.tractor_destroyed.connect(func() -> void:
+		camera.shake(1.6)
+		hud.show_popup("CIĄGNIK BARONA ROZBITY! ŁUP ×1,5", Palette.UI_GOOD, 2.6)
+		_say("tractor_destroyed", 2))
+	c.cage_hit.connect(func(left: int) -> void:
+		hud.show_popup("TRAFIASZ W KLATKĘ! Uwolnisz już tylko %d" % left, Palette.UI_BAD, 2.0)
+		_say("cage_hit", 2, 8.0))
+	c.mine_dropped.connect(func(_m: Dictionary) -> void: _say("mine", 0, 40.0))
+	c.mine_exploded.connect(_on_mine_exploded)
+	c.bumped.connect(func(squeezed: bool) -> void:
+		buggy.on_hit()
+		camera.shake(1.0)
+		hud.show_popup("ZGNIECIONY MIĘDZY WAGONAMI!" if squeezed else "ZDERZENIE Z KONWOJEM!", Palette.UI_BAD)
+		_say("bump", 1, 30.0))
+	c.capture_started.connect(func(_jackpot: bool) -> void:
+		hud.show_message("PRZESIADKA!\nZwolnij poniżej %d km/h i trzymaj się galery" % roundi(ConvoyDirector.BOARD_MAX_SPEED * 3.6), 4.0)
+		_say("capture", 2))
+	c.finished.connect(_on_convoy_finished)
+
+
+func _on_mine_exploded(mine: Dictionary, hit: bool, blocked: bool, lost: int) -> void:
+	combat_view.explode_at(Vector3(sim.lane_x(int(mine["lane"])), 0.0, -(float(mine["d"]) - sim.vehicle.distance_m)))
+	if not hit:
+		return
+	if blocked:
+		buggy.shield_block()
+		camera.shake(0.5)
+		hud.show_popup("TARCZA ZATRZYMAŁA MINĘ", Palette.UI_SCRAP)
+	else:
+		buggy.on_hit()
+		camera.shake(1.2)
+		hud.show_popup("MINA! -%d ZŁOMU" % lost if lost > 0 else "MINA!", Palette.UI_BAD)
+
+
+func _on_convoy_finished(_info: Dictionary, result: Dictionary) -> void:
+	if autopilot != null:
+		power.set_erg_target(0.0)
+	hud.update_convoy({})
+	match int(result["outcome"]):
+		ConvoyDirector.Outcome.CAPTURED:
+			var extra := ""
+			if bool(result.get("jackpot", false)):
+				extra = "  ·  ŁUP ×1,5"
+			elif bool(result.get("clean", false)):
+				extra = "  ·  CZYSTE CIĘCIE"
+			elif bool(result.get("guard_hangs", false)):
+				extra = "  ·  ogon zabrał 30% łupu"
+			hud.show_message("GALERA PRZEJĘTA!%s\n+%d złomu  ·  +%d paliwa  ·  +%d do załogi" % [extra, int(result["scrap"]), int(result["fuel"]), int(result["freed"])], 5.0)
+			camera.shake(0.6)
+			_say("captured_clean" if bool(result.get("clean", false)) else "captured", 2)
+		ConvoyDirector.Outcome.PARTIAL:
+			hud.show_message("WAGON ZOSTAŁ W TYLE\nZgarnąłeś tylko resztki: +%d złomu" % int(result["scrap"]), 4.0)
+			_say("partial", 2)
+		ConvoyDirector.Outcome.OUTRUN:
+			hud.show_message("KONWÓJ UCIEKŁ\nZa mało mocy na kołach", 3.5)
+			_say("outrun", 2)
+		ConvoyDirector.Outcome.PASSED:
+			hud.show_message("ZGUBIŁEŚ KONWÓJ\nWyprzedziłeś go za daleko", 3.5)
+			_say("passed", 2)
+		ConvoyDirector.Outcome.FORTRESS:
+			hud.show_message("KONWÓJ DOJECHAŁ DO TWIERDZY", 3.5)
+			_say("fortress", 2)
+
+
+## Panel konwoju: schemat kolumny, pozycja gracza i polecenie „przyspiesz / zwolnij”.
+## Zwraca true, gdy konwój zajmuje linię statusu.
+func _update_convoy_hud() -> bool:
+	var c := sim.convoys
+	if not c.is_active() or c.galley == null:
+		hud.update_convoy({})
+		return false
+	var hold := roundi(c.hold_power_w())
+	var rel := c.rel_m()
+	var beside := absf(sim.lanes.x_m - c.galley.x) > 1.8
+	var status := ""
+	var line := ""
+	var col := Palette.UI_ACCENT
+	match c.state:
+		ConvoyDirector.State.CHASE:
+			status = "POŚCIG: %d m do konwoju. Jedź powyżej %d W" % [roundi(c.gap_m()), hold]
+			line = "KONWÓJ %d m · jego tempo to %d W" % [roundi(c.gap_m()), hold]
+		ConvoyDirector.State.ENGAGED:
+			var pace := "UCIEKA jeszcze %d s – trzymaj %d W" % [ceili(c.pace_left_s()), hold] if c.pace_fast else "HAMUJE jeszcze %d s – odpuść do %d W" % [ceili(c.pace_left_s()), hold]
+			col = Palette.UI_ACCENT if c.pace_fast else Palette.UI_SCRAP
+			status = "%s\n%s" % [_convoy_order(c, rel, beside), pace]
+			line = "KONWÓJ %s · tempo %d W · %d s" % ["UCIEKA" if c.pace_fast else "HAMUJE", hold, ceili(c.pace_left_s())]
+		ConvoyDirector.State.CAPTURE:
+			col = Palette.UI_GOOD
+			var kmh := roundi(sim.vehicle.speed_kmh())
+			var limit := roundi(ConvoyDirector.BOARD_MAX_SPEED * 3.6)
+			if kmh > limit:
+				status = "PRZESIADKA: ZWOLNIJ! Masz %d km/h, trzeba poniżej %d" % [kmh, limit]
+			elif rel < ConvoyDirector.BOARD_BEHIND_M or rel > ConvoyDirector.BOARD_AHEAD_M:
+				status = "PRZESIADKA: %s do galery (%d m)" % ["podjedź" if rel < 0.0 else "poczekaj, wróć", roundi(absf(rel))]
+			else:
+				status = "PRZESIADKA %d%% – trzymaj się wagonu" % roundi(c.board_ratio() * 100.0)
+			line = "PRZESIADKA %d%% · poniżej %d km/h" % [roundi(c.board_ratio() * 100.0), limit]
+	var title := "%s  ·  w klatce: %d" % [str(c.info["name"]).to_upper(), c.freed_now()]
+	if c.state == ConvoyDirector.State.ENGAGED:
+		title += "  ·  do twierdzy %s" % UiStyle.clock(c.time_to_fortress_s())
+	hud.update_convoy({
+		"title": title, "status": status, "color": col, "rel": rel, "beside": beside,
+		"has_guard": c.guard_attached, "has_tractor": c.tractor_attached and c.tractor.is_alive(),
+		"hitch_rear": c.hitch_rear.is_alive(), "hitch_front": c.hitch_front.is_alive(),
+		"guard_hp": float(c.guard.hp) / c.guard.max_hp, "tractor_hp": float(c.tractor.hp) / c.tractor.max_hp,
+		"hitch_rear_hp": float(c.hitch_rear.hp) / c.hitch_rear.max_hp, "hitch_front_hp": float(c.hitch_front.hp) / c.hitch_front.max_hp,
+		"window": c.open_window(), "board": c.board_ratio() if c.state == ConvoyDirector.State.CAPTURE else -1.0,
+	})
+	hud.update_challenge(line, col)
+	if c.open_window() != 0 and _window_seen != c.open_window():
+		_window_seen = c.open_window()
+		_say("window", 1, 20.0)
+	return true
+
+
+## Polecenie taktyczne: gdzie jest najbliższy sprzęg i czy trzeba przyspieszyć, czy zwolnić.
+func _convoy_order(c: ConvoyDirector, rel: float, beside: bool) -> String:
+	match c.open_window():
+		1:
+			return "STRZELAJ W TYLNY SPRZĘG!"
+		2:
+			return "STRZELAJ W PRZEDNI SPRZĘG!"
+	var hitch_at := ConvoyDirector.HITCH_REAR_OFFSET_M if c.guard_attached else ConvoyDirector.HITCH_FRONT_OFFSET_M
+	var which := "tylnego" if c.guard_attached else "przedniego"
+	# Ile brakuje do okna (dodatnie) albo o ile je przejechałeś (ujemne).
+	var short := (hitch_at - ConvoyDirector.WINDOW_BACK_M) - rel
+	var past := rel - (hitch_at + ConvoyDirector.WINDOW_FRONT_M)
+	if not beside:
+		return "Zjedź na boczny pas! Okno %s sprzęgu za %d m" % [which, maxi(0, roundi(short))]
+	if short > 0.0:
+		return "PRZYSPIESZ: %d m do okna %s sprzęgu" % [ceili(short), which]
+	return "ZWOLNIJ: minąłeś okno o %d m" % ceili(past)
+
+
+# --- Dopalacz --------------------------------------------------------------------
+
+func _fire_boost(by_player: bool) -> void:
+	if sim.trigger_boost():
+		var t := sim.power_train
+		camera.shake(0.5)
+		hud.show_popup("DOPALACZ! +%d%% MOCY" % roundi(t.boost_gain * 100.0), Color("ff9a4a"), 1.6)
+		_say("boost", 1, 25.0)
+	elif by_player and not sim.power_train.is_boosting():
+		hud.show_popup("DOPALACZ PUSTY – zbierz kanister", Palette.UI_DIM, 1.4)
+		_say("boost_empty", 0, 60.0)
+
+
+# --- Gadające głowy --------------------------------------------------------------
+
+var _chat := Chatter.new()
+var _chat_until: Dictionary = {}
+var _lore_left_s := 28.0
+var _lore_count := 0
+var _window_seen := 0
+var _low_cadence_s := 0.0
+var _good_cadence_s := 0.0
+var _overheat_s := 0.0
+var _weak_s := 0.0
+
+
+## Postać komentuje zdarzenie. cooldown_s: nie częściej niż co tyle sekund wyprawy.
+func _say(event: String, priority: int = 1, cooldown_s: float = 0.0) -> void:
+	var now := sim.expedition.elapsed_s
+	if cooldown_s > 0.0 and now < float(_chat_until.get(event, -1e9)):
+		return
+	_chat_until[event] = now + cooldown_s
+	hud.say(_chat.line(event), priority)
+	_lore_left_s = maxf(_lore_left_s, 22.0)
+
+
+func _on_raider_spawned(r: RaiderModel) -> void:
+	if r.is_convoy_part():
+		return
+	if sim.convoys.is_active():
+		_say("escort", 0, 45.0)
+	else:
+		_say("raider", 0, 70.0)
+
+
+## Gadki w tle: fabuła, gdy nic się nie dzieje, oraz uwagi do kadencji i widełek mocy.
+func _tick_chatter(delta: float, power_w: float) -> void:
+	var busy := sim.convoys.is_active() or sim.raids.state != RaidDirector.State.IDLE or sim.challenges.is_active()
+	_lore_left_s -= delta
+	if _lore_left_s <= 0.0 and not busy and not hud.head_busy() and sim.vehicle.speed_mps > 2.0:
+		_lore_left_s = 65.0
+		_lore_count += 1
+		_say("crew" if sim.power_train.crew > 0 and _lore_count % 4 == 2 else "lore", 0)
+	var cadence := power.get_cadence()
+	_low_cadence_s = _low_cadence_s + delta if power_w > 80.0 and cadence > 20.0 and cadence < 65.0 else 0.0
+	if _low_cadence_s > 25.0:
+		_low_cadence_s = 0.0
+		_say("cadence_low", 0, 150.0)
+	_good_cadence_s = _good_cadence_s + delta if cadence >= 86.0 and cadence <= 96.0 else 0.0
+	if _good_cadence_s > 60.0:
+		_good_cadence_s = 0.0
+		_say("cadence_good", 0, 240.0)
+	var band := sim.combat.band_status(power_w)
+	_overheat_s = _overheat_s + delta if band == TargetBand.Status.ABOVE else 0.0
+	if _overheat_s > 6.0:
+		_overheat_s = 0.0
+		_say("overheat", 1, 75.0)
+	_weak_s = _weak_s + delta if band == TargetBand.Status.BELOW and (busy or workout != null) else 0.0
+	if _weak_s > 12.0:
+		_weak_s = 0.0
+		_say("weak", 1, 90.0)
 
 
 # --- Tryb wolny: wyzwania (etap 6) ---------------------------------------------
@@ -439,6 +707,9 @@ func _on_challenge_finished(c: Dictionary, success: bool) -> void:
 
 
 func _update_challenge_hud() -> void:
+	if _update_convoy_hud():
+		hud.update_scout(false)
+		return
 	if _update_raid_hud():
 		return
 	var ch := sim.challenges
@@ -498,10 +769,12 @@ func _on_ram_resolved(_r: RaiderModel, outcome: int, lost: int) -> void:
 			buggy.on_hit()
 			camera.shake(1.2)
 			hud.show_popup("RABUNEK! -%d ZŁOMU" % lost if lost > 0 else "ZEPCHNIĘTY!", Palette.UI_BAD)
+			_say("ram_hit", 1, 40.0)
 		CombatModel.RamOutcome.BLOCKED:
 			buggy.shield_block()
 			camera.shake(0.5)
 			hud.show_popup("TARCZA ZATRZYMAŁA ATAK", Palette.UI_SCRAP)
+			_say("ram_blocked", 0, 90.0)
 		CombatModel.RamOutcome.DODGED:
 			hud.show_popup("UNIK!", Palette.UI_GOOD)
 		CombatModel.RamOutcome.COUNTER:
@@ -512,6 +785,13 @@ func _on_ram_resolved(_r: RaiderModel, outcome: int, lost: int) -> void:
 func _on_raider_destroyed(r: RaiderModel, dropped: int, cause: int) -> void:
 	combat_view.explode_at(Vector3(r.x, 0.0, -(r.d - sim.vehicle.distance_m)))
 	camera.shake(0.35)
+	if r.is_convoy_part():
+		# Wagon wybucha na całej długości; resztę (komunikaty, łup) prowadzi konwój.
+		for k: float in [-1.0, 1.0]:
+			if r.half_length > 0.0:
+				combat_view.explode_at(Vector3(r.x, 0.0, -(r.d + k * r.half_length - sim.vehicle.distance_m)))
+		return
+	_say("raider_destroyed", 0, 35.0)
 	if cause == CombatModel.DestroyCause.WRECK:
 		hud.show_popup("ROZBIŁ SIĘ O WRAK! +%d" % dropped, Palette.UI_GOOD)
 	else:

@@ -174,7 +174,9 @@ func _refresh() -> void:
 	var p := App.progress
 	var rank := Lore.rank(App.ftp_w())
 	var next_rank := "  ·  do rangi %s: +%d W" % [str(rank["next_name"]), int(rank["next_at"]) - roundi(App.ftp_w())] if int(rank["next_at"]) > 0 else ""
-	_rank_label.text = "Ranga: %s  ·  FTP %d W%s" % [str(rank["name"]).to_upper(), roundi(App.ftp_w()), next_rank]
+	var load := p.loadout()
+	var crew_text := "  ·  Załoga %d/%d (+%d%% mocy)" % [load.active_crew(), load.crew_seats(), roundi(PowerTrain.CREW_BONUS_EACH * load.active_crew() * 100.0)] if p.crew() > 0 else ""
+	_rank_label.text = "Ranga: %s  ·  FTP %d W%s%s" % [str(rank["name"]).to_upper(), roundi(App.ftp_w()), next_rank, crew_text]
 	_stash.text = "Złom: %d  ·  Paliwo: %d  ·  Praca: %d kJ" % [p.total_scrap(), p.fuel(), p.total_energy_kj()]
 	for id in UpgradeCatalog.ORDER:
 		var lvl := p.upgrade_level(id)
@@ -220,7 +222,7 @@ func _motto() -> String:
 	var week := App.progress.recent_stats(7)
 	var text := "„%s”" % Lore.slogan(App.progress.runs().size())
 	if int(week["runs"]) > 0:
-		text += "\nOstatnie 7 dni: %d wypraw  ·  %d min  ·  TSS %d  ·  %d kJ" % [int(week["runs"]), int(week["minutes"]), roundi(float(week["tss"])), int(week["kj"])]
+		text += "\nOstatnie 7 dni: wyprawy %d  ·  %d min  ·  TSS %d  ·  %d kJ" % [int(week["runs"]), int(week["minutes"]), roundi(float(week["tss"])), int(week["kj"])]
 	else:
 		text += "\nW tym tygodniu jeszcze nie kręciłeś. Pustkowia czekają."
 	return text

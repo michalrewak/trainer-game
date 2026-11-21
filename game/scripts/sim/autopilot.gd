@@ -21,6 +21,20 @@ func decide(sim: RunSimulation, delta: float) -> int:
 	var here := lanes.target_lane
 	var d := sim.vehicle.distance_m
 	var horizon := maxf(min_look_ahead_m, sim.vehicle.speed_mps * look_ahead_s)
+	# Konwój: z bliska trzymamy się lewego pasa (środkowy zajmuje kolumna), a przed miną
+	# zrzuconą na nasz pas uciekamy na środek, póki jest na to miejsce.
+	var convoy := sim.convoys
+	if convoy.is_active() and convoy.galley != null and convoy.gap_m() < 34.0:
+		var gap := convoy.gap_m()
+		var mine_here := _mine_on(sim, here, d)
+		if here != 0:
+			if not _mine_on(sim, here - 1, d):
+				_cooldown = cooldown_s
+				return -1
+		elif mine_here and gap > 14.0:
+			_cooldown = cooldown_s
+			return 1
+		return 0
 	# Zjazd na osadę: przed rozwidleniem ustaw się na skrajnym pasie od jej strony.
 	var raids := sim.raids
 	if take_raids and raids.state == RaidDirector.State.SCOUTING and raids.distance_to_next_m() < 220.0:
@@ -53,6 +67,40 @@ func decide(sim: RunSimulation, delta: float) -> int:
 				return dir
 			break
 	return 0
+
+
+func _mine_on(sim: RunSimulation, lane: int, d: float) -> bool:
+	for mine in sim.convoys.mines:
+		if int(mine["lane"]) == lane and absf(float(mine["d"]) - d) < 30.0:
+			return true
+	return false
+
+
+## Moc, jaką autopilot chce kręcić podczas konwoju: goni, potem trzyma się okna sprzęgu
+## (przyspiesza i zwalnia razem z konwojem), a na przesiadkę odpuszcza.
+func convoy_power_w(sim: RunSimulation, ftp_w: float) -> float:
+	var c := sim.convoys
+	var hold := c.hold_power_w()
+	match c.state:
+		ConvoyDirector.State.CHASE:
+			return ftp_w * 1.1
+		ConvoyDirector.State.ENGAGED:
+			var want := ConvoyDirector.window_center_m(not c.guard_attached)
+			return clampf(hold + (want - c.rel_m()) * 9.0, 30.0, ftp_w * 1.6)
+		ConvoyDirector.State.CAPTURE:
+			if sim.vehicle.speed_mps > ConvoyDirector.BOARD_MAX_SPEED - 0.5 and c.rel_m() > -12.0:
+				return 1.0
+			return clampf(hold - c.rel_m() * 6.0, 1.0, ftp_w)
+	return 0.0
+
+
+## Dopalacz w pościgu, gdy konwój odjeżdża.
+func wants_boost(sim: RunSimulation) -> bool:
+	var c := sim.convoys
+	var t := sim.power_train
+	if t.charges <= 0 or t.is_boosting() or not c.is_active():
+		return false
+	return (c.state == ConvoyDirector.State.CHASE and c.gap_m() > 70.0) or (c.state == ConvoyDirector.State.ENGAGED and c.gap_m() > 55.0)
 
 
 ## Sprawdza też wraki tuż obok pojazdu (strefa kolizji to ~2,8 m w obie strony),

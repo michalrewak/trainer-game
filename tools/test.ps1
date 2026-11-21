@@ -38,6 +38,7 @@ Step "Import projektu" @("--headless", "--path", $game, "--import")
 Step "Kompilacja skryptów i scen" @("--headless", "--path", $game, "--script", "res://tests/check_scripts.gd")
 Step "Testy jednostkowe" @("--headless", "--path", $game, "--script", "res://tests/run_tests.gd")
 Step "Test dymny (wyprawa autopilotem)" @("--headless", "--path", $game, "--", "--autostart", "--autopilot", "--minutes=0.5", "--time-scale=10", "--quit-on-finish", "--save=user://smoke.json")
+Step "Test dymny (konwój)" @("--headless", "--path", $game, "--", "--autostart", "--autopilot", "--convoy-test", "--minutes=3", "--time-scale=10", "--quit-on-finish", "--save=user://smoke.json")
 
 Write-Host ""
 if ($failed.Count -gt 0) {

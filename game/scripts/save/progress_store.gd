@@ -25,6 +25,7 @@ static func default_data() -> Dictionary:
 		"version": FORMAT_VERSION,
 		"total_scrap": 0,
 		"fuel": 0,
+		"crew": 0,
 		"total_energy_kj": 0,
 		"upgrades": {},
 		"runs_completed": 0,
@@ -46,8 +47,15 @@ func upgrade_level(id: String) -> int:
 	return int((data.get("upgrades", {}) as Dictionary).get(id, 0))
 
 
+## Uwolnieni pedalarze (rosną z każdą przejętą galerą).
+func crew() -> int:
+	return int(data.get("crew", 0))
+
+
 func loadout() -> Loadout:
-	return Loadout.new(data.get("upgrades", {}))
+	var l := Loadout.new(data.get("upgrades", {}))
+	l.crew = crew()
+	return l
 
 
 ## Trening z ostatnich dni: {"runs", "tss", "kj", "minutes"} – do garażu.
@@ -150,6 +158,7 @@ func record_run(summary: Dictionary, timestamp: String = "") -> void:
 	var scrap := int(run.get("scrap", 0))
 	data["total_scrap"] = total_scrap() + scrap
 	data["fuel"] = fuel() + int(run.get("fuel", 0))
+	data["crew"] = crew() + int(run.get("pedalers_freed", 0))
 	data["total_energy_kj"] = total_energy_kj() + int(run.get("energy_kj", 0))
 	data["total_distance_m"] = int(data.get("total_distance_m", 0)) + int(run.get("distance_m", 0))
 	if bool(run.get("completed", false)):
@@ -219,6 +228,7 @@ static func _sanitize(raw: Dictionary) -> Dictionary:
 	clean["version"] = FORMAT_VERSION
 	clean["total_scrap"] = maxi(0, int(raw.get("total_scrap", 0)))
 	clean["fuel"] = maxi(0, int(raw.get("fuel", 0)))
+	clean["crew"] = maxi(0, int(raw.get("crew", 0)))
 	if raw.has("total_energy_kj"):
 		clean["total_energy_kj"] = maxi(0, int(raw["total_energy_kj"]))
 	elif raw.get("runs") is Array:

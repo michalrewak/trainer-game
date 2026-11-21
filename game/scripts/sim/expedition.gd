@@ -15,6 +15,11 @@ var raiders_destroyed := 0
 var fuel := 0
 var challenges_completed := 0
 var raids_done := 0
+var convoys_captured := 0
+var convoys_lost := 0
+## Pedalarze uwolnieni z galer – po wyprawie dołączają do załogi.
+var pedalers_freed := 0
+var boosts_used := 0
 ## Ulepszenia (etap 3): pancerz zmniejsza straty, przyczepa dokłada część złomu.
 var scrap_loss_factor := 1.0
 var scrap_bonus := 0.0
@@ -114,6 +119,10 @@ func to_summary(completed: bool) -> Dictionary:
 		"fuel": fuel,
 		"challenges_completed": challenges_completed,
 		"raids_done": raids_done,
+		"convoys_captured": convoys_captured,
+		"convoys_lost": convoys_lost,
+		"pedalers_freed": pedalers_freed,
+		"boosts_used": boosts_used,
 		"collisions": collisions,
 		"raids_lost": raids_lost,
 		"raiders_destroyed": raiders_destroyed,

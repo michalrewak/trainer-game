@@ -46,6 +46,8 @@ var all_upgrades := false
 var challenge_test := false
 var raid_test := false
 var no_raids := false
+var convoy_test := false
+var no_convoys := false
 var no_challenges := false
 var trainer := false
 var plan_path := ""
@@ -100,6 +102,10 @@ static func parse(args: PackedStringArray) -> LaunchOptions:
 				o.raid_test = true
 			"--no-raids":
 				o.no_raids = true
+			"--convoy-test":
+				o.convoy_test = true
+			"--no-convoys":
+				o.no_convoys = true
 			"--challenge-test":
 				o.challenge_test = true
 			"--no-challenges":
