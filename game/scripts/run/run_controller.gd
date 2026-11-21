@@ -45,9 +45,21 @@ func _ready() -> void:
 	# Wzniesienia i doliny – w mieście łagodniej.
 	sim.course_enabled = true
 	sim.course.amplitude = 0.5 if App.selected_terrain == TerrainCatalog.CITY else 1.0
+	sim.course.curve_amplitude = 0.6 if App.selected_terrain == TerrainCatalog.CITY else 1.0
+	RenderingServer.global_shader_parameter_set(&"hill_phase", sim.course.hill_phases())
+	RenderingServer.global_shader_parameter_set(&"curve_phase", sim.course.curve_phases())
+	RenderingServer.global_shader_parameter_set(&"hill_amp", sim.course.amplitude)
+	RenderingServer.global_shader_parameter_set(&"curve_amp", sim.course.curve_amplitude)
+	RenderingServer.global_shader_parameter_set(&"track_d", 0.0)
+	RenderingServer.global_shader_parameter_set(&"climb_slope", 0.0)
+	RenderingServer.global_shader_parameter_set(&"bend_on", 1.0)
 	buggy.apply_loadout(loadout)
 	_apply_terrain_look(App.selected_terrain)
 	weather.setup($WorldEnvironment, sun)
+	weather.attach_headlights(buggy)
+	weather.set_time(_time_of_day(), true)
+	if App.time_mode() == "storm":
+		weather.set_storm(1.0)
 	sim.wreck_hit.connect(_on_wreck_hit)
 	sim.scrap_collected.connect(_on_scrap_collected)
 	sim.fuel_collected.connect(func(_item: TrackItem) -> void: hud.show_popup("+1 PALIWO", Color("ff8a4a"), 1.0))
@@ -75,6 +87,31 @@ func _process(delta: float) -> void:
 			_update_views(delta, 0.0)
 			if _finish_left <= 0.0:
 				_commit(true)
+
+
+## Pora dnia: 0 = dzień, 0.5 = zmierzch, 1 = noc. W trybie „zmienna” wyprawa zaczyna się
+## za dnia, w połowie zachodzi słońce, a końcówka jest nocna.
+func _time_of_day() -> float:
+	match App.time_mode():
+		"day", "storm":
+			return 0.0
+		"dusk":
+			return 0.5
+		"night":
+			return 1.0
+	var p := sim.expedition.progress()
+	if p < 0.3:
+		return 0.0
+	if p < 0.55:
+		return (p - 0.3) / 0.25 * 0.5
+	if p < 0.8:
+		return 0.5 + (p - 0.55) / 0.25 * 0.5
+	return 1.0
+
+
+func _exit_tree() -> void:
+	# Menu i garaż rysujemy bez wyginania świata.
+	RenderingServer.global_shader_parameter_set(&"bend_on", 0.0)
 
 
 ## Pauza przez zdarzenie (nie odpytywanie w _process): to samo wciśnięcie, które wznawia
@@ -154,11 +191,13 @@ func _update_views(delta: float, power_w: float) -> void:
 	if target != null:
 		target_local = Vector3(target.x, 0.0, -(target.d - sim.vehicle.distance_m))
 	buggy.update_combat(target_local, sim.combat.shield, delta)
-	# Podjazd: świat przechyla się wokół pojazdu – droga przed nami „wznosi się”.
-	_tilt = lerpf(_tilt, atan(sim.vehicle.grade) * 1.4, 1.0 - exp(-delta * 1.5))
-	track.rotation.x = _tilt
-	combat_view.rotation.x = _tilt
-	buggy.rotation.x = _tilt
+	# Zakręty i wzniesienia rysuje shader (bend.gdshaderinc) – podajemy mu dystans pojazdu.
+	# Podjazd z wyzwania to dodatkowe nachylenie, wizualnie przesadzone jak reszta wzniesień.
+	var climb := sim.challenges.grade_percent() / 100.0 * 2.5 if sim.challenges.enabled else 0.0
+	_tilt = lerpf(_tilt, climb, 1.0 - exp(-delta * 1.5))
+	weather.set_time(_time_of_day())
+	RenderingServer.global_shader_parameter_set(&"track_d", sim.vehicle.distance_m)
+	RenderingServer.global_shader_parameter_set(&"climb_slope", _tilt)
 	camera.follow(sim.lanes.x_m, sim.vehicle.speed_mps, delta)
 	hud.update_from(sim, power, delta)
 	hud.update_combat(sim.combat, power_w, sim.lanes.x_m, delta)
@@ -207,7 +246,7 @@ func _on_workout_step(index: int, step: WorkoutStep) -> void:
 	var hard := workout.plan.is_hard_step(index)
 	# Ciężki interwał = burza piaskowa i pole bezpieczne: tylko pedałujesz, bez klikania.
 	sim.set_safe_zone(hard)
-	weather.set_storm(0.85 if hard else 0.0)
+	weather.set_storm(0.85 if hard or App.time_mode() == "storm" else 0.0)
 	power.set_erg_target(workout.target_w(t))
 	_erg_refresh = 0.0
 	var title := "INTERWAŁ – BURZA PIASKOWA" if hard else step.display_label().to_upper()
@@ -259,7 +298,7 @@ func _on_challenge_started(c: Dictionary) -> void:
 func _on_challenge_finished(c: Dictionary, success: bool) -> void:
 	power.set_erg_target(0.0)
 	power.set_grade(0.0)
-	weather.set_storm(0.0)
+	weather.set_storm(1.0 if App.time_mode() == "storm" else 0.0)
 	if success:
 		var reward := "+%d złomu" % int(c.get("reward_scrap", 0))
 		if int(c.get("reward_fuel", 0)) > 0:

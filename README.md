@@ -114,7 +114,7 @@ wtedy mostek z `--port 8766`, a grę z `-- --bridge-port=8766`; gra zapamięta p
 `--time-scale=K`, `--seed=N`, `--quit-on-finish`, `--save=user://plik.json`,
 `--screenshots=KATALOG --shot-times=4,12`, `--combat-test`, `--no-combat`,
 `--terrain=city`, `--all-upgrades`, `--challenge-test`, `--no-challenges`, `--trainer`,
-`--plan=res://plans/kanion_4x4.json`.
+`--plan=res://plans/kanion_4x4.json`, `--time=cycle|day|dusk|night|storm`.
 Szczegóły: `game/scripts/app/launch_options.gd`.
 
 ## Testy (bez sprzętu)

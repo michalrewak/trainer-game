@@ -151,3 +151,32 @@ func test_pad_erg_simulation_restores_cruise() -> void:
 	assert_true(pad.model.cruise_locked, "tempomat wraca")
 	assert_near(pad.model.cruise_watts, 150.0, 0.01, "z poprzednią mocą")
 	assert_near(pad.get_erg_target(), 0.0, 0.01)
+
+
+func test_course_has_curves_after_a_straight_start() -> void:
+	var c := CourseProfile.new(3)
+	assert_near(c.lateral_at(100.0), 0.0, 1e-9, "prosty start")
+	var lo := 0.0
+	var hi := 0.0
+	var max_curv := 0.0
+	var d := 0.0
+	while d < 20000.0:
+		lo = minf(lo, c.lateral_at(d))
+		hi = maxf(hi, c.lateral_at(d))
+		max_curv = maxf(max_curv, absf(c.curvature_at(d)))
+		d += 5.0
+	assert_true(hi > 20.0 and lo < -20.0, "trasa wije się w obie strony (%.0f..%.0f m)" % [lo, hi])
+	assert_between(max_curv, 0.002, 0.008, "najciaśniejszy zakręt ma promień 125–500 m")
+	c.curve_amplitude = 0.0
+	assert_near(c.lateral_at(5000.0), 0.0, 1e-9, "amplituda 0 = prosta droga")
+
+
+func test_world_materials_are_shared_and_typed() -> void:
+	var a := Palette.mat(Color.RED)
+	assert_true(a == Palette.mat(Color.RED), "ten sam kolor = ten sam materiał (cache)")
+	assert_true(Palette.rock(Palette.ROCK_A) != Palette.mat(Palette.ROCK_A), "skała ma własną teksturę")
+	var g := Palette.glow(Color.CYAN, 2.0)
+	assert_near(float(g.get_shader_parameter("emission_energy")), 2.0, 1e-6)
+	Palette.set_glow_energy(g, 3.5)
+	assert_near(float(g.get_shader_parameter("emission_energy")), 3.5, 1e-6)
+	Palette.set_glow_energy(g, 2.0)

@@ -80,8 +80,14 @@ Wymagania wspólne:
 - Pojazd gracza zawsze czytelny z 3 m na telewizorze, także w burzy i w nocy.
 - Trasa z zakrętami i prawdziwymi wzniesieniami w 3D (nie przez pochylanie świata).
 
-Do ustalenia: jak dokładnie zmienia się pora (w trakcie jednej wyprawy czy między etapami
-kampanii).
+Stan wdrożenia (2026-11-21): w grze są tekstury i brud na wszystkich powierzchniach,
+zakręty, wzniesienia i wydmy, odcinki kanionu i otwartej pustyni, trzy pory z płynnymi
+przejściami, burza z błyskawicami, reflektory i ściana burzy na horyzoncie. Pora jest
+do wyboru w garażu: zmienna (start za dnia, w połowie zachód słońca, końcówka nocą),
+dzień albo noc. Tarcza nie jest bańką pola siłowego: zablokowany atak to snop iskier.
+
+Do zrobienia: modele pojazdów i wrogów nadal są z prostych brył, kampania nie steruje
+jeszcze porą dnia.
 
 ## Filary rozgrywki
 

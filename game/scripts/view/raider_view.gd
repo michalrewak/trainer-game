@@ -5,8 +5,8 @@ extends Node3D
 
 var _body: Node3D
 var _warn_lights: Array[MeshInstance3D] = []
-var _warn_mat: StandardMaterial3D
-var _flash_mat: StandardMaterial3D
+var _warn_mat: ShaderMaterial
+var _flash_mat: ShaderMaterial
 var _hull_mats: Array[MeshInstance3D] = []
 var _exclaim: Label3D
 var _wheels: Array[Node3D] = []
@@ -26,7 +26,7 @@ func build(variant: int, side: int) -> void:
 	var spike := Palette.mat(Color("b9b2a6"), 0.4, 0.8)
 	var tire := Palette.mat(Palette.TIRE)
 	_flash_mat = Palette.glow(Color("ffffff"), 4.0)
-	_warn_mat = Palette.glow(Color("ff2a1a"), 3.0).duplicate()
+	_warn_mat = Palette.glow(Color("ff2a1a"), 3.0).duplicate() as ShaderMaterial
 
 	var chassis := LowPoly.box(Vector3(1.7, 0.55, 2.8), hull, Vector3(0, 0.75, 0))
 	_body.add_child(chassis)
@@ -59,6 +59,13 @@ func build(variant: int, side: int) -> void:
 		var l := LowPoly.box(Vector3(0.22, 0.14, 0.08), _warn_mat, Vector3(lx, 1.0, -1.42))
 		_body.add_child(l)
 		_warn_lights.append(l)
+	# Czerwona poświata – wróg widoczny w nocy i w burzy.
+	var glow_light := OmniLight3D.new()
+	glow_light.light_color = Color(1.0, 0.2, 0.1)
+	glow_light.light_energy = 1.4
+	glow_light.omni_range = 5.5
+	glow_light.position = Vector3(0, 1.6, -0.8)
+	add_child(glow_light)
 	_exclaim = Label3D.new()
 	_exclaim.text = "!"
 	_exclaim.font_size = 220
@@ -106,7 +113,7 @@ func sync(r: RaiderModel, player_d: float, delta: float) -> void:
 	var warning := r.state == RaiderModel.State.TELEGRAPH or r.state == RaiderModel.State.RAM
 	var blink := fmod(_time * 6.0, 1.0) < 0.5
 	_exclaim.visible = warning and blink
-	_warn_mat.emission_energy_multiplier = (6.0 if blink else 0.5) if warning else 0.8
+	Palette.set_glow_energy(_warn_mat, (6.0 if blink else 0.5) if warning else 0.8)
 	_body.rotation.z = -r.lateral_velocity * 0.03
 	if r.hit_flash > 0.0:
 		for m in _hull_mats:

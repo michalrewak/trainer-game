@@ -164,6 +164,5 @@ func test_materials_are_shared_and_matte() -> void:
 	assert_true(a != KenneyModels.material(KenneyModels.CAR_DIR, "burnt"), "osobny materiał dla spalonych")
 	for style: String in ["dust", "rust", "burnt", "faded", "buggy", "rider", "rock", "canvas", "canyon_a"]:
 		var m := KenneyModels.material(KenneyModels.SURVIVAL_DIR, style)
-		assert_true(m.albedo_texture != null, "%s: kolormapa jako albedo" % style)
-		assert_between(m.roughness, 0.85, 1.0, "%s: szorstkość" % style)
-		assert_eq(m.metallic, 0.0, "%s: bez metaliczności" % style)
+		assert_true(m.get_shader_parameter("uv_tex") != null, "%s: kolormapa jako albedo" % style)
+		assert_between(float(m.get_shader_parameter("roughness")), 0.85, 1.0, "%s: szorstkość" % style)

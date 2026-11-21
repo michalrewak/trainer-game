@@ -14,6 +14,7 @@ var _ftp_button: Button
 var _autofire_button: Button
 var _source_button: Button
 var _mode_button: Button
+var _time_button: Button
 var _plans: Array[String] = []
 var _go_button: Button
 var _buggy: BuggyView
@@ -96,10 +97,20 @@ func _build() -> void:
 	_terrain_button.pressed.connect(_cycle_terrain)
 	_terrain_button.focus_entered.connect(func() -> void: _detail.text = TerrainCatalog.description(TerrainCatalog.ORDER[_terrain_index]))
 	col.add_child(_terrain_button)
-	_duration_button = _small_button()
+	var time_row := HBoxContainer.new()
+	time_row.add_theme_constant_override("separation", 12)
+	_duration_button = _small_button(444)
 	_duration_button.pressed.connect(_cycle_duration)
 	_duration_button.focus_entered.connect(func() -> void: _detail.text = "Długość wyprawy. Test 2 min – do szybkiego sprawdzenia sterowania.")
-	col.add_child(_duration_button)
+	time_row.add_child(_duration_button)
+	_time_button = _small_button(444)
+	_time_button.pressed.connect(func() -> void:
+		var modes: Array[String] = ["cycle", "day", "night"]
+		App.set_time_mode(modes[(modes.find(App.time_mode()) + 1) % modes.size()])
+		_refresh())
+	_time_button.focus_entered.connect(func() -> void: _detail.text = "Pora wyprawy. Zmienna: start za dnia, w połowie zachód słońca, końcówka nocą w reflektorach.")
+	time_row.add_child(_time_button)
+	col.add_child(time_row)
 	var settings_row := HBoxContainer.new()
 	settings_row.add_theme_constant_override("separation", 12)
 	_ftp_button = _small_button(380)
@@ -176,6 +187,7 @@ func _refresh() -> void:
 		_mode_button.text = "Tryb: jazda swobodna (wyzwania)"
 		var minutes := DURATIONS[_duration_index]
 		_duration_button.text = "Czas: %s" % ("TEST 2 min" if minutes < 5.0 else "%d min" % roundi(minutes))
+	_time_button.text = "Pora: %s" % {"cycle": "zmienna (dzień → noc)", "day": "dzień", "night": "noc"}.get(App.time_mode(), "zmienna (dzień → noc)")
 	_ftp_button.text = "FTP: %d W  ← →" % roundi(App.ftp_w())
 	_autofire_button.text = "Auto-ogień: %s" % ("TAK" if App.auto_fire_enabled() else "nie")
 	_source_button.text = "Moc: %s" % ("TRENAŻER" if App.power_source_kind() == PowerSourceFactory.KIND_TRAINER else "PAD")

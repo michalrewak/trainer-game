@@ -17,6 +17,7 @@ extends RefCounted
 ##   --no-combat        wyprawa bez gangów
 ##   --trainer          moc z trenażera przez mostek (ws://127.0.0.1:8765, etap 5)
 ##   --plan=ŚCIEŻKA     trening z planu (np. res://plans/kanion_4x4.json; .json/.zwo/.fit)
+##   --time=PORA        pora: cycle (zmienna), day, dusk, night, storm (testy wyglądu)
 ##   --bridge-port=N    port mostka (domyślnie 8765; zapamiętywany)
 ##   --challenge-test   pierwsze wyzwanie trybu wolnego już po 8 s
 ##   --no-challenges    jazda swobodna bez wyzwań
@@ -45,6 +46,7 @@ var no_challenges := false
 var trainer := false
 var plan_path := ""
 var bridge_port := 0
+var time_mode := ""
 
 
 static func parse(args: PackedStringArray) -> LaunchOptions:
@@ -98,6 +100,9 @@ static func parse(args: PackedStringArray) -> LaunchOptions:
 				o.trainer = true
 			"--plan":
 				o.plan_path = value
+			"--time":
+				if value in ["cycle", "day", "dusk", "night", "storm"]:
+					o.time_mode = value
 			"--bridge-port":
 				if value.is_valid_int():
 					o.bridge_port = clampi(value.to_int(), 1, 65535)

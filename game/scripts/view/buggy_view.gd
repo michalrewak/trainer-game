@@ -12,12 +12,13 @@ var _crank: Node3D
 var _legs: Array[Node3D] = []
 var _flag: Node3D
 var _dust: CPUParticles3D
-var _coil_mat: StandardMaterial3D
+var _coil_mat: ShaderMaterial
 var _turret: Node3D
 var _muzzle: MeshInstance3D
 var _muzzle_t := 0.0
-var _shield: MeshInstance3D
-var _shield_mat: ShaderMaterial
+var _sparks: CPUParticles3D
+var _spark_light: OmniLight3D
+var _charge_level := 0.0
 var _shield_flash := 0.0
 var _flash := 0.0
 var _wheel_angle := 0.0
@@ -52,7 +53,7 @@ func sync(sim: RunSimulation, cadence_rpm: float, power_w: float, delta: float) 
 	_body.position.y = 0.02 * sin(_time * 18.0) * clampf(v / 10.0, 0.0, 1.0)
 	_flag.rotation.x = -clampf(v / 12.0, 0.0, 1.0) * 1.1 + 0.06 * sin(_time * 9.0)
 	# Generator świeci mocniej przy większej mocy.
-	_coil_mat.emission_energy_multiplier = 0.4 + clampf(power_w / 300.0, 0.0, 1.6) * 2.0
+	Palette.set_glow_energy(_coil_mat, 0.4 + clampf(power_w / 300.0, 0.0, 1.6) * 2.0)
 	# Kurz spod kół.
 	_dust.emitting = v > 1.0
 	_dust.speed_scale = clampf(v / 9.0, 0.3, 1.5)
@@ -79,10 +80,12 @@ func update_combat(target_local: Variant, shield_level: float, delta: float) -> 
 		_turret.rotation.y = lerp_angle(_turret.rotation.y, 0.0, 1.0 - exp(-delta * 3.0))
 	_muzzle_t = maxf(0.0, _muzzle_t - delta)
 	_muzzle.visible = _muzzle_t > 0.0
+	# Tarcza to ładunek kondensatorów, nie bańka: poziom pokazuje HUD, a zablokowany atak
+	# widać jako wyładowanie – snop iskier i błysk na pancerzu.
 	_shield_flash = maxf(0.0, _shield_flash - delta * 2.5)
-	_shield_mat.set_shader_parameter("strength", clampf(shield_level, 0.0, 1.0))
-	_shield_mat.set_shader_parameter("flash", _shield_flash)
-	_shield.visible = shield_level > 0.05 or _shield_flash > 0.0
+	_spark_light.light_energy = _shield_flash * 9.0
+	_spark_light.visible = _shield_flash > 0.0
+	_charge_level = shield_level
 
 
 func muzzle_flash() -> void:
@@ -176,6 +179,8 @@ func apply_loadout(loadout: Loadout) -> void:
 
 func shield_block() -> void:
 	_shield_flash = 1.0
+	_sparks.restart()
+	_sparks.emitting = true
 
 
 func _build() -> void:
@@ -186,7 +191,7 @@ func _build() -> void:
 	var accent := Palette.mat(Palette.BUGGY_ACCENT, 0.55, 0.2)
 	var tire := Palette.mat(Palette.TIRE, 0.95)
 	var rim := Palette.mat(Palette.METAL, 0.4, 0.7)
-	_coil_mat = Palette.glow(Palette.GENERATOR_GLOW, 1.0).duplicate()
+	_coil_mat = Palette.glow(Palette.GENERATOR_GLOW, 1.0).duplicate() as ShaderMaterial
 
 	# Oś z dwoma dużymi kołami (z tyłu).
 	var axle_z := 0.55
@@ -301,20 +306,35 @@ func _build() -> void:
 	_muzzle.visible = false
 	_turret.add_child(_muzzle)
 
-	# Tarcza (bańka z poświatą na krawędziach).
-	_shield = MeshInstance3D.new()
-	var bubble := SphereMesh.new()
-	bubble.radius = 1.0
-	bubble.height = 2.0
-	bubble.radial_segments = 24
-	bubble.rings = 12
-	_shield.mesh = bubble
-	_shield.scale = Vector3(1.7, 1.45, 2.2)
-	_shield.position = Vector3(0, 1.2, -0.2)
-	_shield_mat = ShaderMaterial.new()
-	_shield_mat.shader = load("res://shaders/shield.gdshader")
-	_shield.material_override = _shield_mat
-	add_child(_shield)
+	# Wyładowanie tarczy: iskry i niebieskawy błysk (bez bańki pola siłowego).
+	_sparks = CPUParticles3D.new()
+	_sparks.emitting = false
+	_sparks.one_shot = true
+	_sparks.explosiveness = 0.9
+	_sparks.amount = 70
+	_sparks.lifetime = 0.45
+	_sparks.direction = Vector3.UP
+	_sparks.spread = 180.0
+	_sparks.initial_velocity_min = 5.0
+	_sparks.initial_velocity_max = 13.0
+	_sparks.gravity = Vector3(0, -14.0, 0)
+	_sparks.particle_flag_align_y = true
+	_sparks.position = Vector3(0, 1.2, -0.2)
+	var spark := BoxMesh.new()
+	spark.size = Vector3(0.03, 0.5, 0.03)
+	var spark_mat := StandardMaterial3D.new()
+	spark_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	spark_mat.albedo_color = Color(0.75, 0.92, 1.0)
+	spark.material = spark_mat
+	_sparks.mesh = spark
+	add_child(_sparks)
+	_spark_light = OmniLight3D.new()
+	_spark_light.light_color = Color(0.6, 0.85, 1.0)
+	_spark_light.omni_range = 9.0
+	_spark_light.light_energy = 0.0
+	_spark_light.visible = false
+	_spark_light.position = Vector3(0, 1.8, 0)
+	add_child(_spark_light)
 
 	# Maszt z flagą.
 	_body.add_child(LowPoly.tube(Vector3(0.45, 2.0, 0.6), Vector3(0.45, 3.1, 0.75), 0.025, frame))

@@ -101,9 +101,5 @@ static func make_scrap(big: bool) -> Node3D:
 
 ## Świetlna kolumna nad dużym złomem – widać go z daleka.
 static func _beam(color: Color) -> MeshInstance3D:
-	var beam_mat := StandardMaterial3D.new()
-	beam_mat.albedo_color = Color(color, 0.25)
-	beam_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	beam_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	beam_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var beam_mat := Palette.translucent(Color(color, 0.25))
 	return LowPoly.cylinder(0.25, 9.0, beam_mat, Vector3(0, 4.0, 0), Vector3.ZERO, 8)

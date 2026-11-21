@@ -53,6 +53,11 @@ func _sync_segments(d: float) -> void:
 		_segments[slot].position = Vector3(0.0, 0.0, -(idx * SEGMENT_LENGTH - d))
 
 
+## Trasa składa się z odcinków po 5 segmentów (200 m): kanion albo otwarta pustynia.
+static func is_canyon_section(idx: int) -> bool:
+	return posmod(hash(floori(idx / 5.0) * 31 + 7), 100) < 45
+
+
 func _build_segment(seg: Node3D, idx: int) -> void:
 	for child in seg.get_children():
 		child.queue_free()
@@ -62,12 +67,19 @@ func _build_segment(seg: Node3D, idx: int) -> void:
 	var center_z := -L * 0.5
 
 	# Podłoże: piasek + stary asfalt.
+	# Siatki są gęste, bo shader wygina je w zakręty i wzniesienia oraz usypuje wydmy.
 	var ground := PlaneMesh.new()
-	ground.size = Vector2(160.0, L)
-	seg.add_child(LowPoly.mesh_instance(ground, Palette.mat(Palette.SAND), Vector3(0, 0, center_z)))
+	ground.size = Vector2(260.0, L)
+	ground.subdivide_width = 64
+	ground.subdivide_depth = 9
+	var ground_mi := LowPoly.mesh_instance(ground, Palette.sand(Palette.SAND, 1.0), Vector3(0, 0, center_z))
+	ground_mi.extra_cull_margin = 60.0
+	seg.add_child(ground_mi)
 	var road := PlaneMesh.new()
 	road.size = Vector2(ROAD_HALF_WIDTH * 2.0, L)
-	seg.add_child(LowPoly.mesh_instance(road, Palette.mat(Palette.ROAD, 0.97), Vector3(0, 0.02, center_z)))
+	road.subdivide_width = 3
+	road.subdivide_depth = 9
+	seg.add_child(LowPoly.mesh_instance(road, Palette.road(), Vector3(0, 0.03, center_z)))
 
 	# Przerywane linie między pasami (co 8 m) – dają poczucie prędkości.
 	var paint := Palette.mat(Palette.LANE_PAINT, 0.9)
@@ -96,27 +108,40 @@ func _build_segment(seg: Node3D, idx: int) -> void:
 
 	# Ściany kanionu: nachodzące na siebie bloki skalne + dalsze mesy.
 	var rock_colors := [Palette.ROCK_A, Palette.ROCK_B, Palette.ROCK_C, Palette.ROCK_D]
+	var canyon := is_canyon_section(idx)
 	for side: float in [-1.0, 1.0]:
 		var z := rng.randf_range(0.0, 4.0)
-		while z < L:
+		# Otwarta pustynia: zamiast ściany pojedyncze ostańce dalej od drogi.
+		while not canyon and z < L:
+			if rng.randf() < 0.3:
+				var oh := rng.randf_range(3.0, 11.0)
+				var ow := rng.randf_range(4.0, 10.0)
+				seg.add_child(LowPoly.mesh_instance(
+					LowPoly.rock_mesh(rng.randi_range(0, 11), 0.3),
+					Palette.rock(rock_colors[rng.randi_range(0, 3)]),
+					Vector3(side * rng.randf_range(16.0, 60.0), oh * 0.3, -z),
+					Vector3(ow, oh, ow * rng.randf_range(0.8, 1.4)) * 0.5,
+					Vector3(0, rng.randf_range(0, TAU), 0)))
+			z += rng.randf_range(8.0, 16.0)
+		while canyon and z < L:
 			var h := rng.randf_range(7.0, 20.0)
 			var w := rng.randf_range(6.0, 11.0)
 			var depth := rng.randf_range(9.0, 14.0)
 			var x := side * (rng.randf_range(10.5, 14.0) + w * 0.4)
 			var rock := LowPoly.mesh_instance(
 				LowPoly.rock_mesh(rng.randi_range(0, 11), 0.3),
-				Palette.mat(rock_colors[rng.randi_range(0, 3)]),
+				Palette.rock(rock_colors[rng.randi_range(0, 3)]),
 				Vector3(x, h * 0.32, -z),
 				Vector3(w, h, depth) * 0.5,
 				Vector3(0, rng.randf_range(0, TAU), 0))
 			seg.add_child(rock)
 			z += depth * rng.randf_range(0.55, 0.8)
-		for j in 2:
+		for j in (2 if canyon else rng.randi_range(0, 1)):
 			var mh := rng.randf_range(22.0, 42.0)
 			var mesa := LowPoly.mesh_instance(
 				LowPoly.rock_mesh(rng.randi_range(12, 19), 0.18),
-				Palette.mat(rock_colors[rng.randi_range(0, 3)]),
-				Vector3(side * rng.randf_range(26.0, 40.0), mh * 0.3, -rng.randf_range(0.0, L)),
+				Palette.rock(rock_colors[rng.randi_range(0, 3)]),
+				Vector3(side * (rng.randf_range(26.0, 40.0) if canyon else rng.randf_range(70.0, 110.0)), mh * 0.3, -rng.randf_range(0.0, L)),
 				Vector3(rng.randf_range(14.0, 22.0), mh, rng.randf_range(16.0, 24.0)) * 0.5,
 				Vector3(0, rng.randf_range(0, TAU), 0))
 			seg.add_child(mesa)
@@ -125,7 +150,7 @@ func _build_segment(seg: Node3D, idx: int) -> void:
 			var s := rng.randf_range(0.25, 1.1)
 			seg.add_child(LowPoly.mesh_instance(
 				LowPoly.rock_mesh(rng.randi_range(0, 11)),
-				Palette.mat(rock_colors[rng.randi_range(0, 3)]),
+				Palette.rock(rock_colors[rng.randi_range(0, 3)]),
 				Vector3(side * rng.randf_range(6.8, 9.5), s * 0.25, -rng.randf_range(0.0, L)),
 				Vector3(s, s * rng.randf_range(0.6, 1.0), s),
 				Vector3(0, rng.randf_range(0, TAU), 0)))

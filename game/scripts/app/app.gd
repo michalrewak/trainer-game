@@ -72,6 +72,18 @@ func bridge_url() -> String:
 	return "ws://127.0.0.1:%d" % int(settings.get("bridge_port", 8765))
 
 
+## Pora wyprawy: "cycle" (zmienna: dzień -> zmierzch -> noc), "day", "night".
+func time_mode() -> String:
+	if options.time_mode != "":
+		return options.time_mode
+	return str(settings.get("time_mode", "cycle"))
+
+
+func set_time_mode(mode: String) -> void:
+	settings["time_mode"] = mode
+	_save_settings()
+
+
 func set_power_source_kind(kind: String) -> void:
 	settings["power_source"] = kind
 	_save_settings()

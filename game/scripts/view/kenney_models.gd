@@ -521,19 +521,14 @@ static func buggy_plate() -> Node3D:
 
 ## Wspólny materiał paczki w danym stylu: kolormapa jako albedo (odbarwiona) x odcień.
 ## Style: dust, rust, burnt, faded, buggy, rider, rock, canvas, canyon_a/b/c.
-static func material(kit_dir: String, style: String) -> StandardMaterial3D:
+static func material(kit_dir: String, style: String) -> ShaderMaterial:
 	var key := kit_dir + "|" + style
 	if _materials.has(key):
 		return _materials[key]
 	var st := _style(style)
-	var m := StandardMaterial3D.new()
-	m.resource_name = "kenney_%s_%s" % [kit_dir.get_file(), style]
-	m.albedo_texture = _texture(kit_dir, st.saturation, st.contrast, st.brightness)
-	m.albedo_color = st.tint
-	m.roughness = st.roughness
-	m.metallic = 0.0
 	# Modele Kenney są dwustronne (cienkie blachy, płótno namiotu).
-	m.cull_mode = BaseMaterial3D.CULL_DISABLED
+	var m := Palette.textured(_texture(kit_dir, st.saturation, st.contrast, st.brightness), st.tint, st.roughness, true)
+	m.resource_name = "kenney_%s_%s" % [kit_dir.get_file(), style]
 	_materials[key] = m
 	return m
 
@@ -605,24 +600,14 @@ static func _texture(kit_dir: String, saturation: float, contrast: float, bright
 	return result
 
 
-static func _scrap_material(big: bool) -> StandardMaterial3D:
+static func _scrap_material(big: bool) -> ShaderMaterial:
 	var key := "scrap|%s" % big
 	if _materials.has(key):
 		return _materials[key]
 	var color := Palette.SCRAP_BIG_GLOW if big else Palette.SCRAP_GLOW
-	var shade := _texture(FACTORY_DIR, 0.0, 1.25, 1.2)
-	var m := StandardMaterial3D.new()
+	# Umiarkowana emisja: zbyt jasny cyjan przechodzi w biel i zębatka traci kształt.
+	var m := Palette.glow(color.darkened(0.2), 1.6 if big else 1.3).duplicate() as ShaderMaterial
 	m.resource_name = "kenney_scrap_big" if big else "kenney_scrap"
-	m.albedo_color = color.darkened(0.45)
-	m.albedo_texture = shade
-	# Umiarkowana emisja: przy AgX zbyt jasny cyjan przechodzi w biel i zębatka traci
-	# kształt; ciemniejsze albedo + emisja ~1 dają nasycony turkus na tle piasku.
-	m.emission_enabled = true
-	m.emission = color
-	m.emission_energy_multiplier = 1.2 if big else 0.95
-	m.emission_texture = shade
-	m.roughness = 0.4
-	m.metallic = 0.0
 	_materials[key] = m
 	return m
 
