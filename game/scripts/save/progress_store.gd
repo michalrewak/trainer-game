@@ -50,6 +50,24 @@ func loadout() -> Loadout:
 	return Loadout.new(data.get("upgrades", {}))
 
 
+## Trening z ostatnich dni: {"runs", "tss", "kj", "minutes"} – do garażu.
+func recent_stats(days: int = 7) -> Dictionary:
+	var out := {"runs": 0, "tss": 0.0, "kj": 0, "minutes": 0}
+	var since := Time.get_unix_time_from_system() - days * 86400.0
+	for r: Variant in runs():
+		if not (r is Dictionary):
+			continue
+		var run: Dictionary = r
+		var when := Time.get_unix_time_from_datetime_string(str(run.get("date", "")).replace(" ", "T"))
+		if when < since:
+			continue
+		out["runs"] = int(out["runs"]) + 1
+		out["tss"] = float(out["tss"]) + float(run.get("tss", 0.0))
+		out["kj"] = int(out["kj"]) + int(run.get("energy_kj", 0))
+		out["minutes"] = int(out["minutes"]) + roundi(float(run.get("duration_s", 0)) / 60.0)
+	return out
+
+
 ## Łączna praca wykonana na wszystkich wyprawach [kJ] – odblokowuje większe podwozia.
 func total_energy_kj() -> int:
 	return int(data.get("total_energy_kj", 0))

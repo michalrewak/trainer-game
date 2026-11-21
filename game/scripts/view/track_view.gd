@@ -13,6 +13,9 @@ const ITEM_VISIBLE_AHEAD := 300.0
 
 ## Wygląd terenu: "canyon" (Kanion Rdzy) albo "city" (Martwe Miasto). Ustaw przed pierwszym sync.
 var theme := "canyon"
+## Zakres dystansu [m] zabudowany jak osada (napad): ruiny zamiast kanionu.
+var town_from := -1.0
+var town_to := -1.0
 
 var _segments: Array[Node3D] = []
 var _segment_ids: Array[int] = []
@@ -102,7 +105,8 @@ func _build_segment(seg: Node3D, idx: int) -> void:
 		var side := -1.0 if rng.randf() < 0.5 else 1.0
 		seg.add_child(LowPoly.box(Vector3(rng.randf_range(1.0, 2.6), 0.05, rng.randf_range(3.0, 9.0)), sand_drift, Vector3(side * rng.randf_range(4.6, 6.6), 0.03, -rng.randf_range(2.0, L - 2.0)), Vector3(0, rng.randf_range(-0.3, 0.3), 0)))
 
-	if theme == "city":
+	var mid_d := (idx + 0.5) * SEGMENT_LENGTH
+	if theme == "city" or (town_to > town_from and mid_d >= town_from and mid_d <= town_to):
 		_build_city_sides(seg, rng)
 		return
 

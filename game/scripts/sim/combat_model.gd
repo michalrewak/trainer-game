@@ -366,7 +366,7 @@ func _update_fire(delta: float) -> void:
 	if target != null and (fire_held or auto_fire):
 		_fire_at(target)
 		_fire_cooldown = fire_interval_s()
-	elif fire_held:
+	elif fire_held or (auto_fire and sim.raids.is_raiding() and sim.raids.gate_hp > 0 and sim.raids.gate_d - sim.vehicle.distance_m < 90.0):
 		# Wolny strzał: bez wroga w celowniku pocisk leci tam, gdzie wskazuje gałka
 		# (bez wychylenia – prosto przed siebie). Tak rozbija się wraki na swoim pasie.
 		_spawn_projectile(aim_direction(), -1)
@@ -445,6 +445,11 @@ func _update_projectiles(delta: float) -> void:
 				raider_hit.emit(r)
 				_damage(r, projectile_damage, DestroyCause.SHOT)
 				break
+		var raids := sim.raids
+		if p["alive"] and raids.gate_hp > 0 and raids.is_raiding() and d0 < raids.gate_d and d1 >= raids.gate_d:
+			# Brama osady stoi w poprzek całej drogi.
+			p["alive"] = false
+			raids.damage_gate(projectile_damage)
 		if p["alive"]:
 			_hit_wrecks(p, Vector2(x0, d0), Vector2(x1, d1))
 		if float(p["age"]) > PROJECTILE_MAX_AGE_S:

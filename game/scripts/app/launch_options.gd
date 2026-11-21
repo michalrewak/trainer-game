@@ -19,6 +19,8 @@ extends RefCounted
 ##   --plan=ŚCIEŻKA     trening z planu (np. res://plans/kanion_4x4.json; .json/.zwo/.fit)
 ##   --time=PORA        pora: cycle (zmienna), day, dusk, night, storm (testy wyglądu)
 ##   --bridge-port=N    port mostka (domyślnie 8765; zapamiętywany)
+##   --raid-test        pierwsza osada tuż po starcie; autopilot zjeżdża na napad
+##   --no-raids         jazda swobodna bez osad
 ##   --challenge-test   pierwsze wyzwanie trybu wolnego już po 8 s
 ##   --no-challenges    jazda swobodna bez wyzwań
 ##   --terrain=ID       wymuś teren (canyon/city) – testy, z pominięciem wymagań
@@ -42,6 +44,8 @@ var no_combat := false
 var terrain := ""
 var all_upgrades := false
 var challenge_test := false
+var raid_test := false
+var no_raids := false
 var no_challenges := false
 var trainer := false
 var plan_path := ""
@@ -92,6 +96,10 @@ static func parse(args: PackedStringArray) -> LaunchOptions:
 				o.terrain = value
 			"--all-upgrades":
 				o.all_upgrades = true
+			"--raid-test":
+				o.raid_test = true
+			"--no-raids":
+				o.no_raids = true
 			"--challenge-test":
 				o.challenge_test = true
 			"--no-challenges":

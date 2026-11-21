@@ -7,6 +7,8 @@ var look_ahead_s := 2.2
 var min_look_ahead_m := 18.0
 var scrap_look_ahead_m := 45.0
 var cooldown_s := 0.35
+## Czy autopilot zjeżdża na osady (testy napadów).
+var take_raids := false
 
 var _cooldown := 0.0
 
@@ -19,6 +21,17 @@ func decide(sim: RunSimulation, delta: float) -> int:
 	var here := lanes.target_lane
 	var d := sim.vehicle.distance_m
 	var horizon := maxf(min_look_ahead_m, sim.vehicle.speed_mps * look_ahead_s)
+	# Zjazd na osadę: przed rozwidleniem ustaw się na skrajnym pasie od jej strony.
+	var raids := sim.raids
+	if take_raids and raids.state == RaidDirector.State.SCOUTING and raids.distance_to_next_m() < 220.0:
+		var exit := raids.exit_lane()
+		if here != exit:
+			var step_dir := signi(exit - here)
+			if not _wreck_ahead(sim, here + step_dir, d, horizon):
+				_cooldown = cooldown_s
+				return step_dir
+		elif raids.distance_to_next_m() < 60.0 and not _wreck_ahead(sim, here, d, horizon):
+			return 0
 	# Ostrzeżenie przed taranowaniem: odjedź od napastnika, jeśli pas jest wolny.
 	for r in sim.combat.live_raiders():
 		if r.state == RaiderModel.State.TELEGRAPH and r.timer > 0.5:
@@ -46,6 +59,10 @@ func decide(sim: RunSimulation, delta: float) -> int:
 ## żeby nie zjechać na pas, na którym właśnie mijamy wrak.
 func _wreck_ahead(sim: RunSimulation, lane: int, d: float, horizon: float) -> bool:
 	var behind := sim.wreck_half_length_m + sim.vehicle_half_length_m + 0.8
+	# Miejsce, w które zaraz spadnie pocisk z wieży, traktujemy jak przeszkodę.
+	for shell in sim.raids.shells:
+		if int(shell["lane"]) == lane and absf(float(shell["d"]) - d) < horizon:
+			return true
 	for item in sim.items_between(d - behind, d + horizon):
 		if item.is_wreck() and item.lane == lane:
 			return true

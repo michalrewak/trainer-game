@@ -13,9 +13,8 @@ const TURRET := "turret"
 const RAM := "ram"
 const SUSPENSION := "suspension"
 const GRABBER := "grabber"
-const TRAILER := "trailer"
 
-const ORDER: Array[String] = [CHASSIS, GENERATOR, ARMOR, CAPACITOR, TURRET, RAM, SUSPENSION, GRABBER, TRAILER]
+const ORDER: Array[String] = [CHASSIS, GENERATOR, ARMOR, CAPACITOR, TURRET, RAM, SUSPENSION, GRABBER]
 
 ## id -> definicja. costs[i] = koszt kupna poziomu i+1: [złom, paliwo].
 const DEFS := {
@@ -67,12 +66,6 @@ const DEFS := {
 		"desc": "Wysięgnik z hakiem zgarnia złom i paliwo leżące obok toru jazdy.",
 		"levels": ["zbiera z szerszego pasa", "zbiera także z sąsiedniego pasa"],
 		"costs": [[200, 1], [650, 4]],
-	},
-	TRAILER: {
-		"name": "Przyczepy",
-		"desc": "Kolejne wagony na łup: część zebranego złomu liczy się podwójnie.",
-		"levels": ["+15% złomu z drogi", "druga przyczepa: +30% złomu", "trzecia przyczepa: +45% – pustynny pociąg"],
-		"costs": [[250, 2], [600, 5], [1400, 9]],
 	},
 }
 

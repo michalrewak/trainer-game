@@ -14,6 +14,7 @@ var _ftp_button: Button
 var _autofire_button: Button
 var _source_button: Button
 var _mode_button: Button
+var _rank_label: Label
 var _time_button: Button
 var _plans: Array[String] = []
 var _go_button: Button
@@ -78,7 +79,8 @@ func _build() -> void:
 	_stash = UiStyle.label("", 40, Palette.UI_SCRAP)
 	head.add_child(_stash)
 	col.add_child(head)
-	col.add_child(UiStyle.label("ROZWÓJ POJAZDU", 26, Palette.UI_DIM))
+	_rank_label = UiStyle.label("", 28, Palette.UI_TEXT)
+	col.add_child(_rank_label)
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 12)
@@ -145,7 +147,7 @@ func _build() -> void:
 	_go_button = UiStyle.button("WYRUSZ!", 680)
 	_go_button.custom_minimum_size.y = 84
 	_go_button.pressed.connect(_on_go)
-	_go_button.focus_entered.connect(func() -> void: _detail.text = "Start wyprawy. Zebrany złom i paliwo trafiają do magazynu – także przy przerwaniu.")
+	_go_button.focus_entered.connect(func() -> void: _detail.text = _motto())
 	go_row.add_child(_go_button)
 	var quit := UiStyle.button("WYJŚCIE", 210)
 	quit.custom_minimum_size.y = 84
@@ -170,6 +172,9 @@ func _small_button(width: float = 900.0) -> Button:
 
 func _refresh() -> void:
 	var p := App.progress
+	var rank := Lore.rank(App.ftp_w())
+	var next_rank := "  ·  do rangi %s: +%d W" % [str(rank["next_name"]), int(rank["next_at"]) - roundi(App.ftp_w())] if int(rank["next_at"]) > 0 else ""
+	_rank_label.text = "Ranga: %s  ·  FTP %d W%s" % [str(rank["name"]).to_upper(), roundi(App.ftp_w()), next_rank]
 	_stash.text = "Złom: %d  ·  Paliwo: %d  ·  Praca: %d kJ" % [p.total_scrap(), p.fuel(), p.total_energy_kj()]
 	for id in UpgradeCatalog.ORDER:
 		var lvl := p.upgrade_level(id)
@@ -208,6 +213,17 @@ func _refresh() -> void:
 	_go_button.text = "WYRUSZ!  →  %s" % TerrainCatalog.display_name(tid) if missing.is_empty() else "TEREN ZABLOKOWANY"
 	if _buggy != null:
 		_buggy.apply_loadout(App.run_loadout())
+
+
+## Hasło dnia i trening z ostatniego tygodnia – przypomnienie, po co się jeździ.
+func _motto() -> String:
+	var week := App.progress.recent_stats(7)
+	var text := "„%s”" % Lore.slogan(App.progress.runs().size())
+	if int(week["runs"]) > 0:
+		text += "\nOstatnie 7 dni: %d wypraw  ·  %d min  ·  TSS %d  ·  %d kJ" % [int(week["runs"]), int(week["minutes"]), roundi(float(week["tss"])), int(week["kj"])]
+	else:
+		text += "\nW tym tygodniu jeszcze nie kręciłeś. Pustkowia czekają."
+	return text
 
 
 ## Kamera podglądu odsuwa się, gdy pojazd rośnie (kolejne osie i przyczepy).

@@ -4,6 +4,9 @@ extends CanvasLayer
 ## (prawy dół), czas do końca (lewa góra), złom (prawa góra). Kadencja dyskretnie pod mocą.
 ## Statyczne elementy powoli dryfują o kilka pikseli (ochrona OLED przed wypaleniem).
 
+## FTP gracza – do pokazania procentu FTP i strefy mocy.
+var ftp_w := 200.0
+
 const DRIFT_PX := 8.0
 const DRIFT_PERIOD_S := 45.0
 
@@ -21,6 +24,10 @@ var _scrap_panel: Control
 var _fuel_value: Label
 var _speed_caption: Label
 var _challenge_label: Label
+var _scout_card: PanelContainer
+var _scout_title: Label
+var _scout_lines: Label
+var _scout_side := 0
 var _workout_box: Control
 var _profile: WorkoutProfile
 var _workout_title: Label
@@ -56,7 +63,14 @@ func update_from(sim: RunSimulation, power: PowerSource, delta: float) -> void:
 	var e := sim.expedition
 	_power_value.text = str(roundi(power.get_power_watts()))
 	var cadence := roundi(power.get_cadence())
-	_cadence_value.text = "%d obr/min" % cadence if cadence > 0 else ""
+	# Kadencja dyskretnie, a obok to, co ważne treningowo: procent FTP i strefa mocy.
+	var pw := power.get_power_watts()
+	if pw >= 5.0:
+		var zone := TrainingMetrics.zone_index(pw, ftp_w)
+		_cadence_value.text = ("%d obr/min  ·  " % cadence if cadence > 0 else "") + "%d%% FTP  ·  %s" % [roundi(pw / ftp_w * 100.0), TrainingMetrics.ZONE_NAMES[zone]]
+		_cadence_value.add_theme_color_override("font_color", TrainingMetrics.ZONE_COLORS[zone].lerp(Palette.UI_TEXT, 0.35))
+	else:
+		_cadence_value.text = ""
 	_hint.text = power.get_hint()
 	_hint.visible = _hint.text != ""
 	_speed_value.text = "%d" % roundi(sim.vehicle.speed_kmh())
@@ -94,6 +108,22 @@ func update_workout(info: Dictionary) -> void:
 	_step_label.text = "%s  ·  %s" % [str(info.get("step_label", "")), UiStyle.clock(float(info.get("step_left_s", 0.0)))]
 	_next_label.text = str(info.get("next_label", ""))
 	_safe_label.visible = bool(info.get("safe", false))
+
+
+## Karta zwiadu: co czeka w osadzie przed zjazdem (łup, obrona, koszt wysiłku).
+## Pojawia się po tej stronie ekranu, po której jest zjazd.
+func update_scout(visible_now: bool, side: int = 1, title: String = "", lines: String = "") -> void:
+	_scout_card.visible = visible_now
+	if not visible_now:
+		return
+	_scout_title.text = title
+	_scout_lines.text = lines
+	if side != _scout_side:
+		_scout_side = side
+		_scout_card.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT if side < 0 else Control.PRESET_CENTER_RIGHT, Control.PRESET_MODE_MINSIZE)
+		_scout_card.grow_horizontal = Control.GROW_DIRECTION_END if side < 0 else Control.GROW_DIRECTION_BEGIN
+		_scout_card.grow_vertical = Control.GROW_DIRECTION_END
+		_scout_card.position += Vector2(48.0 if side < 0 else -48.0, 70.0)
 
 
 ## Etap 6: linia wyzwania trybu wolnego w panelu mocy (pusta = ukryta).
@@ -322,6 +352,19 @@ func _build() -> void:
 	# Pod licznikiem czasu (lewa góra) – dół ekranu zajmuje pojazd.
 	_place(wpanel, Control.PRESET_TOP_LEFT, Vector2(48, 196))
 	wpanel.visible = false
+
+	# Karta zwiadu (napady).
+	_scout_card = UiStyle.panel(Palette.UI_PANEL_STRONG)
+	var scout_col := VBoxContainer.new()
+	scout_col.add_theme_constant_override("separation", 2)
+	scout_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_scout_card.add_child(scout_col)
+	_scout_title = UiStyle.label("", 38, Palette.UI_ACCENT)
+	scout_col.add_child(_scout_title)
+	_scout_lines = UiStyle.label("", 30, Palette.UI_TEXT)
+	scout_col.add_child(_scout_lines)
+	_scout_card.visible = false
+	_root.add_child(_scout_card)
 
 	# Ostrzeżenia o gangu po bokach ekranu.
 	_threat_left = UiStyle.label("", 96, Palette.UI_BAD)

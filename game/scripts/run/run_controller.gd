@@ -11,6 +11,9 @@ const FINISH_DELAY_S := 2.5
 @onready var buggy: BuggyView = $Buggy
 @onready var combat_view: CombatView = $Combat
 @onready var weather: WeatherFx = $Weather
+
+var raid_view: RaidView
+var _loadout: Loadout
 @onready var camera: ChaseCamera = $Camera
 @onready var hud: Hud = $Hud
 @onready var pause_menu: PauseMenu = $PauseMenu
@@ -37,6 +40,8 @@ func _ready() -> void:
 	if App.options.autopilot:
 		autopilot = Autopilot.new()
 	sim = RunSimulation.new(App.run_duration_s(), App.run_seed())
+	sim.expedition.metrics.ftp_w = App.ftp_w()
+	hud.ftp_w = App.ftp_w()
 	# Etap 3: moduły z garażu i teren wyprawy.
 	var loadout := App.run_loadout()
 	loadout.apply_to(sim)
@@ -54,7 +59,10 @@ func _ready() -> void:
 	RenderingServer.global_shader_parameter_set(&"climb_slope", 0.0)
 	RenderingServer.global_shader_parameter_set(&"bend_on", 1.0)
 	buggy.apply_loadout(loadout)
+	_loadout = loadout
 	camera.extra_back = BuggyView.tail_length(loadout)
+	raid_view = RaidView.new()
+	add_child(raid_view)
 	_apply_terrain_look(App.selected_terrain)
 	weather.setup($WorldEnvironment, sun)
 	weather.attach_headlights(buggy)
@@ -71,6 +79,7 @@ func _ready() -> void:
 	_setup_combat()
 	_setup_challenges()
 	_setup_workout()
+	_setup_raids()
 	pause_menu.resume_requested.connect(_resume)
 	pause_menu.end_requested.connect(_end_early)
 	Input.joy_connection_changed.connect(_on_joy_connection_changed)
@@ -156,7 +165,7 @@ func _ride(delta: float) -> void:
 	if workout != null:
 		sim.combat.target_low_tol = TargetBand.WORKOUT_TOL
 		sim.combat.target_high_tol = TargetBand.WORKOUT_TOL
-	elif sim.challenges.is_active():
+	elif sim.challenges.is_active() or sim.raids.is_raiding():
 		sim.combat.target_low_tol = TargetBand.CHALLENGE_TOL
 		sim.combat.target_high_tol = TargetBand.CHALLENGE_TOL
 	else:
@@ -191,6 +200,7 @@ func _update_views(delta: float, power_w: float) -> void:
 	track.sync(sim, delta)
 	buggy.sync(sim, power.get_cadence(), power_w, delta)
 	combat_view.sync(sim, delta)
+	raid_view.sync(sim, delta)
 	var aim_at: Variant = sim.combat.aim_point()
 	var target_local: Variant = null
 	if aim_at is Vector2:
@@ -214,6 +224,8 @@ func _current_target_w() -> float:
 	if workout != null:
 		var w := workout.target_w(sim.expedition.elapsed_s)
 		return w if w > 0.0 else App.free_ride_target_w()
+	if sim.raids.is_raiding():
+		return sim.raids.target_w()
 	if sim.challenges.is_active():
 		return sim.challenges.target_w()
 	return App.free_ride_target_w()
@@ -229,7 +241,7 @@ var _sent_grade := 999.0
 ## Jazda swobodna: trenażer czuje teren (tryb symulacji). Wysyłamy tylko zmiany >= 0,5%,
 ## a w trakcie wyzwań ERG – wcale (ERG ma pierwszeństwo). W treningu nigdy.
 func _send_terrain_grade() -> void:
-	if sim.challenges.is_active() and float(sim.challenges.current.get("grade", 0.0)) <= 0.0:
+	if sim.raids.is_raiding() or (sim.challenges.is_active() and float(sim.challenges.current.get("grade", 0.0)) <= 0.0):
 		return
 	var g := snappedf(sim.vehicle.grade * 100.0, 0.5)
 	if absf(g - _sent_grade) >= 0.5:
@@ -272,6 +284,116 @@ func _tick_workout(delta: float, power_w: float) -> void:
 	var info := workout.info(t)
 	info["safe"] = sim.safe_zone
 	hud.update_workout(info)
+
+
+# --- Napady na osady: zwiad, zjazd, brama, łup ---------------------------------
+
+func _setup_raids() -> void:
+	var r := sim.raids
+	r.enabled = workout == null and not App.options.no_raids
+	r.ftp_w = App.ftp_w()
+	if App.options.raid_test:
+		r.set_first_fork(RaidDirector.SCOUT_M + 120.0)
+		if autopilot != null:
+			autopilot.take_raids = true
+	r.scouted.connect(func(s: Dictionary) -> void:
+		hud.show_message("ZWIAD: %s" % str(s["name"]), 2.5))
+	r.started.connect(_on_raid_started)
+	r.shell_landed.connect(_on_shell_landed)
+	r.gate_broken.connect(_on_gate_broken)
+	r.looting_started.connect(func(_s: Dictionary) -> void:
+		hud.show_message("PLĄDRUJ!\nZbieraj, ile zdążysz", 2.5))
+	r.escape_started.connect(_on_escape_started)
+	r.loot_spilled.connect(func(lost: int) -> void:
+		hud.show_popup("ŁADUNEK SIĘ SYPIE: -%d" % lost, Palette.UI_BAD))
+	r.finished.connect(_on_raid_finished)
+
+
+func _on_raid_started(s: Dictionary) -> void:
+	power.set_erg_target(sim.raids.target_w())
+	# Za bramą trasa zmienia się w ruiny osady.
+	track.town_from = sim.raids.gate_d
+	track.town_to = sim.raids.gate_d + float(s["duration_s"]) * 11.0
+	hud.show_message("NAPAD: %s\nPodjazd pod ostrzałem – rozbij bramę" % str(s["name"]).to_upper(), 3.0)
+
+
+func _on_shell_landed(shell: Dictionary, hit: bool, blocked: bool, lost: int) -> void:
+	combat_view.explode_at(Vector3(sim.lane_x(int(shell["lane"])), 0.0, -(float(shell["d"]) - sim.vehicle.distance_m)))
+	if not hit:
+		return
+	if blocked:
+		buggy.shield_block()
+		camera.shake(0.5)
+		hud.show_popup("TARCZA ZATRZYMAŁA POCISK", Palette.UI_SCRAP)
+	else:
+		buggy.on_hit()
+		camera.shake(1.2)
+		hud.show_popup("TRAFIONY! -%d ZŁOMU" % lost if lost > 0 else "TRAFIONY!", Palette.UI_BAD)
+
+
+func _on_gate_broken(how: int) -> void:
+	for gx: float in [-3.5, 0.0, 3.5]:
+		combat_view.explode_at(Vector3(gx, 0.0, -(sim.raids.gate_d - sim.vehicle.distance_m)))
+	camera.shake(1.0)
+	match how:
+		RaidDirector.GateBreak.SHOT:
+			hud.show_popup("BRAMA ROZBITA! +10% ŁUPU", Palette.UI_GOOD, 2.0)
+		RaidDirector.GateBreak.RAM:
+			hud.show_popup("TARAN WYWAŻYŁ BRAMĘ", Palette.UI_GOOD, 2.0)
+		_:
+			hud.show_popup("WYŁOM NA SIŁĘ – TRACISZ ROZPĘD", Palette.UI_ACCENT, 2.0)
+
+
+func _on_escape_started(_s: Dictionary, scrap: int, fuel: int) -> void:
+	power.set_erg_target(0.0)
+	buggy.set_loot_wagon(true)
+	camera.extra_back = BuggyView.tail_length(_loadout, true)
+	var cargo := "%d złomu" % scrap + (" i %d paliwa" % fuel if fuel > 0 else "")
+	hud.show_message("DOWIEŹ ŁUP!\n%s na przyczepie" % cargo, 3.0)
+
+
+func _on_raid_finished(_s: Dictionary, scrap: int, fuel: int, repelled: bool) -> void:
+	power.set_erg_target(0.0)
+	buggy.set_loot_wagon(false)
+	camera.extra_back = BuggyView.tail_length(_loadout)
+	if repelled:
+		hud.show_message("ODPARCI – osada się obroniła", 3.0)
+	else:
+		hud.show_message("ŁUP DOWIEZIONY: +%d złomu%s" % [scrap, ", +%d paliwa" % fuel if fuel > 0 else ""], 3.5)
+
+
+## Karta zwiadu i stan napadu w HUD. Zwraca true, gdy napad zajmuje linię statusu.
+func _update_raid_hud() -> bool:
+	var r := sim.raids
+	match r.state:
+		RaidDirector.State.SCOUTING:
+			var s := r.current
+			var side := int(s["side"])
+			var loot := "%s  ~%d złomu" % ["★".repeat(int(s["stars"])) + "☆".repeat(3 - int(s["stars"])), int(s["loot_scrap"])]
+			if int(s["loot_fuel"]) > 0:
+				loot += ", %d paliwa" % int(s["loot_fuel"])
+			var defense := "%d %s, brama" % [int(s["towers"]), "wieża" if int(s["towers"]) == 1 else "wieże"]
+			if int(s["guards"]) > 0:
+				defense += ", %d wozy straży" % int(s["guards"])
+			var effort := "%s na %d W (%d%% FTP)" % [UiStyle.clock(float(s["duration_s"])), roundi(r.target_w()), roundi(float(s["ftp"]) * 100.0)]
+			var title := "%s  %s  %d m" % ["◀" if side < 0 else "", str(s["name"]).to_upper(), roundi(r.distance_to_next_m())] + ("  ▶" if side > 0 else "")
+			var how := "Zjedź na %s pas, żeby napaść" % ("LEWY" if side < 0 else "PRAWY")
+			hud.update_scout(true, side, title, "Łup: %s\nObrona: %s\nWysiłek: %s\n%s" % [loot, defense, effort, how])
+			hud.update_challenge("", Palette.UI_TEXT)
+			return true
+		RaidDirector.State.RAIDING:
+			hud.update_scout(false)
+			var ratio := r.hold_ratio()
+			var col := Palette.UI_GOOD if ratio >= 0.8 else Palette.UI_ACCENT
+			var what := "BRAMA %s  %d m" % ["■".repeat(r.gate_hp) + "□".repeat(r.gate_hp_max - r.gate_hp), roundi(r.distance_to_next_m())] if r.phase == RaidDirector.Phase.APPROACH else "PLĄDROWANIE"
+			hud.update_challenge("%s · %s · %s · %d%%" % [what, UiStyle.clock(r.time_left_s()), TargetBand.range_text(r.target_w(), RaidDirector.BAND_TOL, RaidDirector.BAND_TOL), roundi(ratio * 100.0)], col)
+			return true
+		RaidDirector.State.ESCAPING:
+			hud.update_scout(false)
+			hud.update_challenge("DOWIEŹ ŁUP %s · %d złomu na przyczepie" % [UiStyle.clock(r.escape_left_s), r.pending_scrap], Palette.UI_SCRAP)
+			return true
+	hud.update_scout(false)
+	return false
 
 
 # --- Tryb wolny: wyzwania (etap 6) ---------------------------------------------
@@ -317,6 +439,8 @@ func _on_challenge_finished(c: Dictionary, success: bool) -> void:
 
 
 func _update_challenge_hud() -> void:
+	if _update_raid_hud():
+		return
 	var ch := sim.challenges
 	match ch.phase:
 		ChallengeDirector.Phase.ANNOUNCE:

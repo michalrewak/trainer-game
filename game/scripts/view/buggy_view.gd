@@ -21,6 +21,8 @@ var _turret: Node3D
 var _muzzle: MeshInstance3D
 var _muzzle_t := 0.0
 var _aim_line: MeshInstance3D
+var _towing := false
+var _rear_m := 0.0
 var _sparks: CPUParticles3D
 var _spark_light: OmniLight3D
 var _charge_level := 0.0
@@ -102,11 +104,10 @@ func muzzle_flash() -> void:
 
 ## Moduły z garażu (etap 3) – każdy widocznie zmienia sylwetkę pojazdu.
 func apply_loadout(loadout: Loadout) -> void:
-	for holder: Node in [_body.get_node_or_null("Modules"), get_node_or_null("Trailer")]:
-		if holder != null:
-			for w in holder.find_children("Wheel*", "Node3D", true, false):
-				_wheels.erase(w)
-			holder.free()
+	var old_mods := _body.get_node_or_null("Modules")
+	if old_mods != null:
+		_forget_wheels_under(old_mods)
+		old_mods.free()
 	var mods := Node3D.new()
 	mods.name = "Modules"
 	_body.add_child(mods)
@@ -214,34 +215,55 @@ func apply_loadout(loadout: Loadout) -> void:
 		turret_mods.add_child(LowPoly.cylinder(0.1, 1.25, frame, Vector3(0, 0.34, -0.7), Vector3(PI * 0.5, 0, 0), 8))
 		turret_mods.add_child(LowPoly.box(Vector3(0.3, 0.3, 0.5), frame, Vector3(0, 0.34, 0.25)))
 
-	# Przyczepy: każdy poziom to kolejny wagon z łupem.
-	var wagons := loadout.level(UpgradeCatalog.TRAILER)
-	if wagons >= 1:
-		var trailer := Node3D.new()
-		trailer.name = "Trailer"
-		add_child(trailer)
-		var z := 1.15 + rear
-		for i in wagons:
-			var bed_len := 1.7
-			trailer.add_child(LowPoly.tube(Vector3(0, 0.55, z), Vector3(0, 0.55, z + 0.7), 0.05, frame))
-			var bed_z := z + 0.7 + bed_len * 0.5
-			trailer.add_child(LowPoly.box(Vector3(1.4, 0.12, bed_len), frame, Vector3(0, 0.62, bed_z)))
-			for side: float in [-1.0, 1.0]:
-				trailer.add_child(LowPoly.box(Vector3(0.06, 0.45, bed_len), rust, Vector3(side * 0.7, 0.88, bed_z)))
-				trailer.add_child(_module_wheel("WheelWagon", Vector3(side * 0.84, 0.42, bed_z), 0.84, side, tire, steel))
-			trailer.add_child(LowPoly.box(Vector3(1.4, 0.45, 0.06), rust, Vector3(0, 0.88, bed_z + bed_len * 0.5)))
-			# Kupka złomu na pace.
-			for k in 7:
-				var s := 0.18 + 0.05 * (k % 3)
-				trailer.add_child(LowPoly.mesh_instance(LowPoly.rock_mesh(k + 40 + i * 7, 0.4), steel if k % 2 == 0 else rust,
-					Vector3(-0.45 + (k % 4) * 0.3, 0.85 + 0.1 * (k % 2), bed_z - 0.6 + (k % 5) * 0.3), Vector3(s, s, s)))
-			z = bed_z + bed_len * 0.5
+	_rear_m = rear
+	set_loot_wagon(_towing)
 
+
+## Przyczepa z łupem – doczepiana tylko na czas zadania „dowieź łup” po napadzie.
+func set_loot_wagon(on: bool) -> void:
+	_towing = on
+	var old := get_node_or_null("Trailer")
+	if old != null:
+		_forget_wheels_under(old)
+		old.free()
+	if not on:
+		return
+	var frame := Palette.mat(Color("2a2826"), 0.6, 0.6)
+	var steel := Palette.mat(Palette.METAL, 0.45, 0.7)
+	var rust := Palette.mat(Palette.RUST_LIGHT, 0.85, 0.3)
+	var tire := Palette.mat(Palette.TIRE, 0.95)
+	var trailer := Node3D.new()
+	trailer.name = "Trailer"
+	add_child(trailer)
+	var z := 1.15 + _rear_m
+	var bed_len := 1.9
+	trailer.add_child(LowPoly.tube(Vector3(0, 0.55, z), Vector3(0, 0.55, z + 0.7), 0.05, frame))
+	var bed_z := z + 0.7 + bed_len * 0.5
+	trailer.add_child(LowPoly.box(Vector3(1.5, 0.12, bed_len), frame, Vector3(0, 0.62, bed_z)))
+	for side: float in [-1.0, 1.0]:
+		trailer.add_child(LowPoly.box(Vector3(0.06, 0.5, bed_len), rust, Vector3(side * 0.75, 0.9, bed_z)))
+		trailer.add_child(_module_wheel("WheelWagon", Vector3(side * 0.9, 0.42, bed_z), 0.84, side, tire, steel))
+	trailer.add_child(LowPoly.box(Vector3(1.5, 0.5, 0.06), rust, Vector3(0, 0.9, bed_z + bed_len * 0.5)))
+	# Łup: skrzynie, beczka i świecący złom.
+	trailer.add_child(LowPoly.box(Vector3(0.6, 0.5, 0.6), Palette.mat(Color("6b5640")), Vector3(-0.35, 1.0, bed_z - 0.45)))
+	trailer.add_child(LowPoly.box(Vector3(0.5, 0.4, 0.5), Palette.mat(Color("5a4636")), Vector3(0.35, 0.95, bed_z + 0.5), Vector3(0, 0.4, 0)))
+	trailer.add_child(LowPoly.cylinder(0.26, 0.7, Palette.mat(Palette.PAINT_RED, 0.7, 0.3), Vector3(0.38, 1.05, bed_z - 0.4), Vector3.ZERO, 10))
+	for k in 5:
+		var s := 0.2 + 0.05 * (k % 3)
+		trailer.add_child(LowPoly.mesh_instance(LowPoly.rock_mesh(k + 40, 0.4), Palette.glow(Palette.SCRAP_GLOW, 0.9) if k % 2 == 0 else steel,
+			Vector3(-0.4 + (k % 3) * 0.4, 0.85 + 0.12 * (k % 2), bed_z - 0.1 + (k % 4) * 0.22), Vector3(s, s, s)))
 
 ## Długość „ogona” pojazdu za główną osią [m]: trzecia oś i przyczepy. Dla kamer.
-static func tail_length(loadout: Loadout) -> float:
+static func tail_length(loadout: Loadout, towing: bool = false) -> float:
 	var rear := 1.35 if loadout.level(UpgradeCatalog.CHASSIS) >= 2 else 0.0
-	return rear + loadout.level(UpgradeCatalog.TRAILER) * 2.4
+	return rear + (2.8 if towing else 0.0)
+
+
+## Usuwa z listy kół te, które należą do zwalnianego węzła (nazwy bywają nadawane automatycznie).
+func _forget_wheels_under(holder: Node) -> void:
+	for w: Node3D in _wheels.duplicate():
+		if holder.is_ancestor_of(w):
+			_wheels.erase(w)
 
 
 ## Koło modułu (podwozie, wagony) – obraca się razem z kołami głównymi.

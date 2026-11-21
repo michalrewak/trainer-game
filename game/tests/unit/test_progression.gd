@@ -10,8 +10,8 @@ func _store_with(scrap: int, fuel: int, kj: int = 0, upgrades: Dictionary = {}) 
 	return s
 
 
-func test_catalog_has_chassis_and_eight_modules_with_costs() -> void:
-	assert_eq(UpgradeCatalog.ORDER.size(), 9)
+func test_catalog_has_chassis_and_seven_modules_with_costs() -> void:
+	assert_eq(UpgradeCatalog.ORDER.size(), 8)
 	assert_eq(UpgradeCatalog.ORDER[0], UpgradeCatalog.CHASSIS)
 	for id in UpgradeCatalog.ORDER:
 		assert_true(UpgradeCatalog.max_level(id) >= 2, "%s ma poziomy" % id)
@@ -96,26 +96,26 @@ func test_next_goal_names_what_to_aim_for() -> void:
 
 func test_upgrades_survive_save_and_load() -> void:
 	var s := _store_with(1000, 10)
-	s.buy(UpgradeCatalog.TRAILER)
+	s.data["upgrades"] = {"trailer": 2}
+	s.buy(UpgradeCatalog.GRABBER)
 	assert_true(s.save_data())
 	var r := ProgressStore.new(s.path)
 	assert_true(r.load_data())
-	assert_eq(r.upgrade_level(UpgradeCatalog.TRAILER), 1)
-	assert_eq(r.fuel(), 8)
+	assert_eq(r.upgrade_level(UpgradeCatalog.GRABBER), 1)
+	assert_eq(r.fuel(), 9)
+	assert_false((r.data["upgrades"] as Dictionary).has("trailer"), "usunięty moduł znika ze starego zapisu")
 
 
 func test_loadout_changes_the_ride() -> void:
 	var base := RunSimulation.new(900.0, 1)
 	var tuned := RunSimulation.new(900.0, 1)
-	Loadout.new({UpgradeCatalog.GENERATOR: 5, UpgradeCatalog.ARMOR: 3, UpgradeCatalog.TURRET: 3, UpgradeCatalog.CAPACITOR: 1, UpgradeCatalog.TRAILER: 2, UpgradeCatalog.SUSPENSION: 2, UpgradeCatalog.GRABBER: 2}).apply_to(tuned)
+	Loadout.new({UpgradeCatalog.GENERATOR: 5, UpgradeCatalog.ARMOR: 3, UpgradeCatalog.TURRET: 3, UpgradeCatalog.CAPACITOR: 1, UpgradeCatalog.SUSPENSION: 2, UpgradeCatalog.GRABBER: 2}).apply_to(tuned)
 	assert_true(tuned.vehicle.steady_state_speed(200.0) > base.vehicle.steady_state_speed(200.0) * 1.06, "generator przyspiesza")
 	assert_true(tuned.combat.fire_interval_s() < base.combat.fire_interval_s(), "wieżyczka strzela szybciej")
 	assert_eq(tuned.combat.projectile_damage, 2, "ciężkie pociski")
 	assert_true(tuned.lanes.max_lateral_speed_mps > base.lanes.max_lateral_speed_mps * 1.5, "zawieszenie: szybsza zmiana pasa")
 	tuned.expedition.add_scrap(100)
 	base.expedition.add_scrap(100)
-	assert_eq(base.expedition.scrap, 100)
-	assert_eq(tuned.expedition.scrap, 130, "przyczepy: +30% złomu")
 	var lost_tuned := tuned.expedition.lose_scrap_on_hit()
 	var lost_base := base.expedition.lose_scrap_on_hit()
 	assert_true(lost_tuned < lost_base, "pancerz zmniejsza straty (%d < %d)" % [lost_tuned, lost_base])

@@ -23,6 +23,8 @@ var expedition: Expedition
 var combat: CombatModel
 ## Tryb wolny (etap 6): wyzwania proponowane przez grę. Domyślnie wyłączone.
 var challenges := ChallengeDirector.new()
+## Napady na osady (zwiad i decyzja na zjeździe). Domyślnie wyłączone.
+var raids: RaidDirector
 ## Wzniesienia i doliny (CourseProfile). W grze włączone, w czystej symulacji domyślnie płasko.
 var course: CourseProfile
 var course_enabled := false
@@ -53,6 +55,7 @@ func _init(duration_s: float = 900.0, seed_value: int = 0) -> void:
 	generator = TrackGenerator.new(seed_value, lanes.lane_count)
 	combat = CombatModel.new(self, seed_value)
 	course = CourseProfile.new(seed_value)
+	raids = RaidDirector.new(self, seed_value)
 	challenges.enabled = false
 	challenges.finished.connect(_on_challenge_finished)
 	_refill()
@@ -114,7 +117,10 @@ func step(delta: float, power_w: float) -> void:
 	expedition.tick(delta, power_w, vehicle.speed_mps, vehicle.distance_m)
 	_resolve_contacts(d0, vehicle.distance_m)
 	combat.step(delta, power_w)
-	challenges.step(delta, expedition.elapsed_s, expedition.time_left_s(), power_w)
+	# Wyzwania nie nakładają się na zwiad i napad – jedno zadanie naraz.
+	if raids.state == RaidDirector.State.IDLE:
+		challenges.step(delta, expedition.elapsed_s, expedition.time_left_s(), power_w)
+	raids.step(delta, power_w)
 	vehicle.grade = current_grade()
 	generator.difficulty = expedition.progress()
 	generator.speed_hint_mps = maxf(vehicle.speed_mps, 8.0)

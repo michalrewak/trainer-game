@@ -14,6 +14,7 @@ var raids_lost := 0
 var raiders_destroyed := 0
 var fuel := 0
 var challenges_completed := 0
+var raids_done := 0
 ## Ulepszenia (etap 3): pancerz zmniejsza straty, przyczepa dokłada część złomu.
 var scrap_loss_factor := 1.0
 var scrap_bonus := 0.0
@@ -22,6 +23,8 @@ var energy_j := 0.0
 var max_power_w := 0.0
 var max_speed_mps := 0.0
 var finished := false
+## Wartości treningowe (strefy, NP, IF, TSS). FTP ustawia kontroler wyprawy.
+var metrics := TrainingMetrics.new()
 
 
 func _init(p_duration_s: float = 900.0) -> void:
@@ -34,6 +37,7 @@ func tick(delta: float, power_w: float, speed_mps: float, p_distance_m: float) -
 	var step := minf(delta, duration_s - elapsed_s)
 	elapsed_s += step
 	energy_j += maxf(power_w, 0.0) * step
+	metrics.tick(step, power_w)
 	max_power_w = maxf(max_power_w, power_w)
 	max_speed_mps = maxf(max_speed_mps, speed_mps)
 	distance_m = p_distance_m
@@ -67,6 +71,11 @@ func lose_scrap_to_raid() -> int:
 	return _lose(maxi(2, ceili(scrap * 0.10)))
 
 
+## Trafienie pociskiem z wieży osady: 6% złomu (w górę), co najmniej 2.
+func lose_scrap_to_shell() -> int:
+	return _lose(maxi(2, ceili(scrap * 0.06)))
+
+
 func _lose(base: int) -> int:
 	if scrap <= 0:
 		return 0
@@ -94,7 +103,7 @@ func average_speed_kmh() -> float:
 
 ## Podsumowanie do ekranu końcowego i zapisu postępu.
 func to_summary(completed: bool) -> Dictionary:
-	return {
+	var out := {
 		"completed": completed,
 		"planned_duration_s": roundi(duration_s),
 		"duration_s": roundi(elapsed_s),
@@ -104,6 +113,7 @@ func to_summary(completed: bool) -> Dictionary:
 		"scrap_lost": scrap_lost,
 		"fuel": fuel,
 		"challenges_completed": challenges_completed,
+		"raids_done": raids_done,
 		"collisions": collisions,
 		"raids_lost": raids_lost,
 		"raiders_destroyed": raiders_destroyed,
@@ -113,3 +123,5 @@ func to_summary(completed: bool) -> Dictionary:
 		"max_speed_kmh": snappedf(max_speed_mps * 3.6, 0.1),
 		"energy_kj": roundi(energy_j / 1000.0),
 	}
+	out.merge(metrics.to_summary())
+	return out

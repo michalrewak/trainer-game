@@ -46,11 +46,6 @@ func twin_barrels() -> bool:
 	return level(UpgradeCatalog.TURRET) >= 2
 
 
-## Premia za złom zebrany z drogi (część sztuk liczy się podwójnie).
-func scrap_bonus() -> float:
-	return 0.15 * level(UpgradeCatalog.TRAILER)
-
-
 ## Mnożnik szybkości zmiany pasa.
 func lane_speed_multiplier() -> float:
 	return 1.0 + 0.3 * level(UpgradeCatalog.SUSPENSION)
@@ -75,7 +70,6 @@ func apply_to(sim: RunSimulation) -> void:
 	sim.vehicle.engine_multiplier = engine_multiplier()
 	sim.impact_speed_factor = impact_speed_factor()
 	sim.expedition.scrap_loss_factor = scrap_loss_factor()
-	sim.expedition.scrap_bonus = scrap_bonus()
 	sim.combat.shield_regen_multiplier = shield_regen_multiplier()
 	sim.combat.fire_rate_multiplier = fire_rate_multiplier()
 	sim.combat.projectile_damage = projectile_damage()
