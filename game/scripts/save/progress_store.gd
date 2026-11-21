@@ -25,6 +25,7 @@ static func default_data() -> Dictionary:
 		"version": FORMAT_VERSION,
 		"total_scrap": 0,
 		"fuel": 0,
+		"total_energy_kj": 0,
 		"upgrades": {},
 		"runs_completed": 0,
 		"total_distance_m": 0,
@@ -49,11 +50,62 @@ func loadout() -> Loadout:
 	return Loadout.new(data.get("upgrades", {}))
 
 
+## Łączna praca wykonana na wszystkich wyprawach [kJ] – odblokowuje większe podwozia.
+func total_energy_kj() -> int:
+	return int(data.get("total_energy_kj", 0))
+
+
+func chassis_level() -> int:
+	return upgrade_level(UpgradeCatalog.CHASSIS)
+
+
 func can_buy(id: String) -> bool:
-	var cost := UpgradeCatalog.next_cost(id, upgrade_level(id))
+	return block_reason(id) == ""
+
+
+## Dlaczego nie można kupić następnego poziomu ("" = można). Tekst do garażu.
+func block_reason(id: String) -> String:
+	var lvl := upgrade_level(id)
+	var cost := UpgradeCatalog.next_cost(id, lvl)
 	if cost.is_empty():
-		return false
-	return total_scrap() >= int(cost["scrap"]) and fuel() >= int(cost["fuel"])
+		return "Maksymalny poziom."
+	if lvl >= UpgradeCatalog.level_cap(id, chassis_level()):
+		return "Wymaga większego podwozia."
+	var need_kj := UpgradeCatalog.required_kj(id, lvl)
+	if total_energy_kj() < need_kj:
+		return "Wymaga %d kJ łącznej pracy (masz %d kJ)." % [need_kj, total_energy_kj()]
+	var missing_scrap := int(cost["scrap"]) - total_scrap()
+	var missing_fuel := int(cost["fuel"]) - fuel()
+	if missing_scrap > 0 or missing_fuel > 0:
+		var parts: Array[String] = []
+		if missing_scrap > 0:
+			parts.append("%d złomu" % missing_scrap)
+		if missing_fuel > 0:
+			parts.append("%d paliwa" % missing_fuel)
+		return "Brakuje: %s." % " i ".join(parts)
+	return ""
+
+
+## Najbliższy cel rozwoju: na co już stać albo czego brakuje do najtańszego modułu.
+func next_goal() -> String:
+	var best_id := ""
+	var best_scrap := 1 << 30
+	for id in UpgradeCatalog.ORDER:
+		var lvl := upgrade_level(id)
+		var cost := UpgradeCatalog.next_cost(id, lvl)
+		if cost.is_empty() or lvl >= UpgradeCatalog.level_cap(id, chassis_level()):
+			continue
+		if can_buy(id):
+			return "Stać cię na: %s poz. %d" % [UpgradeCatalog.display_name(id), lvl + 1]
+		if total_energy_kj() >= UpgradeCatalog.required_kj(id, lvl) and int(cost["scrap"]) < best_scrap:
+			best_scrap = int(cost["scrap"])
+			best_id = id
+	if best_id == "":
+		var need := UpgradeCatalog.required_kj(UpgradeCatalog.CHASSIS, chassis_level())
+		if need > 0:
+			return "Większe podwozie: jeszcze %d kJ pracy" % maxi(0, need - total_energy_kj())
+		return "Pojazd rozbudowany do końca"
+	return "%s poz. %d – %s" % [UpgradeCatalog.display_name(best_id), upgrade_level(best_id) + 1, block_reason(best_id).to_lower()]
 
 
 ## Kupuje następny poziom ulepszenia (zapis pliku robi wywołujący). Zwraca powodzenie.
@@ -80,6 +132,7 @@ func record_run(summary: Dictionary, timestamp: String = "") -> void:
 	var scrap := int(run.get("scrap", 0))
 	data["total_scrap"] = total_scrap() + scrap
 	data["fuel"] = fuel() + int(run.get("fuel", 0))
+	data["total_energy_kj"] = total_energy_kj() + int(run.get("energy_kj", 0))
 	data["total_distance_m"] = int(data.get("total_distance_m", 0)) + int(run.get("distance_m", 0))
 	if bool(run.get("completed", false)):
 		data["runs_completed"] = int(data.get("runs_completed", 0)) + 1
@@ -148,6 +201,15 @@ static func _sanitize(raw: Dictionary) -> Dictionary:
 	clean["version"] = FORMAT_VERSION
 	clean["total_scrap"] = maxi(0, int(raw.get("total_scrap", 0)))
 	clean["fuel"] = maxi(0, int(raw.get("fuel", 0)))
+	if raw.has("total_energy_kj"):
+		clean["total_energy_kj"] = maxi(0, int(raw["total_energy_kj"]))
+	elif raw.get("runs") is Array:
+		# Starszy zapis: pracę odtwarzamy z historii wypraw.
+		var kj := 0
+		for r: Variant in raw["runs"]:
+			if r is Dictionary:
+				kj += int((r as Dictionary).get("energy_kj", 0))
+		clean["total_energy_kj"] = kj
 	var ups: Variant = raw.get("upgrades", {})
 	var clean_ups := {}
 	if ups is Dictionary:

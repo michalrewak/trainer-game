@@ -72,7 +72,10 @@ func update_from(sim: RunSimulation, power: PowerSource, delta: float) -> void:
 	_time_value.add_theme_color_override("font_color", Palette.UI_ACCENT if e.time_left_s() <= 60.0 else Palette.UI_TEXT)
 	_scrap_value.text = str(e.scrap)
 	_fuel_value.text = "PALIWO %d" % e.fuel
-	_fuel_value.visible = e.fuel > 0
+	_fuel_value.visible = e.fuel > 0 or sim.ram_cooldown_s > 0.0
+	if sim.ram_cooldown_s > 0.0:
+		var ram_text := "TARAN gotowy" if sim.ram_ready() else "TARAN %d s" % ceili(sim.ram_left_s)
+		_fuel_value.text = ("PALIWO %d   ·   " % e.fuel if e.fuel > 0 else "") + ram_text
 	_tick_effects(delta)
 
 

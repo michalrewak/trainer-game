@@ -19,6 +19,7 @@ var _plans: Array[String] = []
 var _go_button: Button
 var _buggy: BuggyView
 var _turntable: Node3D
+var _preview_cam: Camera3D
 var _terrain_index := 0
 var _duration_index := 0
 
@@ -77,26 +78,33 @@ func _build() -> void:
 	_stash = UiStyle.label("", 40, Palette.UI_SCRAP)
 	head.add_child(_stash)
 	col.add_child(head)
-	col.add_child(UiStyle.label("ULEPSZENIA", 26, Palette.UI_DIM))
+	col.add_child(UiStyle.label("ROZWÓJ POJAZDU", 26, Palette.UI_DIM))
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 8)
+	col.add_child(grid)
 	for id in UpgradeCatalog.ORDER:
-		var b := _small_button()
+		var b := _small_button(444)
 		b.pressed.connect(_on_buy.bind(id))
 		b.focus_entered.connect(_show_detail.bind(id))
-		col.add_child(b)
+		grid.add_child(b)
 		_upgrade_buttons[id] = b
 	_detail = UiStyle.label("", 26, Palette.UI_DIM)
 	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_detail.custom_minimum_size = Vector2(900, 64)
+	_detail.custom_minimum_size = Vector2(900, 96)
 	col.add_child(_detail)
-	col.add_child(UiStyle.label("WYPRAWA", 26, Palette.UI_DIM))
-	_mode_button = _small_button()
+	var mode_row := HBoxContainer.new()
+	mode_row.add_theme_constant_override("separation", 12)
+	_mode_button = _small_button(444)
 	_mode_button.pressed.connect(_cycle_mode)
 	_mode_button.focus_entered.connect(func() -> void: _detail.text = "Jazda swobodna: gra proponuje wyzwania. Trening: plan (JSON/ZWO/FIT) prowadzi jazdę – interwały to burze piaskowe z polem bezpiecznym, cel ±5%.")
-	col.add_child(_mode_button)
-	_terrain_button = _small_button()
+	mode_row.add_child(_mode_button)
+	_terrain_button = _small_button(444)
 	_terrain_button.pressed.connect(_cycle_terrain)
 	_terrain_button.focus_entered.connect(func() -> void: _detail.text = TerrainCatalog.description(TerrainCatalog.ORDER[_terrain_index]))
-	col.add_child(_terrain_button)
+	mode_row.add_child(_terrain_button)
+	col.add_child(mode_row)
 	var time_row := HBoxContainer.new()
 	time_row.add_theme_constant_override("separation", 12)
 	_duration_button = _small_button(444)
@@ -162,53 +170,74 @@ func _small_button(width: float = 900.0) -> Button:
 
 func _refresh() -> void:
 	var p := App.progress
-	_stash.text = "Złom: %d   ·   Paliwo: %d" % [p.total_scrap(), p.fuel()]
+	_stash.text = "Złom: %d  ·  Paliwo: %d  ·  Praca: %d kJ" % [p.total_scrap(), p.fuel(), p.total_energy_kj()]
 	for id in UpgradeCatalog.ORDER:
 		var lvl := p.upgrade_level(id)
 		var maxl := UpgradeCatalog.max_level(id)
 		var pips := "■".repeat(lvl) + "□".repeat(maxl - lvl)
-		var text := "%s  %s" % [UpgradeCatalog.display_name(id), pips]
+		var text := "%s %s" % [UpgradeCatalog.display_name(id), pips]
 		var cost := UpgradeCatalog.next_cost(id, lvl)
 		if cost.is_empty():
-			text += "   (maksimum)"
+			text += "  maks."
+		elif lvl >= UpgradeCatalog.level_cap(id, p.chassis_level()):
+			text += "  (podwozie)"
 		else:
-			text += "   → %s   [%d złomu%s]" % [UpgradeCatalog.level_effect(id, lvl + 1), int(cost["scrap"]), (" · %d paliwa" % int(cost["fuel"])) if int(cost["fuel"]) > 0 else ""]
+			text += "  %d zł%s" % [int(cost["scrap"]), (" + %d pal." % int(cost["fuel"])) if int(cost["fuel"]) > 0 else ""]
 		var b: Button = _upgrade_buttons[id]
 		b.text = text
 		b.modulate = Color.WHITE if (cost.is_empty() or p.can_buy(id)) else Color(1, 1, 1, 0.55)
 	var tid := TerrainCatalog.ORDER[_terrain_index]
 	var missing := TerrainCatalog.missing_requirements(tid, p.loadout(), App.ftp_w())
-	_terrain_button.text = "Teren: %s%s" % [TerrainCatalog.display_name(tid), "" if missing.is_empty() else "   (zablokowany: %s)" % ", ".join(missing)]
+	_terrain_button.text = "Teren: %s%s" % [TerrainCatalog.display_name(tid), "" if missing.is_empty() else " (blokada)"]
+	if not missing.is_empty() and _terrain_button.has_focus():
+		_detail.text = "%s wymaga: %s." % [TerrainCatalog.display_name(tid), ", ".join(missing)]
 	var plan := App.selected_plan()
 	if plan != null:
-		_mode_button.text = "Tryb: TRENING – %s" % plan.name
+		_mode_button.text = "Trening: %s" % plan.name
 		_duration_button.text = "Czas: %s (z planu)" % WorkoutStep.format_duration(plan.total_duration_s())
 	else:
-		_mode_button.text = "Tryb: jazda swobodna (wyzwania)"
+		_mode_button.text = "Tryb: jazda swobodna"
 		var minutes := DURATIONS[_duration_index]
 		_duration_button.text = "Czas: %s" % ("TEST 2 min" if minutes < 5.0 else "%d min" % roundi(minutes))
 	_time_button.text = "Pora: %s" % {"cycle": "zmienna (dzień → noc)", "day": "dzień", "night": "noc"}.get(App.time_mode(), "zmienna (dzień → noc)")
+	_frame_vehicle(App.run_loadout())
 	_ftp_button.text = "FTP: %d W  ← →" % roundi(App.ftp_w())
 	_autofire_button.text = "Auto-ogień: %s" % ("TAK" if App.auto_fire_enabled() else "nie")
 	_source_button.text = "Moc: %s" % ("TRENAŻER" if App.power_source_kind() == PowerSourceFactory.KIND_TRAINER else "PAD")
 	_go_button.disabled = not missing.is_empty()
 	_go_button.text = "WYRUSZ!  →  %s" % TerrainCatalog.display_name(tid) if missing.is_empty() else "TEREN ZABLOKOWANY"
 	if _buggy != null:
-		_buggy.apply_loadout(p.loadout())
+		_buggy.apply_loadout(App.run_loadout())
+
+
+## Kamera podglądu odsuwa się, gdy pojazd rośnie (kolejne osie i przyczepy).
+func _frame_vehicle(loadout: Loadout) -> void:
+	if _preview_cam == null or not _preview_cam.is_inside_tree():
+		return
+	var tail := BuggyView.tail_length(loadout)
+	_preview_cam.look_at_from_position(Vector3(5.2, 3.3, 6.4) * (1.0 + tail * 0.11), Vector3(0, 1.0, 0.6), Vector3.UP)
+	if _buggy != null:
+		_buggy.position.z = -tail * 0.45
 
 
 func _show_detail(id: String) -> void:
-	_detail.text = UpgradeCatalog.description(id)
+	var p := App.progress
+	var lvl := p.upgrade_level(id)
+	var text := UpgradeCatalog.description(id)
+	var cost := UpgradeCatalog.next_cost(id, lvl)
+	if not cost.is_empty():
+		text += "\nPoziom %d: %s. Koszt: %d złomu%s. %s" % [lvl + 1, UpgradeCatalog.level_effect(id, lvl + 1), int(cost["scrap"]), (" i %d paliwa" % int(cost["fuel"])) if int(cost["fuel"]) > 0 else "", p.block_reason(id)]
+	else:
+		text += "\nMaksymalny poziom: %s." % UpgradeCatalog.level_effect(id, lvl)
+	_detail.text = text
 
 
 func _on_buy(id: String) -> void:
 	if App.progress.buy(id):
 		App.progress.save_data()
 		_detail.text = "Zamontowano: %s (poziom %d)." % [UpgradeCatalog.display_name(id), App.progress.upgrade_level(id)]
-	elif UpgradeCatalog.next_cost(id, App.progress.upgrade_level(id)).is_empty():
-		_detail.text = "To ulepszenie ma już maksymalny poziom."
 	else:
-		_detail.text = "Za mało złomu albo paliwa. Wyrusz na wyprawę!"
+		_detail.text = "%s: %s" % [UpgradeCatalog.display_name(id), App.progress.block_reason(id)]
 	_refresh()
 
 
@@ -306,8 +335,9 @@ func _make_preview_world() -> Node3D:
 	(func() -> void:
 		if is_instance_valid(_buggy):
 			_buggy.update_combat(null, 0.25, 0.016)
-			_buggy.apply_loadout(App.progress.loadout())).call_deferred()
+			_buggy.apply_loadout(App.run_loadout())).call_deferred()
 	var cam := Camera3D.new()
+	_preview_cam = cam
 	cam.fov = 42.0
 	root.add_child(cam)
 	cam.look_at_from_position(Vector3(5.2, 3.3, 6.4), Vector3(0, 1.0, 0.6), Vector3.UP)

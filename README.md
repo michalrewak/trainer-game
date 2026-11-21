@@ -60,8 +60,12 @@ dla tego pada (inaczej pad udaje mysz).
 - **Gangi** dojeżdżają z boku i taranują. Obrona: wieżyczka, unik zmianą pasa po ostrzeżeniu
   „!” albo tarcza. Tarcza ładuje się i działko strzela szybciej, gdy trzymasz moc docelową
   (65% FTP w jeździe swobodnej). Przegrana potyczka to rabunek części złomu.
-- **Garaż**: 5 ulepszeń (generator, pancerz, kondensator tarczy, wieżyczka, przyczepa),
-  każde widać na pojeździe. Wybór terenu: Kanion Rdzy, Martwe Miasto (wymaga pancerza i
+- **Garaż i rozwój pojazdu**: podwozie (druga i trzecia oś) oraz 8 modułów: generator,
+  pancerz, kondensator, wieżyczka, taran, zawieszenie, chwytak, przyczepy. Każdy poziom
+  widać na pojeździe, od jednoosiowego buggy do pociągu z trzema wagonami. Większe podwozie
+  pozwala montować wyższe poziomy modułów i wymaga wypracowanych kilodżuli (400 kJ i
+  2000 kJ łącznej pracy), więc nie da się go kupić samym złomem. Podsumowanie wyprawy
+  podpowiada najbliższy cel. Wybór terenu: Kanion Rdzy, Martwe Miasto (wymaga pancerza i
   FTP ≥ 150 W). Ustawienie FTP i auto-ognia.
 - **Tryb wolny – wyzwania**: gra sama proponuje wyzwania i dyktuje opór. Podjazd 5% to
   nachylenie (symulacja trenażera), ucieczka przed gangiem w burzy piaskowej i sprint za

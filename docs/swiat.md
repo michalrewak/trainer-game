@@ -102,6 +102,10 @@ części, a każda część ma być widoczna na pojeździe i odczuwalna w jeźdz
 
 - Droga od jednoosiowego buggy do pustynnego pociągu pancernego: kolejne osie, przyczepy,
   wieżyczki, pancerz, zawieszenie, generator, kondensatory.
+- Stan wdrożenia (2026-11-21): podwozie w trzech stopniach (buggy, druga oś, trzecia oś)
+  i 8 modułów po 2–5 poziomów; podwozie wymaga łącznej pracy w kJ (400 i 2000) i
+  ogranicza poziomy modułów. Do zrobienia: załoga z uwolnionych pedalarzy, części
+  z napadów i od bossów.
 - Uwolnieni pedalarze jako załoga i źródło nowych możliwości.
 - Części zdobywane nie tylko za złom: z napadów, od bossów i za wyniki w kampanii.
 - Odblokowania powiązane z realną formą (FTP).

@@ -10,6 +10,7 @@ extends RefCounted
 signal wreck_hit(item: TrackItem, scrap_lost: int)
 signal scrap_collected(item: TrackItem)
 signal fuel_collected(item: TrackItem)
+signal wreck_rammed(item: TrackItem)
 signal finished
 
 const LOOKAHEAD_M := 260.0
@@ -35,6 +36,11 @@ var wreck_half_length_m := 1.6
 var wreck_half_width_m := 1.3
 var scrap_half_length_m := 0.9
 var scrap_half_width_m := 1.2
+
+## Taran (moduł): czas ładowania [s]; 0 = brak. Naładowany rozbija wrak bez straty złomu.
+var ram_cooldown_s := 0.0
+var ram_keeps_speed := false
+var ram_left_s := 0.0
 
 var invulnerable_left_s := 0.0
 var last_power_w := 0.0
@@ -104,6 +110,7 @@ func step(delta: float, power_w: float) -> void:
 	vehicle.step(delta, power_w)
 	lanes.step(delta)
 	invulnerable_left_s = maxf(0.0, invulnerable_left_s - delta)
+	ram_left_s = maxf(0.0, ram_left_s - delta)
 	expedition.tick(delta, power_w, vehicle.speed_mps, vehicle.distance_m)
 	_resolve_contacts(d0, vehicle.distance_m)
 	combat.step(delta, power_w)
@@ -124,6 +131,10 @@ func current_grade() -> float:
 	if course_enabled:
 		return course.grade_at(vehicle.distance_m)
 	return 0.0
+
+
+func ram_ready() -> bool:
+	return ram_cooldown_s > 0.0 and ram_left_s <= 0.0
 
 
 func is_invulnerable() -> bool:
@@ -158,6 +169,13 @@ func _resolve_contacts(d0: float, d1: float) -> void:
 			continue
 		if item.is_wreck():
 			if is_invulnerable():
+				continue
+			if ram_ready():
+				item.consumed = true
+				ram_left_s = ram_cooldown_s
+				if not ram_keeps_speed:
+					vehicle.apply_impact(0.75)
+				wreck_rammed.emit(item)
 				continue
 			item.consumed = true
 			vehicle.apply_impact(impact_speed_factor)

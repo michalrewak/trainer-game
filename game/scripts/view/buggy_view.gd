@@ -102,47 +102,102 @@ func muzzle_flash() -> void:
 
 ## Moduły z garażu (etap 3) – każdy widocznie zmienia sylwetkę pojazdu.
 func apply_loadout(loadout: Loadout) -> void:
-	var old := _body.get_node_or_null("Modules")
-	if old != null:
-		old.free()
-	var old_trailer := get_node_or_null("Trailer")
-	if old_trailer != null:
-		for w in old_trailer.find_children("Wheel*", "Node3D", true, false):
-			_wheels.erase(w)
-		old_trailer.free()
+	for holder: Node in [_body.get_node_or_null("Modules"), get_node_or_null("Trailer")]:
+		if holder != null:
+			for w in holder.find_children("Wheel*", "Node3D", true, false):
+				_wheels.erase(w)
+			holder.free()
 	var mods := Node3D.new()
 	mods.name = "Modules"
 	_body.add_child(mods)
-	var frame := Palette.mat(Palette.BUGGY_FRAME, 0.5, 0.6)
-	var accent := Palette.mat(Palette.BUGGY_ACCENT, 0.55, 0.2)
+	var frame := Palette.mat(Color("2a2826"), 0.6, 0.6)
+	var accent := Palette.mat(Palette.BUGGY_ACCENT, 0.7, 0.2)
 	var steel := Palette.mat(Palette.METAL, 0.45, 0.7)
-	var rust := Palette.mat(Palette.RUST_LIGHT, 0.8, 0.3)
+	var rust := Palette.mat(Palette.RUST_LIGHT, 0.85, 0.3)
+	var tire := Palette.mat(Palette.TIRE, 0.95)
 
+	# Podwozie: druga oś z przodu zamiast płozy, potem trzecia z tyłu i platforma.
+	var chassis := loadout.level(UpgradeCatalog.CHASSIS)
+	var ski := _body.get_node_or_null("Ski") as Node3D
+	if ski != null:
+		ski.visible = chassis == 0
+	if chassis >= 1:
+		mods.add_child(LowPoly.cylinder(0.07, 1.9, frame, Vector3(0, 0.5, -1.6), Vector3(0, 0, PI * 0.5), 8))
+		for side: float in [-1.0, 1.0]:
+			mods.add_child(_module_wheel("WheelFront", Vector3(side * 1.0, 0.5, -1.6), 1.0, side, tire, steel))
+			mods.add_child(LowPoly.box(Vector3(0.42, 0.05, 0.8), rust, Vector3(side * 1.0, 1.08, -1.6)))
+		mods.add_child(LowPoly.box(Vector3(1.3, 0.3, 0.5), frame, Vector3(0, 0.75, -1.75)))
+	var rear := 0.0
+	if chassis >= 2:
+		rear = 1.35
+		mods.add_child(LowPoly.box(Vector3(1.5, 0.1, 1.5), frame, Vector3(0, 0.72, 1.75)))
+		mods.add_child(LowPoly.cylinder(0.08, 2.0, frame, Vector3(0, 0.6, 1.95), Vector3(0, 0, PI * 0.5), 8))
+		for side: float in [-1.0, 1.0]:
+			mods.add_child(_module_wheel("WheelRear", Vector3(side * 1.05, 0.6, 1.95), 1.2, side, tire, steel))
+			mods.add_child(LowPoly.box(Vector3(0.07, 0.5, 1.5), rust, Vector3(side * 0.72, 1.0, 1.75)))
+			# Kominy – znak rozpoznawczy krążownika.
+			mods.add_child(LowPoly.tube(Vector3(side * 0.6, 0.8, 2.35), Vector3(side * 0.62, 2.7, 2.45), 0.08, frame))
+		mods.add_child(LowPoly.box(Vector3(1.3, 0.55, 0.9), rust, Vector3(0, 1.05, 1.9)))
+		mods.add_child(LowPoly.cylinder(0.3, 1.0, Palette.mat(Palette.PAINT_RED, 0.7, 0.3), Vector3(0, 1.62, 1.9), Vector3(0, 0, PI * 0.5), 10))
+
+	# Generator: kolejne cewki i żebra chłodzące.
 	var gen := loadout.level(UpgradeCatalog.GENERATOR)
 	for i in gen:
-		# Dodatkowe cewki i żebra chłodzące generatora.
 		var side := -1.0 if i % 2 == 0 else 1.0
-		mods.add_child(LowPoly.cylinder(0.14, 0.4, _coil_mat, Vector3(side * 0.42, 1.0, -0.55 + 0.05 * i), Vector3(0, 0, PI * 0.5), 10))
+		var row := floori(i / 2.0)
+		mods.add_child(LowPoly.cylinder(0.14, 0.4, _coil_mat, Vector3(side * 0.42, 1.0 + row * 0.3, -0.55), Vector3(0, 0, PI * 0.5), 10))
 		for f in 3:
-			mods.add_child(LowPoly.box(Vector3(0.04, 0.32, 0.32), steel, Vector3(side * (0.3 + f * 0.09), 1.0, -0.55)))
+			mods.add_child(LowPoly.box(Vector3(0.04, 0.3, 0.3), steel, Vector3(side * (0.3 + f * 0.09), 1.0 + row * 0.3, -0.55)))
 
+	# Pancerz: burty, osłona przodu, na końcu pancerna szyba.
 	var armor := loadout.level(UpgradeCatalog.ARMOR)
 	if armor >= 1:
-		for side in [-1.0, 1.0]:
+		for side: float in [-1.0, 1.0]:
 			mods.add_child(LowPoly.box(Vector3(0.1, 0.75, 2.1), rust, Vector3(side * 0.74, 1.0, -0.1), Vector3(0, 0, side * 0.08)))
 			for k in 3:
 				mods.add_child(LowPoly.box(Vector3(0.12, 0.08, 0.08), steel, Vector3(side * 0.8, 1.25, -0.8 + k * 0.7)))
 	if armor >= 2:
-		mods.add_child(LowPoly.box(Vector3(1.5, 0.55, 0.12), rust, Vector3(0, 0.55, -1.95), Vector3(-0.5, 0, 0)))
-		for k in 4:
-			mods.add_child(LowPoly.cylinder(0.05, 0.4, steel, Vector3(-0.6 + k * 0.4, 0.5, -2.1), Vector3(PI * 0.5, 0, 0), 5))
+		mods.add_child(LowPoly.box(Vector3(1.5, 0.55, 0.12), rust, Vector3(0, 0.62, -1.98), Vector3(-0.5, 0, 0)))
+		for side: float in [-1.0, 1.0]:
+			mods.add_child(LowPoly.box(Vector3(0.08, 0.5, 0.9), rust, Vector3(side * 0.74, 1.6, 0.3), Vector3(0, 0, side * 0.12)))
+	if armor >= 3:
+		mods.add_child(LowPoly.box(Vector3(1.0, 0.6, 0.07), frame, Vector3(0, 1.5, -0.7), Vector3(-0.45, 0, 0)))
+		mods.add_child(LowPoly.box(Vector3(0.6, 0.1, 0.08), Palette.glow(Color("9fe8ff"), 0.5), Vector3(0, 1.55, -0.74), Vector3(-0.45, 0, 0)))
+		mods.add_child(LowPoly.box(Vector3(1.1, 0.06, 0.9), rust, Vector3(0, 2.12, 0.5)))
 
+	# Kondensatory tarczy za fotelem.
 	var cap := loadout.level(UpgradeCatalog.CAPACITOR)
 	for i in cap:
-		var x := -0.3 + i * 0.6 if cap > 1 else 0.0
+		var x := (i - (cap - 1) * 0.5) * 0.42
 		mods.add_child(LowPoly.cylinder(0.16, 0.7, frame, Vector3(x, 1.25, 0.95), Vector3.ZERO, 10))
 		mods.add_child(LowPoly.cylinder(0.12, 0.72, Palette.glow(Palette.SCRAP_GLOW, 1.6), Vector3(x, 1.25, 0.95), Vector3.ZERO, 10))
 
+	# Taran: stalowy lemiesz przed zderzakiem.
+	var ram := loadout.level(UpgradeCatalog.RAM)
+	if ram >= 1:
+		var nose := -2.15 if chassis == 0 else -2.45
+		for side: float in [-1.0, 1.0]:
+			mods.add_child(LowPoly.box(Vector3(1.0, 0.6 if ram == 1 else 0.85, 0.1), steel, Vector3(side * 0.45, 0.5, nose), Vector3(0, side * 0.55, 0)))
+		if ram >= 2:
+			for k in 5:
+				mods.add_child(LowPoly.cylinder(0.05, 0.45, steel, Vector3(-0.8 + k * 0.4, 0.75, nose - 0.2 + absf(k - 2.0) * 0.22), Vector3(PI * 0.5, 0, 0), 5))
+
+	# Zawieszenie: widoczne sprężyny przy głównej osi.
+	var susp := loadout.level(UpgradeCatalog.SUSPENSION)
+	for side: float in [-1.0, 1.0]:
+		for k in susp:
+			mods.add_child(LowPoly.cylinder(0.09, 0.55, accent, Vector3(side * 0.82, 0.95, 0.4 + k * 0.3), Vector3(0, 0, side * 0.4), 8))
+			mods.add_child(LowPoly.cylinder(0.04, 0.7, steel, Vector3(side * 0.82, 0.95, 0.4 + k * 0.3), Vector3(0, 0, side * 0.4), 6))
+
+	# Chwytak: wysięgnik z hakiem (na 2. poziomie po obu stronach).
+	var grab := loadout.level(UpgradeCatalog.GRABBER)
+	for g in grab:
+		var side := 1.0 if g == 0 else -1.0
+		mods.add_child(LowPoly.tube(Vector3(side * 0.6, 1.7, 0.3), Vector3(side * 1.7, 1.5, -0.3), 0.05, frame))
+		mods.add_child(LowPoly.tube(Vector3(side * 1.7, 1.5, -0.3), Vector3(side * 1.95, 0.45, -0.5), 0.035, steel))
+		mods.add_child(LowPoly.box(Vector3(0.3, 0.08, 0.3), Palette.glow(Palette.SCRAP_GLOW, 0.8), Vector3(side * 1.95, 0.4, -0.5)))
+
+	# Wieżyczka: osłona, podwójna lufa, ciężka lufa.
 	var old_turret_mods := _turret.get_node_or_null("TurretMods")
 	if old_turret_mods != null:
 		old_turret_mods.free()
@@ -151,38 +206,57 @@ func apply_loadout(loadout: Loadout) -> void:
 	_turret.add_child(turret_mods)
 	var turret := loadout.level(UpgradeCatalog.TURRET)
 	if turret >= 1:
-		turret_mods.add_child(LowPoly.box(Vector3(0.6, 0.35, 0.06), accent, Vector3(0, 0.25, -0.25)))
+		turret_mods.add_child(LowPoly.box(Vector3(0.7, 0.4, 0.06), accent, Vector3(0, 0.26, -0.27)))
 	if turret >= 2:
-		turret_mods.add_child(LowPoly.cylinder(0.06, 0.9, steel, Vector3(0.16, 0.2, -0.55), Vector3(PI * 0.5, 0, 0), 8))
-		turret_mods.add_child(LowPoly.cylinder(0.06, 0.9, steel, Vector3(-0.16, 0.2, -0.55), Vector3(PI * 0.5, 0, 0), 8))
+		for bx: float in [-0.16, 0.16]:
+			turret_mods.add_child(LowPoly.cylinder(0.06, 0.95, steel, Vector3(bx, 0.2, -0.6), Vector3(PI * 0.5, 0, 0), 8))
+	if turret >= 3:
+		turret_mods.add_child(LowPoly.cylinder(0.1, 1.25, frame, Vector3(0, 0.34, -0.7), Vector3(PI * 0.5, 0, 0), 8))
+		turret_mods.add_child(LowPoly.box(Vector3(0.3, 0.3, 0.5), frame, Vector3(0, 0.34, 0.25)))
 
-	var trailer_level := loadout.level(UpgradeCatalog.TRAILER)
-	if trailer_level >= 1:
+	# Przyczepy: każdy poziom to kolejny wagon z łupem.
+	var wagons := loadout.level(UpgradeCatalog.TRAILER)
+	if wagons >= 1:
 		var trailer := Node3D.new()
 		trailer.name = "Trailer"
 		add_child(trailer)
-		trailer.add_child(LowPoly.tube(Vector3(0, 0.55, 1.1), Vector3(0, 0.55, 1.9), 0.05, frame))
-		var bed_len := 1.6 if trailer_level == 1 else 2.6
-		var bed_z := 1.9 + bed_len * 0.5
-		trailer.add_child(LowPoly.box(Vector3(1.4, 0.12, bed_len), frame, Vector3(0, 0.62, bed_z)))
-		for side in [-1.0, 1.0]:
-			trailer.add_child(LowPoly.box(Vector3(0.06, 0.4, bed_len), rust, Vector3(side * 0.7, 0.85, bed_z)))
-		trailer.add_child(LowPoly.box(Vector3(1.4, 0.4, 0.06), rust, Vector3(0, 0.85, bed_z + bed_len * 0.5)))
-		# Kupka złomu na pace.
-		for k in 5 + trailer_level * 3:
-			var s := 0.18 + 0.05 * (k % 3)
-			trailer.add_child(LowPoly.mesh_instance(LowPoly.rock_mesh(k + 40, 0.4), steel if k % 2 == 0 else rust,
-				Vector3(-0.45 + (k % 4) * 0.3, 0.8 + 0.08 * (k % 2), bed_z - bed_len * 0.35 + (k % 5) * bed_len * 0.17), Vector3(s, s, s)))
-		var axles := [bed_z] if trailer_level == 1 else [bed_z - 0.6, bed_z + 0.6]
-		var tire := Palette.mat(Palette.TIRE, 0.95)
-		for az in axles:
-			for side in [-1.0, 1.0]:
-				var w := Node3D.new()
-				w.name = "Wheel%d" % trailer.get_child_count()
-				w.position = Vector3(side * 0.82, 0.4, az)
-				w.add_child(LowPoly.cylinder(0.4, 0.24, tire, Vector3.ZERO, Vector3(0, 0, PI * 0.5), 10))
-				trailer.add_child(w)
-				_wheels.append(w)
+		var z := 1.15 + rear
+		for i in wagons:
+			var bed_len := 1.7
+			trailer.add_child(LowPoly.tube(Vector3(0, 0.55, z), Vector3(0, 0.55, z + 0.7), 0.05, frame))
+			var bed_z := z + 0.7 + bed_len * 0.5
+			trailer.add_child(LowPoly.box(Vector3(1.4, 0.12, bed_len), frame, Vector3(0, 0.62, bed_z)))
+			for side: float in [-1.0, 1.0]:
+				trailer.add_child(LowPoly.box(Vector3(0.06, 0.45, bed_len), rust, Vector3(side * 0.7, 0.88, bed_z)))
+				trailer.add_child(_module_wheel("WheelWagon", Vector3(side * 0.84, 0.42, bed_z), 0.84, side, tire, steel))
+			trailer.add_child(LowPoly.box(Vector3(1.4, 0.45, 0.06), rust, Vector3(0, 0.88, bed_z + bed_len * 0.5)))
+			# Kupka złomu na pace.
+			for k in 7:
+				var s := 0.18 + 0.05 * (k % 3)
+				trailer.add_child(LowPoly.mesh_instance(LowPoly.rock_mesh(k + 40 + i * 7, 0.4), steel if k % 2 == 0 else rust,
+					Vector3(-0.45 + (k % 4) * 0.3, 0.85 + 0.1 * (k % 2), bed_z - 0.6 + (k % 5) * 0.3), Vector3(s, s, s)))
+			z = bed_z + bed_len * 0.5
+
+
+## Długość „ogona” pojazdu za główną osią [m]: trzecia oś i przyczepy. Dla kamer.
+static func tail_length(loadout: Loadout) -> float:
+	var rear := 1.35 if loadout.level(UpgradeCatalog.CHASSIS) >= 2 else 0.0
+	return rear + loadout.level(UpgradeCatalog.TRAILER) * 2.4
+
+
+## Koło modułu (podwozie, wagony) – obraca się razem z kołami głównymi.
+func _module_wheel(wheel_name: String, pos: Vector3, diameter: float, side: float, tire: Material, hub: Material) -> Node3D:
+	var w := Node3D.new()
+	w.name = wheel_name
+	w.position = pos
+	var model := KenneyModels.buggy_wheel(side, diameter)
+	if model != null:
+		w.add_child(model)
+	else:
+		w.add_child(LowPoly.cylinder(diameter * 0.5, diameter * 0.32, tire, Vector3.ZERO, Vector3(0, 0, PI * 0.5), 10))
+		w.add_child(LowPoly.cylinder(diameter * 0.26, diameter * 0.34, hub, Vector3.ZERO, Vector3(0, 0, PI * 0.5), 8))
+	_wheels.append(w)
+	return w
 
 
 func shield_block() -> void:
@@ -226,11 +300,14 @@ func _build() -> void:
 		_body.add_child(LowPoly.tube(Vector3(side * 0.66, 1.0, axle_z), Vector3(side * 0.95, WHEEL_RADIUS * 2.0 + 0.08, axle_z), 0.035, frame))
 
 	# Rama: podłużnice zbiegające się ku przodowi, płoza z amortyzatorem zamiast drugiej osi.
+	var ski := Node3D.new()
+	ski.name = "Ski"
+	_body.add_child(ski)
 	for side: float in [-1.0, 1.0]:
 		_body.add_child(LowPoly.tube(Vector3(side * 0.5, 0.62, 1.15), Vector3(side * 0.3, 0.5, -1.75), 0.055, frame))
-		_body.add_child(LowPoly.tube(Vector3(side * 0.3, 0.5, -1.75), Vector3(side * 0.2, 0.14, -1.55), 0.04, rim))
-	_body.add_child(LowPoly.box(Vector3(0.55, 0.07, 1.15), frame, Vector3(0, 0.1, -1.7), Vector3(-0.12, 0, 0)))
-	_body.add_child(LowPoly.box(Vector3(0.55, 0.07, 0.35), frame, Vector3(0, 0.22, -2.35), Vector3(-0.7, 0, 0)))
+		ski.add_child(LowPoly.tube(Vector3(side * 0.3, 0.5, -1.75), Vector3(side * 0.2, 0.14, -1.55), 0.04, rim))
+	ski.add_child(LowPoly.box(Vector3(0.55, 0.07, 1.15), frame, Vector3(0, 0.1, -1.7), Vector3(-0.12, 0, 0)))
+	ski.add_child(LowPoly.box(Vector3(0.55, 0.07, 0.35), frame, Vector3(0, 0.22, -2.35), Vector3(-0.7, 0, 0)))
 
 	# Wanna: podłoga, burty z łatanej blachy, maska i zderzak z kolcami.
 	_body.add_child(LowPoly.box(Vector3(1.3, 0.08, 2.1), frame, Vector3(0, 0.68, -0.2)))

@@ -58,6 +58,7 @@ var target_high_tol := TargetBand.FREE_RIDE_HIGH
 ## Ulepszenia (etap 3): kondensator i wieżyczka.
 var shield_regen_multiplier := 1.0
 var fire_rate_multiplier := 1.0
+var projectile_damage := 1
 var supply := 1.0
 var shield := SHIELD_START
 var aim := Vector2.ZERO
@@ -442,7 +443,7 @@ func _update_projectiles(delta: float) -> void:
 				p["alive"] = false
 				r.hit_flash = 0.25
 				raider_hit.emit(r)
-				_damage(r, 1, DestroyCause.SHOT)
+				_damage(r, projectile_damage, DestroyCause.SHOT)
 				break
 		if p["alive"]:
 			_hit_wrecks(p, Vector2(x0, d0), Vector2(x1, d1))
@@ -458,7 +459,7 @@ func _hit_wrecks(p: Dictionary, from: Vector2, to: Vector2) -> void:
 		var c := Vector2(sim.lane_x(item.lane), item.distance_m)
 		if _segment_point_distance(from, to, c) < sim.wreck_half_width_m + 0.3:
 			p["alive"] = false
-			item.hp -= 1
+			item.hp -= projectile_damage
 			if item.hp <= 0:
 				item.consumed = true
 				wreck_destroyed.emit(item)

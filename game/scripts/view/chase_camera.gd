@@ -12,6 +12,9 @@ var follow_speed := 3.5
 var base_fov := 56.0
 var max_fov_kick := 9.0
 
+## Dodatkowe odsunięcie dla długiego pojazdu (przyczepy) – ustawia kontroler wyprawy.
+var extra_back := 0.0
+
 var _x := 0.0
 var _shake := 0.0
 var _time := 0.0
@@ -26,8 +29,8 @@ func _ready() -> void:
 func follow(target_x: float, speed_mps: float, delta: float) -> void:
 	_time += delta
 	_x = lerpf(_x, target_x * follow_x, 1.0 - exp(-delta * follow_speed))
-	position = Vector3(_x, height, distance)
-	look_at(Vector3(_x * 0.6 + target_x * 0.4, look_height, -look_ahead))
+	position = Vector3(_x, height + extra_back * 0.4, distance + extra_back * 0.8)
+	look_at(Vector3(_x * 0.6 + target_x * 0.4, look_height, -look_ahead + extra_back * 0.55))
 	var kick := clampf((speed_mps - 4.0) / 8.0, 0.0, 1.0) * max_fov_kick
 	fov = lerpf(fov, base_fov + kick, 1.0 - exp(-delta * 2.0))
 	if _shake > 0.0:

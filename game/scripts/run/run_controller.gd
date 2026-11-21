@@ -54,6 +54,7 @@ func _ready() -> void:
 	RenderingServer.global_shader_parameter_set(&"climb_slope", 0.0)
 	RenderingServer.global_shader_parameter_set(&"bend_on", 1.0)
 	buggy.apply_loadout(loadout)
+	camera.extra_back = BuggyView.tail_length(loadout)
 	_apply_terrain_look(App.selected_terrain)
 	weather.setup($WorldEnvironment, sun)
 	weather.attach_headlights(buggy)
@@ -62,6 +63,10 @@ func _ready() -> void:
 		weather.set_storm(1.0)
 	sim.wreck_hit.connect(_on_wreck_hit)
 	sim.scrap_collected.connect(_on_scrap_collected)
+	sim.wreck_rammed.connect(func(item: TrackItem) -> void:
+		combat_view.explode_at(Vector3(sim.lane_x(item.lane), 0.0, -(item.distance_m - sim.vehicle.distance_m)))
+		camera.shake(0.6)
+		hud.show_popup("TARAN!", Palette.UI_GOOD, 1.0))
 	sim.fuel_collected.connect(func(_item: TrackItem) -> void: hud.show_popup("+1 PALIWO", Color("ff8a4a"), 1.0))
 	_setup_combat()
 	_setup_challenges()

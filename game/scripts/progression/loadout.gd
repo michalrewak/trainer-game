@@ -16,35 +16,30 @@ func level(id: String) -> int:
 
 
 func engine_multiplier() -> float:
-	return 1.0 + 0.06 * level(UpgradeCatalog.GENERATOR)
+	return 1.0 + 0.05 * level(UpgradeCatalog.GENERATOR)
 
 
 ## Mnożnik strat złomu (zderzenia z wrakami i rabunki).
 func scrap_loss_factor() -> float:
-	match level(UpgradeCatalog.ARMOR):
-		1:
-			return 0.7
-		2:
-			return 0.45
-	return 1.0
+	return [1.0, 0.7, 0.5, 0.35][level(UpgradeCatalog.ARMOR)]
 
 
-## Utrata prędkości przy zderzeniu: pancerz trochę łagodzi uderzenie.
+## Część prędkości zostająca po zderzeniu: pancerz i dobre zawieszenie łagodzą uderzenie.
 func impact_speed_factor() -> float:
-	return 0.35 + 0.1 * level(UpgradeCatalog.ARMOR)
+	var soft := 0.15 if level(UpgradeCatalog.SUSPENSION) >= 2 else 0.0
+	return minf(0.85, 0.35 + 0.08 * level(UpgradeCatalog.ARMOR) + soft)
 
 
 func shield_regen_multiplier() -> float:
-	return 1.0 + 0.35 * level(UpgradeCatalog.CAPACITOR)
+	return [1.0, 1.35, 1.7, 2.1][level(UpgradeCatalog.CAPACITOR)]
 
 
 func fire_rate_multiplier() -> float:
-	match level(UpgradeCatalog.TURRET):
-		1:
-			return 1.25
-		2:
-			return 1.6
-	return 1.0
+	return [1.0, 1.25, 1.6, 1.6][level(UpgradeCatalog.TURRET)]
+
+
+func projectile_damage() -> int:
+	return 2 if level(UpgradeCatalog.TURRET) >= 3 else 1
 
 
 func twin_barrels() -> bool:
@@ -56,6 +51,25 @@ func scrap_bonus() -> float:
 	return 0.15 * level(UpgradeCatalog.TRAILER)
 
 
+## Mnożnik szybkości zmiany pasa.
+func lane_speed_multiplier() -> float:
+	return 1.0 + 0.3 * level(UpgradeCatalog.SUSPENSION)
+
+
+## Połowa szerokości, z jakiej pojazd zgarnia złom i paliwo [m].
+func pickup_half_width_m() -> float:
+	return [1.2, 1.9, 4.0][level(UpgradeCatalog.GRABBER)]
+
+
+## Czas ładowania tarana [s]; 0 = brak tarana.
+func ram_cooldown_s() -> float:
+	return [0.0, 30.0, 12.0][level(UpgradeCatalog.RAM)]
+
+
+func ram_keeps_speed() -> bool:
+	return level(UpgradeCatalog.RAM) >= 2
+
+
 ## Zapisuje parametry do świeżej symulacji wyprawy.
 func apply_to(sim: RunSimulation) -> void:
 	sim.vehicle.engine_multiplier = engine_multiplier()
@@ -64,3 +78,9 @@ func apply_to(sim: RunSimulation) -> void:
 	sim.expedition.scrap_bonus = scrap_bonus()
 	sim.combat.shield_regen_multiplier = shield_regen_multiplier()
 	sim.combat.fire_rate_multiplier = fire_rate_multiplier()
+	sim.combat.projectile_damage = projectile_damage()
+	sim.lanes.max_lateral_speed_mps *= lane_speed_multiplier()
+	sim.lanes.settle_tau_s /= lane_speed_multiplier()
+	sim.scrap_half_width_m = pickup_half_width_m()
+	sim.ram_cooldown_s = ram_cooldown_s()
+	sim.ram_keeps_speed = ram_keeps_speed()

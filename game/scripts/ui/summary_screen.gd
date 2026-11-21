@@ -50,6 +50,7 @@ func _ready() -> void:
 	var before := App.last_total_before
 	var after := App.progress.total_scrap()
 	col.add_child(UiStyle.label("Złom w magazynie: %d → %d   ·   Paliwo: %d" % [before, after, App.progress.fuel()], 44, Palette.UI_TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+	col.add_child(UiStyle.label("Praca łącznie: %d kJ   ·   %s" % [App.progress.total_energy_kj(), App.progress.next_goal()], 36, Palette.UI_ACCENT, HORIZONTAL_ALIGNMENT_CENTER))
 	if not bool(s.get("saved", true)):
 		col.add_child(UiStyle.label("Uwaga: nie udało się zapisać postępu!", 40, Palette.UI_BAD, HORIZONTAL_ALIGNMENT_CENTER))
 
