@@ -29,7 +29,7 @@ enum GateBreak { SHOT, RAM, CRASH }
 const SCOUT_M := 500.0
 const APPROACH_M := 260.0
 const SHELL_FLIGHT_S := 1.7
-const SHELL_SHIELD_COST := 0.3
+const SHELL_CAPACITOR_COST := 0.3
 const BAND_TOL := TargetBand.CHALLENGE_TOL
 ## Jak długo trzeba wieźć łup, zanim będzie bezpieczny, i ile wysypuje się przy taranowaniu.
 const ESCAPE_S := 40.0
@@ -247,8 +247,8 @@ func _update_shells(sim: RunSimulation, delta: float) -> void:
 		var blocked := false
 		var lost := 0
 		if hit:
-			if sim.combat.shield >= SHELL_SHIELD_COST:
-				sim.combat.shield -= SHELL_SHIELD_COST
+			if sim.combat.capacitor >= SHELL_CAPACITOR_COST:
+				sim.combat.capacitor -= SHELL_CAPACITOR_COST
 				blocked = true
 			else:
 				sim.vehicle.apply_impact(0.85)

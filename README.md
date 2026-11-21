@@ -31,7 +31,8 @@ Pełny opis założeń: [CLAUDE.md](CLAUDE.md).
 | Moc (symulacja trenażera) | **RT** analogowo 0–350 W | – |
 | Tempomat (zablokuj moc) | **LB** | C / Spacja |
 | Moc ±10 W (włącza tempomat) | krzyżak **↑ / ↓** | W / S, strzałki ↑ / ↓ |
-| Zmiana pasa | krzyżak **← / →**, lewa gałka | A / D, strzałki ← / → |
+| Kierowanie płynne | **lewa gałka**: pojazd jedzie w dowolnym miejscu jezdni; po puszczeniu wspomaganie dociąga do najbliższego pasa (wyłączane w garażu) | – |
+| Skok o pas | krzyżak **← / →** | A / D, strzałki ← / → |
 | Celowanie wieżyczki | prawa gałka: czerwona linia pokazuje kierunek; blisko wroga celownik sam go łapie | auto-cel |
 | Strzał | **LT** – strzela zawsze: we wroga w celowniku, a bez niego tam, gdzie wskazuje gałka (bez wychylenia prosto) | F |
 | Dopalacz (wtrysk czystego paliwa) | **RB** albo **X** | B |
@@ -57,14 +58,18 @@ dla tego pada (inaczej pad udaje mysz).
 - **Moc na kołach = moc z nóg × akceleratory × dopalacz.** Akceleratory działają stale:
   generator (moduł, do +25%) i załoga uwolnionych pedalarzy (+2% za osobę, tyle osób, ile
   ławek ma podwozie: 2, 4, 6). Dopalacz to chwilowy wtrysk czystego paliwa (+25–55% na
-  6–10 s); ładunki uzupełniają kanistry zebrane na trasie. HUD pokazuje obie liczby, a
+  6–10 s); wtryski uzupełniają kanistry zebrane na trasie. HUD pokazuje obie liczby, a
   wartości treningowe (kJ, NP, TSS, strefy) liczą się zawsze z samej mocy z nóg.
-- **Wyprawa** trwa zadany czas (15/30/45/60 min, test 2 min). Kończy się zawsze po czasie,
-  nigdy porażką. Zderzenie z wrakiem kosztuje prędkość i część złomu.
+- **Wyprawa** to kurs z osady do osady. Trwa zadany czas (15/30/45/60 min, test 2 min
+  albo długość planu treningowego): zaczyna się wyjazdem przez bramę, a pod koniec czasu
+  na horyzoncie pojawia się osada docelowa i jazda kończy się wjazdem na jej plac. Nie ma
+  „mety” ani porażki. Zderzenie z wrakiem kosztuje prędkość i część złomu.
+- **Nawierzchnia** zmienia się co 200 m: stary asfalt, szuter z koleinami, betonowe płyty,
+  stalowe maty.
 - **Złom** (cyjanowe zębatki) i **paliwo** (czerwone kanistry) to waluty garażu.
 - **Wraki można rozstrzelać**: dwa trafienia rozbijają wrak i zwalniają pas.
 - **Gangi** dojeżdżają z boku i taranują. Obrona: wieżyczka, unik zmianą pasa po ostrzeżeniu
-  „!” albo tarcza. Tarcza ładuje się i działko strzela szybciej, gdy trzymasz moc docelową
+  „!” albo wyładowanie kondensatorów. Kondensatory ładują się i działko strzela szybciej, gdy trzymasz moc docelową
   (65% FTP w jeździe swobodnej). Przegrana potyczka to rabunek części złomu.
 - **Garaż i rozwój pojazdu**: podwozie (druga i trzecia oś) oraz 8 modułów: generator,
   dopalacz, pancerz, kondensator, wieżyczka, taran, zawieszenie, chwytak. Każdy poziom
@@ -103,7 +108,7 @@ dla tego pada (inaczej pad udaje mysz).
   czas w widełkach, i dwa zręcznościowe albo „duże”: konwój, osada). Nagroda w złomie,
   za komplet dodatkowy kanister.
 - **Skrzynie** ze znakiem zapytania: losowo deszcz zębatek, kanister, pełny dopalacz
-  z tarczą albo złota zębatka. **Unik o włos** (zjazd z pasa wraku w ostatniej chwili)
+  z kondensatorami albo złota zębatka. **Unik o włos** (zjazd z pasa wraku w ostatniej chwili)
   daje punkty passy.
 - **Rekordy**: najlepsza moc z 20 s, 1 min, 5 min i 20 min, najwyższa passa, złom i praca
   z wyprawy. Osobne tabele dla pada i trenażera; komunikat na żywo i lista w podsumowaniu.
@@ -120,7 +125,7 @@ dla tego pada (inaczej pad udaje mysz).
 | Etap | Stan |
 |---|---|
 | 1. Gra na padzie (kanion, buggy, moc, HUD, zapis) | gotowe |
-| 2. Walka (gang, wieżyczka, tarcza zależna od mocy) | gotowe |
+| 2. Walka (gang, wieżyczka, kondensatory ładowane mocą) | gotowe |
 | 3. Garaż, 5 ulepszeń, paliwo, drugi teren | gotowe |
 | 4. Tryb treningowy | gotowe (wersja podstawowa): plan prowadzi jazdę, ERG, widełki ±5%, burze = pola bezpieczne |
 | 5. Mostek Python do Suito | gra: wybór PAD/TRENAŻER w garażu, czekanie na mostek; mostek – patrz `bridge/` |
@@ -128,7 +133,7 @@ dla tego pada (inaczej pad udaje mysz).
 | 7. Import planów z Garmina (FIT) | parsery JSON/ZWO/FIT gotowe; pliki planów wrzucaj do `%APPDATA%\Godot\app_userdata\Wasteland Rider\plans` |
 
 Cel mocy zawsze ma **widełki**: za mało i za dużo to błąd. W treningu obowiązuje ±5%, w
-wyzwaniach ±8%. Powyżej górnej granicy generator się przegrzewa (słabsza tarcza i ogień).
+wyzwaniach ±8%. Powyżej górnej granicy generator się przegrzewa (wolniej ładują się kondensatory, wolniejszy ogień).
 
 Następne kroki: nowy wygląd menu i HUD, kampanie treningowe (kilka tygodni, prawdziwe
 protokoły, bossowie), ramp test FTP jako walka z bossem, napady i konwoje w trybie

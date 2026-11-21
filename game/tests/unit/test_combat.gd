@@ -23,14 +23,14 @@ func _run(sim: RunSimulation, seconds: float, power_w: float, on_step: Callable 
 		t += DT
 
 
-func test_supply_and_shield_follow_power() -> void:
+func test_supply_and_capacitor_follow_power() -> void:
 	var sim := _quiet_sim(200.0)
 	assert_near(sim.combat.supply_ratio(), 1.0, 0.02, "zasilanie przy mocy docelowej")
-	assert_near(sim.combat.shield, 1.0, 0.001, "pełna tarcza po chwili trzymania mocy")
-	sim.combat.shield = 0.2
+	assert_near(sim.combat.capacitor, 1.0, 0.001, "pełne kondensatory po chwili trzymania mocy")
+	sim.combat.capacitor = 0.2
 	_run(sim, 10.0, 0.0)
 	assert_true(sim.combat.supply_ratio() < 0.05, "bez mocy brak zasilania")
-	assert_true(sim.combat.shield < 0.35, "bez mocy tarcza prawie się nie ładuje")
+	assert_true(sim.combat.capacitor < 0.35, "bez mocy kondensatory prawie się nie ładują")
 
 
 func test_fire_interval_scales_with_supply() -> void:
@@ -59,7 +59,7 @@ func _await_outcome(sim: RunSimulation, seconds: float, power_w: float, on_warni
 func test_ram_pushes_player_and_steals_scrap() -> void:
 	var sim := _quiet_sim(200.0)
 	sim.expedition.add_scrap(50)
-	sim.combat.shield = 0.0
+	sim.combat.capacitor = 0.0
 	sim.combat.spawn_raider(-1)
 	var lane_before := sim.lanes.target_lane
 	var outcomes := _await_outcome(sim, 20.0, 0.0)
@@ -75,7 +75,7 @@ func test_ram_pushes_player_and_steals_scrap() -> void:
 
 func test_changing_lane_after_warning_dodges() -> void:
 	var sim := _quiet_sim(200.0)
-	sim.combat.shield = 0.0
+	sim.combat.capacitor = 0.0
 	sim.combat.spawn_raider(-1)
 	var outcomes := _await_outcome(sim, 20.0, 200.0, func(r: RaiderModel) -> void: sim.request_lane_change(-r.side))
 	assert_eq(outcomes.size(), 1)
@@ -83,24 +83,24 @@ func test_changing_lane_after_warning_dodges() -> void:
 		assert_eq(outcomes[0][0], CombatModel.RamOutcome.DODGED, "zmiana pasa po ostrzeżeniu = unik")
 
 
-func test_shield_blocks_ram() -> void:
+func test_discharges_ram() -> void:
 	var sim := _quiet_sim(200.0)
 	sim.expedition.add_scrap(30)
-	sim.combat.shield = 1.0
+	sim.combat.capacitor = 1.0
 	var r := sim.combat.spawn_raider(1)
 	var outcomes := _await_outcome(sim, 20.0, 0.0)
 	assert_eq(outcomes.size(), 1)
 	if outcomes.is_empty():
 		return
-	assert_eq(outcomes[0][0], CombatModel.RamOutcome.BLOCKED, "tarcza zatrzymuje atak")
+	assert_eq(outcomes[0][0], CombatModel.RamOutcome.BLOCKED, "wyładowanie odrzuca napastnika")
 	assert_eq(sim.expedition.scrap, 30, "złom nietknięty")
-	assert_true(sim.combat.shield < 0.7, "tarcza zużyta")
-	assert_eq(r.hp, r.max_hp - 1, "napastnik obrywa od tarczy")
+	assert_true(sim.combat.capacitor < 0.7, "ładunek zużyty")
+	assert_eq(r.hp, r.max_hp - 1, "napastnik obrywa od wyładowania")
 
 
 func test_turret_destroys_raider_and_drops_scrap() -> void:
 	var sim := _quiet_sim(200.0)
-	sim.combat.shield = 1.0
+	sim.combat.capacitor = 1.0
 	sim.combat.fire_held = true
 	var destroyed: Array = []
 	sim.combat.raider_destroyed.connect(func(_r: RaiderModel, dropped: int, cause: int) -> void: destroyed.append([dropped, cause]))

@@ -160,6 +160,16 @@ func set_auto_fire(enabled: bool) -> void:
 	_save_settings()
 
 
+## Wspomaganie kierowania: po puszczeniu gałki pojazd sam dociąga do najbliższego pasa.
+func steer_assist_enabled() -> bool:
+	return bool(settings.get("steer_assist", true))
+
+
+func set_steer_assist(enabled: bool) -> void:
+	settings["steer_assist"] = enabled
+	_save_settings()
+
+
 ## Efekty dźwiękowe – z ustawień (domyślnie włączone).
 func sound_enabled() -> bool:
 	return bool(settings.get("sound", true)) and not options.mute

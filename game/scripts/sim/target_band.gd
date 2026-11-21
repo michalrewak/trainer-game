@@ -2,7 +2,7 @@ class_name TargetBand
 extends RefCounted
 ## Widełki mocy docelowej. Na treningu za mało i za dużo to błąd: poniżej dolnej granicy
 ## zasilanie słabnie proporcjonalnie, w widełkach jest pełne, a powyżej górnej generator
-## się „przegrzewa” – zasilanie spada (słabsza tarcza i wolniejszy ogień).
+## się „przegrzewa” – zasilanie spada (wolniej ładują się kondensatory i wolniejszy ogień).
 ## Tolerancje są względem celu: low_tol = 0.05 oznacza dolną granicę 95% celu.
 
 enum Status { BELOW, IN_BAND, ABOVE }

@@ -34,8 +34,8 @@ const DEFS := {
 	},
 	BOOSTER: {
 		"name": "Dopalacz",
-		"desc": "Wtrysk czystego paliwa: chwilowy zastrzyk mocy na kołach (RB / X / B). Bez modułu masz jeden słaby ładunek. Ładunki uzupełniają kanistry z trasy.",
-		"levels": ["2 ładunki: +35% mocy przez 8 s", "3 ładunki: +45% mocy przez 9 s", "4 ładunki: +55% mocy przez 10 s"],
+		"desc": "Wtrysk czystego paliwa: chwilowy zastrzyk mocy na kołach (RB / X / B). Bez modułu masz jeden słaby wtrysk. Wtryski uzupełniają kanistry z trasy.",
+		"levels": ["2 wtryski: +35% mocy przez 8 s", "3 wtryski: +45% mocy przez 9 s", "4 wtryski: +55% mocy przez 10 s"],
 		"costs": [[180, 2], [520, 5], [1150, 9]],
 	},
 	ARMOR: {
@@ -46,8 +46,8 @@ const DEFS := {
 	},
 	CAPACITOR: {
 		"name": "Kondensator",
-		"desc": "Szybsze ładowanie tarczy, gdy trzymasz moc w widełkach.",
-		"levels": ["+35% ładowania tarczy", "+70% ładowania tarczy", "+110% ładowania tarczy"],
+		"desc": "Większa bateria kondensatorów: szybciej zbiera ładunek, gdy trzymasz moc w widełkach. Naładowane odrzucają napastnika wyładowaniem i detonują miny przed maską.",
+		"levels": ["+35% ładowania kondensatorów", "+70% ładowania kondensatorów", "+110% ładowania kondensatorów"],
 		"costs": [[180, 1], [500, 4], [1100, 7]],
 	},
 	TURRET: {

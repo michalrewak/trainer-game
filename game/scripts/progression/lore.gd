@@ -20,7 +20,7 @@ const SLOGANS: Array[String] = [
 	"Nikt nie pyta o imię. Pytają: ile ciągniesz?",
 	"FTP nie kupisz za złom. Trzeba je wyjeździć.",
 	"Tłuści nie pedałują. Dlatego kiedyś przegrają.",
-	"Równa moc to pełna tarcza. Szarpanie to przegrzany generator.",
+	"Równa moc to pełne kondensatory. Szarpanie to przegrzany generator.",
 	"Burza ładuje kondensatory tym, którzy trzymają moc.",
 	"Każdy kilodżul to krok dalej od Żarłoka.",
 	"Większa maszyna potrzebuje mocniejszych nóg.",

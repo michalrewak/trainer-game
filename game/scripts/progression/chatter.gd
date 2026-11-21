@@ -21,6 +21,7 @@ const CAST := {
 ## zdarzenie -> lista [kto, kwestia]. Kolejne wywołania biorą kolejne kwestie.
 const LINES := {
 	"start": [
+		[MECH, "Brama za tobą. Wracaj z pełną skrzynią."],
 		[MECH, "Radio działa? Dobra. Kręć równo, ja pilnuję reszty."],
 		[MECH, "Pamiętaj: kto stoi, tego zasypie piasek. Jedziemy."],
 		[PRIEST, "Nowy dzień, nowe obroty. Niech kadencja będzie z tobą."],
@@ -143,7 +144,7 @@ const LINES := {
 	],
 	"ram_hit": [
 		[RAIDER, "Dzięki za złom, frajerze!"],
-		[MECH, "Zepchnął cię! Trzymaj moc, to tarcza się naładuje."],
+		[MECH, "Zepchnął cię! Trzymaj moc, to kondensatory się naładują."],
 	],
 	"ram_blocked": [
 		[RAIDER, "Co to za iskry?! Mój zderzak!"],
@@ -203,12 +204,18 @@ const LINES := {
 	"raid_done": [
 		[MECH, "Łup w magazynie. Będzie z czego spawać."],
 	],
+	"home_sight": [
+		[MECH, "Widzę twoje światła! Brama otwarta, wjeżdżaj."],
+		[SLAVE, "Osada! Tam jest woda i cień. Jeszcze kawałek!"],
+		[MECH, "Już cię widać z wieży. Grzeję lutownicę."],
+	],
 	"last_minute": [
-		[MECH, "Ostatnia minuta! Zostaw na drodze wszystko, co masz."],
+		[MECH, "Minuta do osady! Zostaw na drodze wszystko, co masz."],
 		[PRIEST, "Ostatnie obroty są najświętsze."],
 	],
 	"finish": [
-		[MECH, "Dobra robota. Wracaj do garażu, coś ci przykręcę."],
+		[MECH, "Jesteś w domu. Rozładunek i do warsztatu."],
+		[MECH, "Dobra robota. Zjeżdżaj do garażu, coś ci przykręcę."],
 	],
 }
 

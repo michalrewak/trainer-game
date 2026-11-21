@@ -19,7 +19,7 @@ func _ready() -> void:
 	center.add_child(col)
 
 	var completed := bool(s.get("completed", false))
-	col.add_child(UiStyle.label("WYPRAWA ZAKOŃCZONA" if completed else "WYPRAWA PRZERWANA", 58, Palette.UI_ACCENT, HORIZONTAL_ALIGNMENT_CENTER))
+	col.add_child(UiStyle.label("DOTARŁEŚ DO OSADY" if completed else "POWRÓT PRZED CZASEM", 58, Palette.UI_ACCENT, HORIZONTAL_ALIGNMENT_CENTER))
 	col.add_child(UiStyle.label("+%d ZŁOMU" % int(s.get("scrap", 0)), 96, Palette.UI_SCRAP, HORIZONTAL_ALIGNMENT_CENTER))
 
 	var panels := HBoxContainer.new()

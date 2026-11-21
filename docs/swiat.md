@@ -40,7 +40,7 @@ otwartego właśnie kanistra prosto do silnika: kilka sekund potężnej mocy i p
 
 Piasek niesie ładunek elektryczny. Burza iskrowa to ściana pyłu z wyładowaniami, przez
 którą prawie nic nie widać. Kto przez nią przejedzie, ten ładuje kondensatory, dlatego
-najodważniejsi wjeżdżają w burzę celowo. W grze burza to interwał, a tarcza bierze się
+najodważniejsi wjeżdżają w burzę celowo. W grze burza to interwał, a obrona pojazdu bierze się
 z trzymania mocy.
 
 ### Kościół Świętej Kadencji
@@ -49,7 +49,21 @@ Fanatycy wierzą, że świat skończył się, bo ludzkość przestała kręcić.
 90 obr./min, noszą liczniki kadencji jak relikwie i gardzą każdym, kto „mieli”.
 Bywają sojusznikami albo wrogami, zależnie od tego, jak gracz jeździ.
 
-### Po co się rozwijać
+### Wyprawa: z osady do osady
+
+Nie ma „mety”. Każda jazda to kurs między osadami, a jej długość wynika z treningu:
+
+- **Jazda swobodna** to wypad po złom w oknie między burzami. Okno trwa tyle, ile gracz
+  wybrał w garażu (15–60 min).
+- **Trening** to kurs z rozkładem: plan (interwały, regeneracja) jest rozkładem jazdy,
+  którego trzeba się trzymać. Interwał to burza iskrowa, regeneracja to spokojny odcinek.
+- W obu przypadkach wyprawa zaczyna się wyjazdem przez bramę własnej osady (Zębatka żegna
+  przez radio), a pod koniec czasu na horyzoncie pojawia się osada docelowa. Stoi tam,
+  dokąd gracz dojedzie w chwili, gdy czas się skończy, więc każdy trening kończy się
+  wjazdem na plac, niezależnie od tempa. Ludzie machają, płoną ogniska, łup idzie do
+  magazynu.
+- Przerwanie jazdy to „powrót przed czasem”: zebrany łup też się zapisuje.
+
 
 Słaby jeździ sam i oddaje złom każdemu, kto go dogoni. Żeby to zmienić, trzeba trzech
 rzeczy naraz, i wszystkie biorą się z nóg:
@@ -84,13 +98,14 @@ to przeczytać z 3 metrów. Kwestie: `game/scripts/progression/chatter.gd`.
 | Mechanika | Wyjaśnienie w świecie |
 |---|---|
 | Moc z nóg = prędkość | jedyny działający napęd, generator pedałowy |
-| Tarcza zależna od trzymania mocy | kondensatory ładowane równą pracą generatora |
+| Obrona zależna od trzymania mocy | kondensatory ładowane równą pracą generatora; naładowane oddają wyładowanie, które odrzuca napastnika i detonuje miny przed maską |
 | Za duża moc szkodzi (widełki) | przegrzanie generatora |
 | Interwał = burza piaskowa | burza iskrowa ładuje kondensatory |
 | Paliwo jako druga waluta | czyste paliwo w zaplombowanych kanistrach |
 | Tereny odblokowane przez FTP | waty to ranga, słabszych nie wpuszcza się dalej |
 | Bossowie w kampanii | Tłuści i ich machiny na galerach pedałowych |
 | Przegrana nigdy nie kończy jazdy | kto stanie, ten ginie, więc zawsze jedzie się dalej |
+| Wyprawa na czas, bez mety | okno między burzami albo rozkład kursu; na końcu czeka osada |
 | Dopalacz (chwilowy zastrzyk mocy) | wtrysk świeżo otwartego kanistra czystego paliwa |
 | Załoga jako stały mnożnik mocy | uwolnieni pedalarze kręcą razem z tobą |
 | Konwój na zmianę ucieka i hamuje | Baron pogania skutych pedalarzy albo każe im stanąć, żebyś się wyłożył |
@@ -114,12 +129,14 @@ Wymagania wspólne:
   światło i cienie.
 - Pojazd gracza zawsze czytelny z 3 m na telewizorze, także w burzy i w nocy.
 - Trasa z zakrętami i prawdziwymi wzniesieniami w 3D (nie przez pochylanie świata).
+- Droga nie może być jednym asfaltem: nawierzchnia zmienia się co odcinek (asfalt, szuter
+  z koleinami, betonowe płyty, stalowe maty).
 
 Stan wdrożenia (2026-11-21): w grze są tekstury i brud na wszystkich powierzchniach,
 zakręty, wzniesienia i wydmy, odcinki kanionu i otwartej pustyni, trzy pory z płynnymi
 przejściami, burza z błyskawicami, reflektory i ściana burzy na horyzoncie. Pora jest
 do wyboru w garażu: zmienna (start za dnia, w połowie zachód słońca, końcówka nocą),
-dzień albo noc. Tarcza nie jest bańką pola siłowego: zablokowany atak to snop iskier.
+dzień albo noc. Nie ma „tarczy” ani pól siłowych: obroną są kondensatory, a odparty atak to wyładowanie i snop iskier.
 
 Pojazdy: wrogowie to seryjne auta (sedan, SUV, pickup) przerobione na tarany – osmalony
 lakier, kolczaste zderzaki, zaspawane okna. Buggy gracza ma koła terenowe, łataną blachę,
@@ -160,6 +177,9 @@ Gracz wybiera, którędy jedzie i co atakuje, a z daleka widzi, czego się spodz
 - Napad ma fazy: podjazd pod ostrzałem, wyłom bramy, plądrowanie na czas, ucieczka.
   Przegrana to odparcie i utrata części łupu, nigdy śmierć.
 - Bogatsze sterowanie: moduły na LB/RB (taran, dym, miny), zmiana broni, lornetka, hak.
+- Kierowanie jest płynne: lewa gałka przesuwa pojazd po całej szerokości jezdni, a
+  wspomaganie po puszczeniu gałki dociąga do najbliższego pasa i omija wrak tuż przed
+  maską. Krzyżak skacze o cały pas. Pasy zostają jako siatka dla przeszkód i wrogów.
 
 Stan wdrożenia (2026-11-21): zwiad z kartą, zjazd skrajnym pasem, trzy stopnie osad,
 ostrzał z wież, brama, plądrowanie i dowiezienie łupu na doczepionej przyczepie – w jeździe
@@ -208,7 +228,7 @@ Gra ma wciągać, a nie tylko towarzyszyć pedałowaniu. Mechanizmy, które za t
 | Odpowiedź na każdy ruch | dźwięki (nuta rośnie z passą), wstrząsy kamery, komentarze postaci |
 
 Interfejs: stalowe płyty ze ściętymi rogami i pomarańczowy akcent. HUD to deska rozdzielcza
-na dole (prędkość, moc, strefy Z1–Z7, wskaźnik widełek, zasilanie, tarcza), a góra ekranu
+na dole (prędkość, moc, strefy Z1–Z7, wskaźnik widełek, zasilanie, kondensatory), a góra ekranu
 zostaje wolna, żeby było widać drogę przed pojazdem.
 
 ### 5. Trening zawsze w 100%

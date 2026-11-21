@@ -265,22 +265,22 @@ func test_guard_drops_mines_on_players_lane() -> void:
 	sim.request_lane_change(-1)
 	_ride(sim, 3.0, 200.0, Callable(), func(_s: RunSimulation) -> bool: return not results.is_empty())
 	assert_eq(results[0][0], false, "po zmianie pasa mina wybucha obok")
-	# Bez uniku i bez tarczy: mina trafia, zwalnia i zabiera złom.
+	# Bez uniku i bez ładunku: mina trafia, zwalnia i zabiera złom.
 	sim.expedition.add_scrap(100)
 	results.clear()
 	c.mines.append({"id": 99, "lane": sim.lanes.target_lane, "d": sim.vehicle.distance_m + 1.0, "t_left": 0.01})
-	sim.combat.shield = 0.0
+	sim.combat.capacitor = 0.0
 	var v := sim.vehicle.speed_mps
 	sim.step(DT, 200.0)
 	assert_eq(results[0][0], true)
 	assert_true(sim.vehicle.speed_mps < v * 0.7, "wybuch wyhamowuje")
 	assert_true(int(results[0][2]) > 0, "i zabiera trochę złomu")
-	# Z tarczą: mina zatrzymana.
+	# Z naładowanymi kondensatorami: mina zdetonowana przed maską.
 	results.clear()
 	c.mines.append({"id": 100, "lane": sim.lanes.target_lane, "d": sim.vehicle.distance_m + 1.0, "t_left": 0.01})
-	sim.combat.shield = 1.0
+	sim.combat.capacitor = 1.0
 	sim.step(DT, 200.0)
-	assert_eq(results[0][1], true, "tarcza zatrzymuje minę")
+	assert_eq(results[0][1], true, "wyładowanie detonuje minę")
 
 
 func test_ramming_the_tail_slows_the_player() -> void:

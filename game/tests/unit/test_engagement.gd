@@ -192,7 +192,7 @@ func test_crate_gives_one_of_the_surprises() -> void:
 		sim.items.clear()
 		sim.power_train.max_charges = 3
 		sim.power_train.charges = 0
-		sim.combat.shield = 0.0
+		sim.combat.capacitor = 0.0
 		var got: Array = []
 		sim.crate_opened.connect(func(_item: TrackItem, prize: int, amount: int) -> void: got.append([prize, amount]))
 		var scrap0 := sim.expedition.scrap
@@ -210,7 +210,7 @@ func test_crate_gives_one_of_the_surprises() -> void:
 				assert_eq(sim.power_train.charges, 1)
 			RunSimulation.Prize.CHARGE:
 				assert_eq(sim.power_train.charges, 3, "pełny dopalacz")
-				assert_true(sim.combat.shield > 0.95, "pełna tarcza")
+				assert_true(sim.combat.capacitor > 0.95, "pełne kondensatory")
 			RunSimulation.Prize.JACKPOT:
 				assert_eq(sim.expedition.scrap - scrap0, 25)
 	assert_eq(seen.size(), 4, "przy różnych ziarnach wypadają wszystkie cztery nagrody")

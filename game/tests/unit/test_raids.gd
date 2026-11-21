@@ -83,7 +83,7 @@ func test_exit_lane_starts_the_raid() -> void:
 
 func _full_raid(power: Callable, shoot_gate: bool) -> Dictionary:
 	var sim := _sim()
-	sim.combat.shield = 1.0
+	sim.combat.capacitor = 1.0
 	var out := {"gate": [], "loot": -1, "fuel": -1, "repelled": false, "looting": 0, "sim": sim}
 	sim.raids.gate_broken.connect(func(how: int) -> void: (out["gate"] as Array).append(how))
 	sim.raids.looting_started.connect(func(_s: Dictionary) -> void: out["looting"] = int(out["looting"]) + 1)
@@ -162,14 +162,14 @@ func test_tower_shells_can_be_dodged_or_blocked() -> void:
 	sim.raids.shell_landed.connect(func(_s: Dictionary, hit: bool, blocked: bool, lost: int) -> void: landed.append([hit, blocked, lost]))
 	# Stoimy w miejscu na pasie zjazdu – pociski spadają przed nami (unik „z definicji”).
 	_ride(sim, 90.0, _target_power, func(s: RunSimulation) -> void:
-		s.combat.shield = 0.0
+		s.combat.capacitor = 0.0
 		if s.raids.state == RaidDirector.State.SCOUTING and s.lanes.target_lane != s.raids.exit_lane():
 			s.request_lane_change(signi(s.raids.exit_lane() - s.lanes.target_lane)))
 	var hits := landed.filter(func(l: Array) -> bool: return l[0])
 	assert_true(landed.size() >= 2, "wieże strzelają (%d pocisków)" % landed.size())
 	assert_true(hits.size() >= 1, "jazda prosto w ostrzał kończy się trafieniem")
-	var unshielded := hits.filter(func(l: Array) -> bool: return not l[1])
-	assert_true(unshielded.size() >= 1 and int(unshielded[0][2]) > 0, "bez tarczy trafienie kosztuje złom")
+	var uncharged := hits.filter(func(l: Array) -> bool: return not l[1])
+	assert_true(uncharged.size() >= 1 and int(uncharged[0][2]) > 0, "bez ładunku trafienie kosztuje złom")
 
 
 func test_no_settlement_when_the_run_is_about_to_end() -> void:

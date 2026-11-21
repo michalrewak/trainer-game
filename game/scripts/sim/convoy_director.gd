@@ -86,7 +86,7 @@ const LOST_AHEAD_M := 80.0
 const LOST_BEHIND_M := -120.0
 const MINE_FUSE_S := 1.7
 const MINE_GAP_S := 4.2
-const MINE_SHIELD_COST := 0.25
+const MINE_CAPACITOR_COST := 0.25
 const BUMP_COOLDOWN_S := 1.2
 const ESCORT_GAP_S := 20.0
 const CAGE_HITS_PER_PEDALER := 3
@@ -182,7 +182,7 @@ func hold_power_w() -> float:
 	return maxf(0.0, _reference.resist_force(_pace_v) * _pace_v / maxf(sim.power_multiplier(), 0.1))
 
 
-## Cel mocy do zasilania tarczy i działka.
+## Cel mocy do zasilania kondensatorów i działka.
 func target_w() -> float:
 	match state:
 		State.CHASE:
@@ -476,8 +476,8 @@ func _step_mines(sim: RunSimulation, delta: float) -> void:
 		var blocked := false
 		var lost := 0
 		if hit:
-			if sim.combat.shield >= MINE_SHIELD_COST:
-				sim.combat.shield -= MINE_SHIELD_COST
+			if sim.combat.capacitor >= MINE_CAPACITOR_COST:
+				sim.combat.capacitor -= MINE_CAPACITOR_COST
 				blocked = true
 			else:
 				sim.vehicle.apply_impact(0.6)
@@ -577,7 +577,7 @@ func _bump(sim: RunSimulation) -> void:
 		return
 	_bump_left_s = BUMP_COOLDOWN_S
 	sim.vehicle.apply_impact(0.6)
-	sim.combat.shield = maxf(0.0, sim.combat.shield - 0.2)
+	sim.combat.capacitor = maxf(0.0, sim.combat.capacitor - 0.2)
 	var squeezed := pd > tail + 1.0 and pd < nose - 1.0
 	if squeezed:
 		if sim.lanes.target_lane == _lane(sim):

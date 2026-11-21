@@ -6,9 +6,11 @@ extends RefCounted
 ## Zasady z CLAUDE.md:
 ## - wrogowie nadjeżdżają z boków i próbują zepchnąć gracza; obrona: wieżyczka albo zmiana pasa,
 ## - przegrana potyczka = utrata części złomu, nigdy „śmierć” ani przerwanie jazdy,
-## - trzymanie zadanej mocy = pełna tarcza i szybszy ogień; poniżej celu słabiej, ale grywalnie.
+## - trzymanie zadanej mocy = naładowane kondensatory i szybszy ogień; poniżej celu słabiej, ale grywalnie.
+##   Kondensatory to obrona pojazdu: naładowane oddają WYŁADOWANIE, które odrzuca taranującego
+##   napastnika i detonuje miny oraz pociski przed maską (zamiast „tarczy” – bez pól siłowych).
 ##
-## „Zasilanie” = moc / moc docelowa (wygładzone). Tarcza ładuje się proporcjonalnie do
+## „Zasilanie” = moc / moc docelowa (wygładzone). Kondensatory ładują się proporcjonalnie do
 ## zasilania, a odstęp między strzałami skraca się do minimum przy >= 100%.
 
 signal raider_spawned(raider: RaiderModel)
@@ -22,9 +24,9 @@ signal wreck_destroyed(item: TrackItem)
 enum RamOutcome { HIT, BLOCKED, DODGED, COUNTER }
 enum DestroyCause { SHOT, WRECK }
 
-const SHIELD_REGEN_PER_S := 0.07
-const SHIELD_RAM_COST := 0.4
-const SHIELD_START := 0.5
+const CAPACITOR_REGEN_PER_S := 0.07
+const CAPACITOR_RAM_COST := 0.4
+const CAPACITOR_START := 0.5
 const BASE_FIRE_INTERVAL_S := 0.55
 const MIN_SUPPLY_FOR_FIRE := 0.35
 const PROJECTILE_SPEED := 75.0
@@ -56,11 +58,11 @@ var target_power_w := 130.0
 var target_low_tol := TargetBand.FREE_RIDE_LOW
 var target_high_tol := TargetBand.FREE_RIDE_HIGH
 ## Ulepszenia (etap 3): kondensator i wieżyczka.
-var shield_regen_multiplier := 1.0
+var capacitor_regen_multiplier := 1.0
 var fire_rate_multiplier := 1.0
 var projectile_damage := 1
 var supply := 1.0
-var shield := SHIELD_START
+var capacitor := CAPACITOR_START
 var aim := Vector2.ZERO
 var fire_held := false
 var auto_fire := false
@@ -127,7 +129,7 @@ func step(delta: float, power_w: float) -> void:
 		return
 	var ratio := TargetBand.supply(power_w, target_power_w, target_low_tol, target_high_tol)
 	supply += (ratio - supply) * (1.0 - exp(-delta / 1.5))
-	shield = minf(1.0, shield + SHIELD_REGEN_PER_S * shield_regen_multiplier * clampf(supply, 0.0, 1.0) * delta)
+	capacitor = minf(1.0, capacitor + CAPACITOR_REGEN_PER_S * capacitor_regen_multiplier * clampf(supply, 0.0, 1.0) * delta)
 	if not enabled:
 		return
 	_schedule(delta)
@@ -316,8 +318,8 @@ func _resolve_ram(r: RaiderModel, contact: bool) -> void:
 		r.set_state(RaiderModel.State.RETREAT)
 		ram_resolved.emit(r, RamOutcome.DODGED, 0)
 		return
-	if shield >= SHIELD_RAM_COST:
-		shield -= SHIELD_RAM_COST
+	if capacitor >= CAPACITOR_RAM_COST:
+		capacitor -= CAPACITOR_RAM_COST
 		rams_blocked += 1
 		r.x = r.ram_from_x
 		_damage(r, 1, DestroyCause.SHOT)

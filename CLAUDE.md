@@ -21,14 +21,15 @@ Fabuła (Żarłok, Tłuści, burze iskrowe), kierunek graficzny (dzień, burza, 
 
 - Moc z trenażera = prędkość pojazdu (z uwzględnieniem ulepszeń silnika). Moc na kołach =
   moc z nóg × akceleratory (generator, załoga) × dopalacz; trening liczy samą moc z nóg.
-- Trasa oparta o pasy: szeroki kanion z 3–4 torami, zmiana pasa krzyżakiem/lewą gałką pada. Omijanie wraków, zbieranie złomu, wybór odnogi na rozwidleniach.
+- Trasa oparta o pasy: szeroki kanion z 3–4 torami. Kierowanie płynne lewą gałką (pojazd jedzie w dowolnym miejscu jezdni, wspomaganie dociąga do pasa), krzyżak skacze o pas. Omijanie wraków, zbieranie złomu, wybór odnogi na rozwidleniach.
+- Wyprawa jest na czas i kończy się wjazdem do osady, nie „metą”; nawierzchnia drogi zmienia się po drodze. Szczegóły w [docs/swiat.md](docs/swiat.md).
 - Kadencja pokazywana dyskretnie w HUD, nie jest mechaniką.
 
 ## Walka
 
 - Wrogie pojazdy nadjeżdżają z boków i próbują zepchnąć gracza; obrona: strzał z wieżyczki (prawa gałka celuje, trigger strzela) lub zmiana pasa.
 - Przegrana potyczka = utrata części złomu, nigdy „śmierć” ani przerwanie treningu.
-- Trzymanie zadanej mocy = pełna tarcza i szybszy ogień; spadek poniżej celu = słabsze zasilanie, ale nadal można grać.
+- Trzymanie zadanej mocy = naładowane kondensatory (wyładowanie odrzuca napastnika) i szybszy ogień; spadek poniżej celu = słabsze zasilanie, ale nadal można grać. Bez „tarczy” i pól siłowych.
 - Na ciężkich interwałach opcjonalne „pola bezpieczne” bez konieczności klikania.
 - Konwoje Tłustych: kolumna spięta sprzęgami, celem jest odczepienie galery z niewolnikami.
   Trzeba przyspieszać i zwalniać razem z konwojem; za mało mocy i konwój ucieka. Zasady
@@ -58,7 +59,7 @@ Gamepad GameSir po Bluetooth, natywnie w Godot (klasa Input). Żadnych dodatkowy
 ## Etapy
 
 1. Gra MVP bez trenażera: kanion z pasami, pojazd, zbieranie złomu, HUD. Pedałowanie symulowane padem (analogowy trigger = moc w watach).
-2. Walka: wrogowie, wieżyczka, tarcza zależna od mocy, utrata złomu.
+2. Walka: wrogowie, wieżyczka, kondensatory ładowane mocą, utrata złomu.
 3. Progresja: baza między wyprawami, sklep, 3–5 ulepszeń, moduły pojazdu, drugi teren.
 4. Tryb treningowy: parser planów, mapowanie interwałów na odcinki trasy, cel mocy w HUD, pola bezpieczne (nadal na symulowanej mocy).
 5. Mostek Python do Suito (BLE FTMS, WebSocket) z trybem ERG – podmiana źródła mocy z pada na trenażer.

@@ -59,7 +59,7 @@ func impact_speed_factor() -> float:
 	return minf(0.85, 0.35 + 0.08 * level(UpgradeCatalog.ARMOR) + soft)
 
 
-func shield_regen_multiplier() -> float:
+func capacitor_regen_multiplier() -> float:
 	return [1.0, 1.35, 1.7, 2.1][level(UpgradeCatalog.CAPACITOR)]
 
 
@@ -105,11 +105,13 @@ func apply_to(sim: RunSimulation) -> void:
 	sim.convoys.base_tier = level(UpgradeCatalog.CHASSIS)
 	sim.impact_speed_factor = impact_speed_factor()
 	sim.expedition.scrap_loss_factor = scrap_loss_factor()
-	sim.combat.shield_regen_multiplier = shield_regen_multiplier()
+	sim.combat.capacitor_regen_multiplier = capacitor_regen_multiplier()
 	sim.combat.fire_rate_multiplier = fire_rate_multiplier()
 	sim.combat.projectile_damage = projectile_damage()
 	sim.lanes.max_lateral_speed_mps *= lane_speed_multiplier()
 	sim.lanes.settle_tau_s /= lane_speed_multiplier()
+	sim.lanes.steer_speed_mps *= lane_speed_multiplier()
+	sim.lanes.assist_speed_mps *= lane_speed_multiplier()
 	sim.scrap_half_width_m = pickup_half_width_m()
 	sim.ram_cooldown_s = ram_cooldown_s()
 	sim.ram_keeps_speed = ram_keeps_speed()

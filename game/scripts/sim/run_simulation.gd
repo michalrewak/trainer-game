@@ -39,9 +39,12 @@ var power_train := PowerTrain.new()
 var last_wheel_power_w := 0.0
 ## Passa (mnożnik złomu za czystą jazdę) i zlecenia (trzy cele na wyprawę).
 var streak := Streak.new()
+## Osada, do której dojeżdża się na koniec czasu wyprawy (zamiast „mety”).
+var arrival := Arrival.new()
 var streak_enabled := true
 var contracts := ContractBoard.new()
 var _left_lane_at: Dictionary = {}
+var _prev_lane := -1
 var _rng := RandomNumberGenerator.new()
 ## Wzniesienia i doliny (CourseProfile). W grze włączone, w czystej symulacji domyślnie płasko.
 var course: CourseProfile
@@ -144,6 +147,11 @@ func add_items(new_items: Array[TrackItem]) -> void:
 	items.append_array(new_items)
 
 
+## Płynne kierowanie: wychylenie gałki -1..1 (0 = puszczona; wtedy działa wspomaganie).
+func steer(input: float) -> void:
+	lanes.steer(0.0 if expedition.finished else input)
+
+
 func request_lane_change(direction: int) -> bool:
 	if expedition.finished:
 		return false
@@ -165,10 +173,20 @@ func step(delta: float, power_w: float) -> void:
 	var d0 := vehicle.distance_m
 	vehicle.step(delta, drive_w)
 	lanes.step(delta)
+	if lanes.assist_started and lanes.assist_enabled:
+		_assist_pick_lane()
+	# Zmiana pasa (skokiem albo gałką) – zapamiętujemy, kiedy opuszczono poprzedni.
+	if lanes.target_lane != _prev_lane:
+		if _prev_lane >= 0:
+			_left_lane_at[_prev_lane] = expedition.elapsed_s
+		_prev_lane = lanes.target_lane
 	invulnerable_left_s = maxf(0.0, invulnerable_left_s - delta)
 	ram_left_s = maxf(0.0, ram_left_s - delta)
 	expedition.tick(delta, power_w, vehicle.speed_mps, vehicle.distance_m)
 	_resolve_contacts(d0, vehicle.distance_m)
+	arrival.step(delta, expedition.time_left_s(), vehicle.distance_m, vehicle.speed_mps)
+	if arrival.is_visible():
+		_clear_road_to_settlement()
 	_check_near_misses(vehicle.distance_m)
 	streak.step(delta)
 	expedition.best_streak = maxf(expedition.best_streak, streak.multiplier())
@@ -279,6 +297,39 @@ func _resolve_contacts(d0: float, d1: float) -> void:
 			scrap_collected.emit(item)
 
 
+## Wspomaganie po puszczeniu gałki: gdy pojazd stoi między dwoma pasami, a na bliższym
+## tuż przed nim jest wrak, dociąga na ten drugi (wolny).
+func _assist_pick_lane() -> void:
+	var nearest := lanes.current_lane()
+	var offset := lanes.x_m - lanes.lane_center(nearest)
+	var other := nearest + (1 if offset > 0.0 else -1)
+	if absf(offset) < 0.5 or other < 0 or other >= lanes.lane_count:
+		return
+	var horizon := maxf(14.0, vehicle.speed_mps * 1.6)
+	if _wreck_in_lane(nearest, horizon) and not _wreck_in_lane(other, horizon):
+		lanes.target_lane = other
+
+
+func _wreck_in_lane(lane: int, horizon: float) -> bool:
+	var d := vehicle.distance_m
+	for item in items:
+		if item.is_wreck() and not item.consumed and item.lane == lane and item.distance_m > d - 2.0 and item.distance_m < d + horizon:
+			return true
+	return false
+
+
+## Przed bramą osady i na jej placu nie ma wraków – wjazd ma być nagrodą, nie pułapką.
+func _clear_road_to_settlement() -> void:
+	generator.wrecks_enabled = false
+	var from := arrival.gate_d - Arrival.CLEAR_BEFORE_M
+	var kept: Array[TrackItem] = []
+	for item in items:
+		if not (item.is_wreck() and not item.consumed and item.distance_m > from):
+			kept.append(item)
+	if kept.size() != items.size():
+		items = kept
+
+
 func _streak_add(amount: int) -> void:
 	if streak_enabled:
 		streak.add(amount)
@@ -317,7 +368,7 @@ func _on_contract_completed(c: Dictionary) -> void:
 	expedition.contracts_done += 1
 
 
-## Skrzynia: losowa nagroda – deszcz zębatek, kanister, pełny dopalacz z tarczą albo
+## Skrzynia: losowa nagroda – deszcz zębatek, kanister, pełny dopalacz z kondensatorami albo
 ## złota zębatka. Niewiadoma, co wypadnie, to połowa frajdy.
 func _open_crate(item: TrackItem) -> void:
 	var roll := _rng.randf()
@@ -341,7 +392,7 @@ func _open_crate(item: TrackItem) -> void:
 		prize = Prize.CHARGE
 		amount = power_train.max_charges
 		power_train.charges = power_train.max_charges
-		combat.shield = 1.0
+		combat.capacitor = 1.0
 	if prize == Prize.JACKPOT:
 		expedition.add_scrap(amount, streak.multiplier() if streak_enabled else 1.0)
 	expedition.crates_opened += 1

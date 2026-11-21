@@ -61,6 +61,141 @@ static func is_canyon_section(idx: int) -> bool:
 	return posmod(hash(floori(idx / 5.0) * 31 + 7), 100) < 45
 
 
+enum Surface { ASPHALT, DIRT, CONCRETE, STEEL }
+
+## Nawierzchnia zmienia się co odcinek (5 segmentów = 200 m): stary asfalt, szuter
+## z koleinami, betonowe płyty albo stalowe maty. Start zawsze na asfalcie.
+static func road_surface(idx: int) -> Surface:
+	var section := floori(idx / 5.0)
+	if section <= 0:
+		return Surface.ASPHALT
+	var roll := posmod(hash(section * 53 + 11), 100)
+	if roll < 34:
+		return Surface.ASPHALT
+	if roll < 64:
+		return Surface.DIRT
+	if roll < 84:
+		return Surface.CONCRETE
+	return Surface.STEEL
+
+
+static func surface_name(surface: Surface) -> String:
+	return ["asfalt", "szuter", "betonowe płyty", "stalowe maty"][surface]
+
+
+## Jezdnia segmentu. Elementy wzdłuż drogi mają najwyżej 8 m, żeby shader mógł je wygiąć
+## razem z jezdnią na zakrętach i wzniesieniach.
+func _build_road(seg: Node3D, idx: int, rng: RandomNumberGenerator) -> void:
+	var L := SEGMENT_LENGTH
+	var center_z := -L * 0.5
+	var surface := road_surface(idx)
+	if theme == "city" and surface == Surface.DIRT:
+		surface = Surface.CONCRETE
+	var road := PlaneMesh.new()
+	road.size = Vector2(ROAD_HALF_WIDTH * 2.0, L)
+	road.subdivide_width = 3
+	road.subdivide_depth = 9
+	var road_mat: Material = Palette.road()
+	match surface:
+		Surface.DIRT:
+			road_mat = Palette.mat(Color("a4683e"), 0.98, 0.0, Palette.Kind.SAND)
+		Surface.CONCRETE:
+			road_mat = Palette.road(Color("a59c90"))
+		Surface.STEEL:
+			road_mat = Palette.mat(Color("7c6c60"), 0.5, 0.75)
+	seg.add_child(LowPoly.mesh_instance(road, road_mat, Vector3(0, 0.03, center_z)))
+	match surface:
+		Surface.ASPHALT:
+			_paint_asphalt(seg, rng)
+		Surface.DIRT:
+			_paint_dirt(seg, rng)
+		Surface.CONCRETE:
+			_paint_concrete(seg, rng)
+		Surface.STEEL:
+			_paint_steel(seg, rng)
+
+
+## Stary asfalt: przerywane linie między pasami i wytarte linie krawędziowe.
+func _paint_asphalt(seg: Node3D, rng: RandomNumberGenerator) -> void:
+	var L := SEGMENT_LENGTH
+	var paint := Palette.mat(Palette.LANE_PAINT, 0.9)
+	for lane_line in [-1.8, 1.8]:
+		for j in 5:
+			if rng.randf() < 0.12:
+				continue  # wytarta farba
+			seg.add_child(LowPoly.box(Vector3(0.2, 0.02, 3.0), paint, Vector3(lane_line, 0.04, -j * 8.0 - 2.0)))
+	for edge in [-ROAD_HALF_WIDTH + 0.35, ROAD_HALF_WIDTH - 0.35]:
+		var z0 := 0.0
+		while z0 < L:
+			var len := rng.randf_range(4.0, 12.0)
+			if rng.randf() > 0.25:
+				seg.add_child(LowPoly.box(Vector3(0.16, 0.02, minf(len, L - z0)), paint, Vector3(edge, 0.04, -z0 - minf(len, L - z0) * 0.5)))
+			z0 += len + rng.randf_range(1.0, 5.0)
+
+
+## Szuter: wyjeżdżone koleiny na każdym pasie, kamienie i grzbiety piasku między pasami.
+func _paint_dirt(seg: Node3D, rng: RandomNumberGenerator) -> void:
+	var rut := Palette.mat(Color("7c4a2a"), 0.98, 0.0, Palette.Kind.SAND)
+	var ridge := Palette.mat(Color("c08650"), 0.98, 0.0, Palette.Kind.SAND)
+	for lane_x: float in [-3.6, 0.0, 3.6]:
+		for wheel: float in [-0.75, 0.75]:
+			for j in 5:
+				if rng.randf() < 0.1:
+					continue
+				seg.add_child(LowPoly.box(Vector3(0.42, 0.02, 7.6), rut, Vector3(lane_x + wheel + rng.randf_range(-0.06, 0.06), 0.04, -j * 8.0 - 4.0)))
+	for line_x: float in [-1.8, 1.8]:
+		for j in 5:
+			if rng.randf() < 0.35:
+				seg.add_child(LowPoly.box(Vector3(rng.randf_range(0.5, 0.9), 0.06, rng.randf_range(3.0, 7.0)), ridge, Vector3(line_x, 0.04, -j * 8.0 - 4.0)))
+	for j in rng.randi_range(5, 9):
+		var s := rng.randf_range(0.12, 0.3)
+		seg.add_child(LowPoly.mesh_instance(LowPoly.rock_mesh(rng.randi_range(0, 11)), Palette.rock(Palette.ROCK_C),
+			Vector3([-1.8, 1.8, -5.6, 5.6][rng.randi_range(0, 3)] + rng.randf_range(-0.3, 0.3), s * 0.2, -rng.randf_range(0.0, SEGMENT_LENGTH)), Vector3(s, s * 0.7, s)))
+
+
+## Betonowe płyty: poprzeczne dylatacje co 5 m, szwy wzdłuż pasów, pęknięcia i łaty smoły.
+func _paint_concrete(seg: Node3D, rng: RandomNumberGenerator) -> void:
+	var joint := Palette.mat(Color("3a342e"), 0.95)
+	var tar := Palette.mat(Color("2a2622"), 0.7)
+	for j in 8:
+		seg.add_child(LowPoly.box(Vector3(ROAD_HALF_WIDTH * 2.0, 0.02, 0.14), joint, Vector3(0, 0.04, -j * 5.0 - 0.1)))
+	for line_x: float in [-1.8, 1.8]:
+		for j in 8:
+			seg.add_child(LowPoly.box(Vector3(0.1, 0.02, 4.7), joint, Vector3(line_x, 0.04, -j * 5.0 - 2.5)))
+	for j in rng.randi_range(2, 5):
+		seg.add_child(LowPoly.box(Vector3(rng.randf_range(0.06, 0.1), 0.02, rng.randf_range(1.5, 3.5)), joint,
+			Vector3(rng.randf_range(-5.4, 5.4), 0.045, -rng.randf_range(2.0, SEGMENT_LENGTH - 2.0)), Vector3(0, rng.randf_range(-1.0, 1.0), 0)))
+	for j in rng.randi_range(0, 2):
+		seg.add_child(LowPoly.box(Vector3(rng.randf_range(0.8, 1.6), 0.02, rng.randf_range(0.8, 2.0)), tar,
+			Vector3([-5.4, -1.8, 1.8, 5.4][rng.randi_range(0, 3)], 0.045, -rng.randf_range(2.0, SEGMENT_LENGTH - 2.0)), Vector3(0, rng.randf_range(-0.4, 0.4), 0)))
+	# Żółte znaczniki krawędzi – resztki dawnej drogi wojskowej.
+	var mark := Palette.mat(Palette.PAINT_MUSTARD, 0.9)
+	for edge: float in [-ROAD_HALF_WIDTH + 0.3, ROAD_HALF_WIDTH - 0.3]:
+		for j in 4:
+			if rng.randf() > 0.3:
+				seg.add_child(LowPoly.box(Vector3(0.22, 0.02, 2.4), mark, Vector3(edge, 0.045, -j * 10.0 - 3.0)))
+
+
+## Stalowe maty: spawane płyty co 2,5 m, listwy prowadzące między pasami, żółto-czarne
+## krawężniki. Blacha błyszczy inaczej niż asfalt i dudni pod kołami.
+func _paint_steel(seg: Node3D, rng: RandomNumberGenerator) -> void:
+	var seam := Palette.mat(Color("2c2622"), 0.7, 0.4)
+	var strip := Palette.mat(Color("a8a094"), 0.4, 0.85)
+	var yellow := Palette.mat(Palette.PAINT_MUSTARD, 0.8, 0.2)
+	for j in 16:
+		seg.add_child(LowPoly.box(Vector3(ROAD_HALF_WIDTH * 2.0, 0.03, 0.1), seam, Vector3(0, 0.045, -j * 2.5 - 0.05)))
+	for line_x: float in [-1.8, 1.8]:
+		for j in 8:
+			seg.add_child(LowPoly.box(Vector3(0.12, 0.05, 4.6), strip, Vector3(line_x, 0.05, -j * 5.0 - 2.5)))
+	for edge: float in [-ROAD_HALF_WIDTH + 0.15, ROAD_HALF_WIDTH - 0.15]:
+		for j in 10:
+			seg.add_child(LowPoly.box(Vector3(0.3, 0.22, 2.0), yellow if j % 2 == 0 else seam, Vector3(edge, 0.12, -j * 4.0 - 1.0)))
+	# Łaty rdzy i przyspawane nakładki.
+	for j in rng.randi_range(1, 3):
+		seg.add_child(LowPoly.box(Vector3(rng.randf_range(1.0, 2.0), 0.03, rng.randf_range(1.0, 2.2)), Palette.mat(Palette.RUST, 0.9, 0.3),
+			Vector3([-3.6, 0.0, 3.6][rng.randi_range(0, 2)] + rng.randf_range(-0.5, 0.5), 0.05, -rng.randf_range(2.0, SEGMENT_LENGTH - 2.0)), Vector3(0, rng.randf_range(-0.2, 0.2), 0)))
+
+
 func _build_segment(seg: Node3D, idx: int) -> void:
 	for child in seg.get_children():
 		child.queue_free()
@@ -78,27 +213,7 @@ func _build_segment(seg: Node3D, idx: int) -> void:
 	var ground_mi := LowPoly.mesh_instance(ground, Palette.sand(Palette.SAND, 1.0), Vector3(0, 0, center_z))
 	ground_mi.extra_cull_margin = 60.0
 	seg.add_child(ground_mi)
-	var road := PlaneMesh.new()
-	road.size = Vector2(ROAD_HALF_WIDTH * 2.0, L)
-	road.subdivide_width = 3
-	road.subdivide_depth = 9
-	seg.add_child(LowPoly.mesh_instance(road, Palette.road(), Vector3(0, 0.03, center_z)))
-
-	# Przerywane linie między pasami (co 8 m) – dają poczucie prędkości.
-	var paint := Palette.mat(Palette.LANE_PAINT, 0.9)
-	for lane_line in [-1.8, 1.8]:
-		for j in 5:
-			if rng.randf() < 0.12:
-				continue  # wytarta farba
-			seg.add_child(LowPoly.box(Vector3(0.2, 0.02, 3.0), paint, Vector3(lane_line, 0.04, -j * 8.0 - 2.0)))
-	# Linie krawędziowe – miejscami zasypane.
-	for edge in [-ROAD_HALF_WIDTH + 0.35, ROAD_HALF_WIDTH - 0.35]:
-		var z0 := 0.0
-		while z0 < L:
-			var len := rng.randf_range(4.0, 12.0)
-			if rng.randf() > 0.25:
-				seg.add_child(LowPoly.box(Vector3(0.16, 0.02, minf(len, L - z0)), paint, Vector3(edge, 0.04, -z0 - minf(len, L - z0) * 0.5)))
-			z0 += len + rng.randf_range(1.0, 5.0)
+	_build_road(seg, idx, rng)
 	# Nawiany piasek na jezdni (poza środkiem pasów, żeby nie mylił z przeszkodą).
 	var sand_drift := Palette.mat(Palette.SAND_DARK)
 	for j in rng.randi_range(1, 3):

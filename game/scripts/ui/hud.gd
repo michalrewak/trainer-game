@@ -2,7 +2,7 @@ class_name Hud
 extends CanvasLayer
 ## HUD czytelny z 3 m. Układ:
 ## - dół, środek: deska rozdzielcza – prędkość, MOC (największa), pasek stref Z1–Z7,
-##   wskaźnik widełek celu, zasilanie, tarcza, moc na kołach i dopalacz;
+##   wskaźnik widełek celu, zasilanie, kondensatory, moc na kołach i dopalacz;
 ## - lewa góra: czas i dystans, pod spodem panel konwoju albo treningu;
 ## - prawa góra: złom z mnożnikiem passy, zlecenia, gadająca głowa;
 ## - środek góry: tylko wąski pasek stanu – horyzont i droga przed pojazdem są odsłonięte.
@@ -14,6 +14,8 @@ var ftp_w := 200.0
 const DRIFT_PX := 8.0
 const DRIFT_PERIOD_S := 45.0
 const BAR_WIDTH := 178.0
+## Kolor ładunku kondensatorów: zimny, elektryczny błękit (złom jest turkusowy).
+const CAPACITOR_COLOR := Color("9fd8ff")
 
 var _root: Control
 var _time_value: Label
@@ -56,7 +58,8 @@ var _next_label: Label
 var _safe_label: Label
 var _supply_label: Label
 var _supply_fill: ColorRect
-var _shield_fill: ColorRect
+var _capacitor_fill: ColorRect
+var _capacitor_caption: Label
 var _combat_row: Control
 var _target_col: Control
 var _threat_left: Label
@@ -235,7 +238,7 @@ func update_challenge(text: String, color: Color) -> void:
 	_status_box.visible = _hint.visible or _challenge_label.visible
 
 
-## Zasilanie (moc względem celu), tarcza i ostrzeżenia o ataku z boku.
+## Zasilanie (moc względem celu), kondensatory i ostrzeżenia o ataku z boku.
 func update_combat(combat: CombatModel, power_w: float, player_x: float, delta: float) -> void:
 	_blink_t += delta
 	_combat_row.visible = combat.enabled
@@ -255,7 +258,10 @@ func update_combat(combat: CombatModel, power_w: float, player_x: float, delta: 
 	_band_gauge.set_values(power_w, combat.target_power_w, combat.target_low_tol, combat.target_high_tol, fill_color)
 	_supply_fill.color = fill_color
 	_supply_fill.size.x = BAR_WIDTH * clampf(combat.supply_ratio(), 0.0, 1.0)
-	_shield_fill.size.x = BAR_WIDTH * clampf(combat.shield, 0.0, 1.0)
+	_capacitor_fill.size.x = BAR_WIDTH * clampf(combat.capacitor, 0.0, 1.0)
+	var ready := floori(combat.capacitor / CombatModel.CAPACITOR_RAM_COST + 0.001)
+	_capacitor_caption.text = "KONDENSATORY  ×%d" % ready
+	_capacitor_caption.add_theme_color_override("font_color", CAPACITOR_COLOR if ready > 0 else Palette.UI_DIM)
 	var left_warn := false
 	var right_warn := false
 	var left_near := false
@@ -371,7 +377,7 @@ func _build_top_left() -> void:
 	row.add_theme_constant_override("separation", 26)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plate.add_child(row)
-	var time := _stat("DO KOŃCA", 76)
+	var time := _stat("DO OSADY", 76)
 	_time_value = time.get_meta("value")
 	row.add_child(time)
 	var dist := _stat("DYSTANS", 40, Palette.UI_DIM)
@@ -499,7 +505,7 @@ func _build_status() -> void:
 	_place(plate, Control.PRESET_CENTER_TOP, Vector2(0, 24))
 
 
-## Deska rozdzielcza na dole: prędkość | moc i strefy | cel, zasilanie, tarcza, napęd.
+## Deska rozdzielcza na dole: prędkość | moc i strefy | cel, zasilanie, kondensatory, napęd.
 func _build_dashboard() -> void:
 	var plate := UiStyle.plate(UiStyle.STEEL, Palette.UI_ACCENT)
 	var row := HBoxContainer.new()
@@ -549,7 +555,7 @@ func _build_dashboard() -> void:
 	row.add_child(power_col)
 	row.add_child(_divider())
 
-	# Cel mocy z widełkami, zasilanie, tarcza i układ napędowy.
+	# Cel mocy z widełkami, zasilanie, kondensatory i układ napędowy.
 	var target_col := VBoxContainer.new()
 	target_col.add_theme_constant_override("separation", 3)
 	target_col.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -566,9 +572,19 @@ func _build_dashboard() -> void:
 	var supply := _captioned_bar("ZASILANIE", Palette.UI_GOOD)
 	_supply_fill = supply.get_meta("fill")
 	bars.add_child(supply)
-	var shield := _captioned_bar("TARCZA", Palette.UI_SCRAP)
-	_shield_fill = shield.get_meta("fill")
-	bars.add_child(shield)
+	# Kondensatory: pięć ogniw; podpis mówi, na ile wyładowań (odparć ataku) starczy ładunku.
+	var capacitor := _captioned_bar("KONDENSATORY", CAPACITOR_COLOR)
+	_capacitor_fill = capacitor.get_meta("fill")
+	_capacitor_caption = capacitor.get_child(0) as Label
+	var cells := capacitor.get_child(1) as Control
+	for i in range(1, 5):
+		var gap := ColorRect.new()
+		gap.color = Color(0, 0, 0, 0.9)
+		gap.size = Vector2(3, 12)
+		gap.position = Vector2(BAR_WIDTH * i / 5.0 - 1.5, 0)
+		gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cells.add_child(gap)
+	bars.add_child(capacitor)
 	_combat_row = bars
 	target_col.add_child(bars)
 	_wheel_label = UiStyle.label("", 22, Palette.UI_DIM)

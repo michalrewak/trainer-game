@@ -20,6 +20,7 @@ var _terrain_button: Button
 var _duration_button: Button
 var _ftp_button: Button
 var _goal_button: Button
+var _assist_button: Button
 var _autofire_button: Button
 var _source_button: Button
 var _sound_button: Button
@@ -158,7 +159,11 @@ func _build() -> void:
 		var i := WEEKLY_GOALS.find(App.weekly_tss_goal())
 		App.set_weekly_tss_goal(WEEKLY_GOALS[(i + 1) % WEEKLY_GOALS.size()])
 		_refresh())
-	col.add_child(_row([_ftp_button, _goal_button]))
+	_assist_button = _option("Kierowanie lewą gałką jest płynne: jedziesz w dowolnym miejscu jezdni. Wspomaganie po puszczeniu gałki dociąga pojazd do najbliższego pasa i omija wrak tuż przed maską. Krzyżak zawsze skacze o cały pas.")
+	_assist_button.pressed.connect(func() -> void:
+		App.set_steer_assist(not App.steer_assist_enabled())
+		_refresh())
+	col.add_child(_row([_ftp_button, _goal_button, _assist_button]))
 	_autofire_button = _option("Auto-ogień: wieżyczka strzela sama do najbliższego celu – wygodne na ciężkich odcinkach.")
 	_autofire_button.pressed.connect(func() -> void:
 		App.set_auto_fire(not App.auto_fire_enabled())
@@ -298,7 +303,8 @@ func _refresh() -> void:
 	_time_button.text = "Pora: %s" % {"cycle": "zmienna (dzień → noc)", "day": "dzień", "night": "noc"}.get(App.time_mode(), "zmienna (dzień → noc)")
 	_frame_vehicle(App.run_loadout())
 	_ftp_button.text = "FTP: %d W  ← →" % roundi(App.ftp_w())
-	_goal_button.text = "Cel tygodnia: %d TSS" % App.weekly_tss_goal()
+	_goal_button.text = "Tydzień: %d TSS" % App.weekly_tss_goal()
+	_assist_button.text = "Wspomaganie: %s" % ("TAK" if App.steer_assist_enabled() else "nie")
 	_autofire_button.text = "Auto-ogień: %s" % ("TAK" if App.auto_fire_enabled() else "nie")
 	_source_button.text = "Moc: %s" % ("TRENAŻER" if App.power_source_kind() == PowerSourceFactory.KIND_TRAINER else "PAD")
 	_sound_button.text = "Dźwięk: %s" % ("TAK" if bool(App.settings.get("sound", true)) else "nie")

@@ -28,7 +28,7 @@ var _rear_m := 0.0
 var _sparks: CPUParticles3D
 var _spark_light: OmniLight3D
 var _charge_level := 0.0
-var _shield_flash := 0.0
+var _capacitor_flash := 0.0
 var _flash := 0.0
 var _wheel_angle := 0.0
 var _crank_angle := 0.0
@@ -83,8 +83,8 @@ func on_hit() -> void:
 	_flash = 1.2
 
 
-## Wieżyczka obraca się do celu (pozycja lokalna względem pojazdu), tarcza pokazuje poziom.
-func update_combat(target_local: Variant, shield_level: float, delta: float) -> void:
+## Wieżyczka obraca się do celu (pozycja lokalna względem pojazdu), iskry pokazują poziom ładunku.
+func update_combat(target_local: Variant, capacitor_level: float, delta: float) -> void:
 	if target_local is Vector3:
 		var t: Vector3 = target_local
 		var dx := t.x - position.x
@@ -95,12 +95,12 @@ func update_combat(target_local: Variant, shield_level: float, delta: float) -> 
 		_turret.rotation.y = lerp_angle(_turret.rotation.y, 0.0, 1.0 - exp(-delta * 3.0))
 	_muzzle_t = maxf(0.0, _muzzle_t - delta)
 	_muzzle.visible = _muzzle_t > 0.0
-	# Tarcza to ładunek kondensatorów, nie bańka: poziom pokazuje HUD, a zablokowany atak
+	# Obrona to ładunek kondensatorów, nie bańka: poziom pokazuje HUD, a zablokowany atak
 	# widać jako wyładowanie – snop iskier i błysk na pancerzu.
-	_shield_flash = maxf(0.0, _shield_flash - delta * 2.5)
-	_spark_light.light_energy = _shield_flash * 9.0
-	_spark_light.visible = _shield_flash > 0.0
-	_charge_level = shield_level
+	_capacitor_flash = maxf(0.0, _capacitor_flash - delta * 2.5)
+	_spark_light.light_energy = _capacitor_flash * 9.0
+	_spark_light.visible = _capacitor_flash > 0.0
+	_charge_level = capacitor_level
 
 
 ## Linia celownika z lufy – widoczna, gdy gracz celuje albo strzela.
@@ -176,7 +176,7 @@ func apply_loadout(loadout: Loadout) -> void:
 		mods.add_child(LowPoly.box(Vector3(0.6, 0.1, 0.08), Palette.glow(Color("9fe8ff"), 0.5), Vector3(0, 1.55, -0.74), Vector3(-0.45, 0, 0)))
 		mods.add_child(LowPoly.box(Vector3(1.1, 0.06, 0.9), rust, Vector3(0, 2.12, 0.5)))
 
-	# Kondensatory tarczy za fotelem.
+	# Bateria kondensatorów za fotelem.
 	var cap := loadout.level(UpgradeCatalog.CAPACITOR)
 	for i in cap:
 		var x := (i - (cap - 1) * 0.5) * 0.42
@@ -323,8 +323,8 @@ func _module_wheel(wheel_name: String, pos: Vector3, diameter: float, side: floa
 	return w
 
 
-func shield_block() -> void:
-	_shield_flash = 1.0
+func discharge() -> void:
+	_capacitor_flash = 1.0
 	_sparks.restart()
 	_sparks.emitting = true
 
@@ -516,7 +516,7 @@ func _build() -> void:
 	_aim_line.visible = false
 	_turret.add_child(_aim_line)
 
-	# Wyładowanie tarczy: iskry i niebieskawy błysk (bez bańki pola siłowego).
+	# Wyładowanie kondensatorów: iskry i niebieskawy błysk (bez bańki pola siłowego).
 	_sparks = CPUParticles3D.new()
 	_sparks.emitting = false
 	_sparks.one_shot = true

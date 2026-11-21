@@ -5,7 +5,8 @@ extends Node3D
 
 enum State { RIDING, PAUSED, FINISHING, DONE }
 
-const FINISH_DELAY_S := 2.5
+## Po końcu czasu pojazd jeszcze chwilę wtacza się na plac osady.
+const FINISH_DELAY_S := 3.2
 
 @onready var track: TrackView = $Track
 @onready var buggy: BuggyView = $Buggy
@@ -14,6 +15,7 @@ const FINISH_DELAY_S := 2.5
 
 var raid_view: RaidView
 var convoy_view: ConvoyView
+var settlement_view: SettlementView
 var sfx: Sfx
 var _loadout: Loadout
 @onready var camera: ChaseCamera = $Camera
@@ -47,6 +49,7 @@ func _ready() -> void:
 	# Etap 3: moduły z garażu i teren wyprawy.
 	var loadout := App.run_loadout()
 	loadout.apply_to(sim)
+	sim.lanes.assist_enabled = App.steer_assist_enabled()
 	TerrainCatalog.apply_to(App.selected_terrain, sim)
 	track.theme = App.selected_terrain
 	# Wzniesienia i doliny – w mieście łagodniej.
@@ -67,6 +70,8 @@ func _ready() -> void:
 	add_child(raid_view)
 	convoy_view = ConvoyView.new()
 	add_child(convoy_view)
+	settlement_view = SettlementView.new()
+	add_child(settlement_view)
 	sfx = Sfx.new()
 	sfx.enabled = App.sound_enabled() and not App.is_headless()
 	add_child(sfx)
@@ -117,6 +122,14 @@ func _process(delta: float) -> void:
 				_commit(true)
 
 
+## Gałka kierowania: strefa martwa i łagodny początek (precyzja przy małym wychyleniu).
+static func steer_curve(raw: float) -> float:
+	var a := absf(raw)
+	if a < 0.18:
+		return 0.0
+	return signf(raw) * pow((a - 0.18) / 0.82, 1.4)
+
+
 ## Pora dnia: 0 = dzień, 0.5 = zmierzch, 1 = noc. W trybie „zmienna” wyprawa zaczyna się
 ## za dnia, w połowie zachodzi słońce, a końcówka jest nocna.
 func _time_of_day() -> float:
@@ -164,10 +177,14 @@ func _ride(delta: float) -> void:
 			_pause("Trenażer rozłączony – mostek próbuje połączyć się ponownie")
 			return
 	var dir := 0
+	var steer := 0.0
 	if autopilot != null:
 		dir = autopilot.decide(sim, delta)
 	else:
+		# Krzyżak i klawisze skaczą o pas; lewa gałka kieruje płynnie.
 		dir = lane_input.update(delta, Input.get_action_raw_strength(&"lane_left"), Input.get_action_raw_strength(&"lane_right"))
+		steer = steer_curve(Input.get_axis(&"steer_left", &"steer_right"))
+	sim.steer(steer)
 	if dir != 0:
 		sim.request_lane_change(dir)
 	sim.combat.aim = Input.get_vector(&"aim_left", &"aim_right", &"aim_up", &"aim_down")
@@ -208,8 +225,13 @@ func _ride(delta: float) -> void:
 	var e := sim.expedition
 	if not _last_minute_shown and e.duration_s >= 120.0 and e.time_left_s() <= 60.0:
 		_last_minute_shown = true
-		hud.show_message("OSTATNIA MINUTA", 3.0)
+		hud.show_message("MINUTA DO OSADY", 3.0)
 		_say("last_minute", 1)
+	# Osada na horyzoncie: wyprawa kończy się wjazdem przez jej bramę.
+	if sim.arrival.just_sighted:
+		sfx.play("tier")
+		hud.show_message("OSADA NA HORYZONCIE\nBrama otwarta – dowieź, co masz", 3.5)
+		_say("home_sight", 2)
 	_maybe_screenshot()
 	# Checkpoint co 60 s: po awarii (np. utrata GPU) złom z wyprawy nie przepada.
 	_checkpoint_t += delta
@@ -219,7 +241,8 @@ func _ride(delta: float) -> void:
 	if e.finished:
 		_state = State.FINISHING
 		_finish_left = FINISH_DELAY_S
-		hud.show_message("META!  +%d złomu" % e.scrap, FINISH_DELAY_S + 1.0)
+		hud.show_message("W OSADZIE!\n+%d złomu do magazynu" % e.scrap, FINISH_DELAY_S + 1.0)
+		sfx.play("fanfare")
 		_say("finish", 2)
 
 
@@ -229,12 +252,13 @@ func _update_views(delta: float, power_w: float) -> void:
 	combat_view.sync(sim, delta)
 	raid_view.sync(sim, delta)
 	convoy_view.sync(sim, delta)
+	settlement_view.sync(sim, delta)
 	buggy.set_boost(sim.power_train.is_boosting())
 	var aim_at: Variant = sim.combat.aim_point()
 	var target_local: Variant = null
 	if aim_at is Vector2:
 		target_local = Vector3(sim.lanes.x_m + (aim_at as Vector2).x, 0.0, -(aim_at as Vector2).y)
-	buggy.update_combat(target_local, sim.combat.shield, delta)
+	buggy.update_combat(target_local, sim.combat.capacitor, delta)
 	buggy.set_aim_line(sim.combat.is_aiming())
 	# Zakręty i wzniesienia rysuje shader (bend.gdshaderinc) – podajemy mu dystans pojazdu.
 	# Podjazd z wyzwania to dodatkowe nachylenie, wizualnie przesadzone jak reszta wzniesień.
@@ -360,9 +384,9 @@ func _on_shell_landed(shell: Dictionary, hit: bool, blocked: bool, lost: int) ->
 	if not hit:
 		return
 	if blocked:
-		buggy.shield_block()
+		buggy.discharge()
 		camera.shake(0.5)
-		hud.show_popup("TARCZA ZATRZYMAŁA POCISK", Palette.UI_SCRAP)
+		hud.show_popup("WYŁADOWANIE ZDETONOWAŁO POCISK", Palette.UI_SCRAP)
 	else:
 		buggy.on_hit()
 		camera.shake(1.2)
@@ -494,9 +518,9 @@ func _on_mine_exploded(mine: Dictionary, hit: bool, blocked: bool, lost: int) ->
 	if not hit:
 		return
 	if blocked:
-		buggy.shield_block()
+		buggy.discharge()
 		camera.shake(0.5)
-		hud.show_popup("TARCZA ZATRZYMAŁA MINĘ", Palette.UI_SCRAP)
+		hud.show_popup("WYŁADOWANIE ZDETONOWAŁO MINĘ", Palette.UI_SCRAP)
 	else:
 		buggy.on_hit()
 		camera.shake(1.2)
@@ -643,7 +667,7 @@ func _setup_engagement() -> void:
 			RunSimulation.Prize.FUEL:
 				hud.show_popup("SKRZYNIA: KANISTER PALIWA", Color("ff8a4a"), 1.8)
 			RunSimulation.Prize.CHARGE:
-				hud.show_popup("SKRZYNIA: PEŁNY DOPALACZ I TARCZA", Palette.UI_GOOD, 1.8)
+				hud.show_popup("SKRZYNIA: PEŁNY DOPALACZ I KONDENSATORY", Palette.UI_GOOD, 1.8)
 			_:
 				hud.show_popup("SKRZYNIA: ZŁOTA ZĘBATKA +%d" % amount, Color("ffd21a"), 1.8)
 		_say("crate", 0, 80.0))
@@ -857,10 +881,10 @@ func _on_ram_resolved(_r: RaiderModel, outcome: int, lost: int) -> void:
 			hud.show_popup("RABUNEK! -%d ZŁOMU" % lost if lost > 0 else "ZEPCHNIĘTY!", Palette.UI_BAD)
 			_say("ram_hit", 1, 40.0)
 		CombatModel.RamOutcome.BLOCKED:
-			buggy.shield_block()
+			buggy.discharge()
 			camera.shake(0.5)
 			sfx.play("hit", 1.8, -4.0)
-			hud.show_popup("TARCZA ZATRZYMAŁA ATAK", Palette.UI_SCRAP)
+			hud.show_popup("WYŁADOWANIE ODRZUCIŁO NAPASTNIKA", Palette.UI_SCRAP)
 			_say("ram_blocked", 0, 90.0)
 		CombatModel.RamOutcome.DODGED:
 			hud.show_popup("UNIK!", Palette.UI_GOOD)
