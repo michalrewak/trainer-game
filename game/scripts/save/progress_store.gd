@@ -26,6 +26,7 @@ static func default_data() -> Dictionary:
 		"total_scrap": 0,
 		"fuel": 0,
 		"crew": 0,
+		"records": {},
 		"total_energy_kj": 0,
 		"upgrades": {},
 		"runs_completed": 0,
@@ -77,6 +78,48 @@ func recent_stats(days: int = 7) -> Dictionary:
 
 
 ## Łączna praca wykonana na wszystkich wyprawach [kJ] – odblokowuje większe podwozia.
+## Klucze rekordów i ich nazwy do ekranów. Moc liczona osobno dla każdego źródła
+## ("pad", "trainer"), żeby symulacja na triggerze nie mieszała się z prawdziwymi watami.
+const RECORD_NAMES := {
+	"best_20s_w": "Moc 20 s", "best_1min_w": "Moc 1 min", "best_5min_w": "Moc 5 min", "best_20min_w": "Moc 20 min",
+	"best_streak": "Passa", "scrap": "Złom z wyprawy", "energy_kj": "Praca z wyprawy",
+}
+
+
+func record(source: String, key: String) -> float:
+	var all: Dictionary = data.get("records", {})
+	var mine: Variant = all.get(source, {})
+	return float((mine as Dictionary).get(key, 0.0)) if mine is Dictionary else 0.0
+
+
+## Opis rekordu do wyświetlenia, np. "Moc 1 min: 265 W".
+static func record_text(key: String, value: float) -> String:
+	var unit := " W"
+	if key == "best_streak":
+		return "%s: ×%.1f" % [RECORD_NAMES[key], value]
+	if key == "scrap":
+		unit = ""
+	elif key == "energy_kj":
+		unit = " kJ"
+	return "%s: %d%s" % [RECORD_NAMES[key], roundi(value), unit]
+
+
+## Ile dni z rzędu (do dziś albo wczoraj) była choć jedna wyprawa.
+func day_streak(today: String = "") -> int:
+	var days := {}
+	for r: Variant in runs():
+		if r is Dictionary:
+			days[str((r as Dictionary).get("date", "")).substr(0, 10)] = true
+	var now := Time.get_unix_time_from_datetime_string((today if today != "" else Time.get_date_string_from_system()) + "T12:00:00")
+	var count := 0
+	var offset := 0
+	if not days.has(Time.get_date_string_from_unix_time(int(now))):
+		offset = 1
+	while days.has(Time.get_date_string_from_unix_time(int(now) - (count + offset) * 86400)):
+		count += 1
+	return count
+
+
 func total_energy_kj() -> int:
 	return int(data.get("total_energy_kj", 0))
 
@@ -153,6 +196,22 @@ func runs() -> Array:
 
 ## Dopisuje wyprawę (podsumowanie z Expedition.to_summary) i aktualizuje sumy.
 func record_run(summary: Dictionary, timestamp: String = "") -> void:
+	# Rekordy: wynik lepszy od zapisanego dla tego samego źródła mocy. Autopilot się nie liczy.
+	var source := str(summary.get("source", "pad"))
+	var broken: Array = []
+	if source != "auto":
+		var all: Dictionary = data.get("records", {})
+		var mine: Dictionary = all.get(source, {}) if all.get(source, {}) is Dictionary else {}
+		for key: String in RECORD_NAMES:
+			var value := float(summary.get(key, 0.0))
+			if value > float(mine.get(key, 0.0)) + 0.001 and (key != "best_streak" or value > 1.0):
+				# Pierwsza wyprawa ustawia poziom odniesienia bez fanfar.
+				if mine.has(key):
+					broken.append(key)
+				mine[key] = value
+		all[source] = mine
+		data["records"] = all
+	summary["new_records"] = broken
 	var run := summary.duplicate(true)
 	run["date"] = timestamp if timestamp != "" else Time.get_datetime_string_from_system(false, true)
 	var scrap := int(run.get("scrap", 0))
@@ -229,6 +288,7 @@ static func _sanitize(raw: Dictionary) -> Dictionary:
 	clean["total_scrap"] = maxi(0, int(raw.get("total_scrap", 0)))
 	clean["fuel"] = maxi(0, int(raw.get("fuel", 0)))
 	clean["crew"] = maxi(0, int(raw.get("crew", 0)))
+	clean["records"] = (raw.get("records") as Dictionary).duplicate(true) if raw.get("records") is Dictionary else {}
 	if raw.has("total_energy_kj"):
 		clean["total_energy_kj"] = maxi(0, int(raw["total_energy_kj"]))
 	elif raw.get("runs") is Array:

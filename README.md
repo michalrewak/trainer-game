@@ -97,6 +97,19 @@ dla tego pada (inaczej pad udaje mysz).
   Chudy (pedalarz z galery), Zębatka (mechaniczka z osady, podpowiada taktykę), Brat Obrót
   (Kościół Świętej Kadencji, komentuje kadencję) i Iskra (gang). W spokojnych chwilach
   opowiadają historię świata.
+- **Passa**: zębatki, uniki i rozbite cele bez wpadki podbijają mnożnik złomu (do ×3). Zegar
+  passy odnawia każdy punkt; zderzenie, rabunek albo mina zerują ją.
+- **Zlecenia**: trzy cele na wyprawę widoczne w prawym górnym rogu (jedno treningowe, np.
+  czas w widełkach, i dwa zręcznościowe albo „duże”: konwój, osada). Nagroda w złomie,
+  za komplet dodatkowy kanister.
+- **Skrzynie** ze znakiem zapytania: losowo deszcz zębatek, kanister, pełny dopalacz
+  z tarczą albo złota zębatka. **Unik o włos** (zjazd z pasa wraku w ostatniej chwili)
+  daje punkty passy.
+- **Rekordy**: najlepsza moc z 20 s, 1 min, 5 min i 20 min, najwyższa passa, złom i praca
+  z wyprawy. Osobne tabele dla pada i trenażera; komunikat na żywo i lista w podsumowaniu.
+  Garaż pokazuje cel tygodnia w TSS i liczbę dni z rzędu.
+- **Dźwięk**: efekty generowane w grze (bez plików audio); kolejne zębatki grają coraz
+  wyższą nutą. Wyłączanie w garażu albo opcją startu --mute.
 - **Wartości treningowe**: HUD pokazuje procent FTP i strefę mocy, podsumowanie – NP, IF,
   TSS, kJ i czas w strefach Z1–Z7, garaż – rangę wynikającą z FTP i trening z 7 dni.
 - Postęp zapisuje się w `%APPDATA%\Godot\app_userdata\Wasteland Rider\progress.json`
@@ -147,7 +160,8 @@ wtedy mostek z `--port 8766`, a grę z `-- --bridge-port=8766`; gra zapamięta p
 `--time-scale=K`, `--seed=N`, `--quit-on-finish`, `--save=user://plik.json`,
 `--screenshots=KATALOG --shot-times=4,12`, `--combat-test`, `--no-combat`,
 `--terrain=city`, `--all-upgrades`, `--challenge-test`, `--no-challenges`, `--raid-test`,
-`--no-raids`, `--convoy-test` (konwój po 5 s, bez zwiadów i wyzwań), `--no-convoys`, `--trainer`,
+`--no-raids`, `--convoy-test` (konwój po 5 s, bez zwiadów i wyzwań), `--no-convoys`, `--mute`,
+`--window=1920x1080` (okno zamiast pełnego ekranu, np. podgląd układu telewizora), `--trainer`,
 `--plan=res://plans/kanion_4x4.json`, `--time=cycle|day|dusk|night|storm`.
 Szczegóły: `game/scripts/app/launch_options.gd`.
 

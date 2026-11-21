@@ -20,6 +20,11 @@ var convoys_lost := 0
 ## Pedalarze uwolnieni z galer – po wyprawie dołączają do załogi.
 var pedalers_freed := 0
 var boosts_used := 0
+var near_misses := 0
+var crates_opened := 0
+var contracts_done := 0
+## Najwyższy mnożnik passy osiągnięty na wyprawie.
+var best_streak := 1.0
 ## Ulepszenia (etap 3): pancerz zmniejsza straty, przyczepa dokłada część złomu.
 var scrap_loss_factor := 1.0
 var scrap_bonus := 0.0
@@ -51,8 +56,9 @@ func tick(delta: float, power_w: float, speed_mps: float, p_distance_m: float) -
 		finished = true
 
 
-func add_scrap(amount: int) -> void:
-	_bonus_acc += amount * scrap_bonus
+## multiplier: mnożnik passy (zębatki z trasy); łup z napadów i konwojów idzie bez niego.
+func add_scrap(amount: int, multiplier: float = 1.0) -> void:
+	_bonus_acc += amount * (scrap_bonus + maxf(multiplier, 1.0) - 1.0)
 	var extra := floori(_bonus_acc)
 	_bonus_acc -= extra
 	scrap += amount + extra
@@ -123,6 +129,10 @@ func to_summary(completed: bool) -> Dictionary:
 		"convoys_lost": convoys_lost,
 		"pedalers_freed": pedalers_freed,
 		"boosts_used": boosts_used,
+		"near_misses": near_misses,
+		"crates_opened": crates_opened,
+		"contracts_done": contracts_done,
+		"best_streak": best_streak,
 		"collisions": collisions,
 		"raids_lost": raids_lost,
 		"raiders_destroyed": raiders_destroyed,

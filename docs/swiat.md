@@ -192,7 +192,26 @@ Konwój to najważniejsza walka w grze i jedyna, w której wygrywa się głową 
 Stan wdrożenia (2026-11-21): wszystko powyżej działa w jeździe swobodnej. Do zrobienia:
 konwoje jako interwały w trybie treningowym, bossowie kampanii, załoga widoczna na pojeździe.
 
-### 4. Trening zawsze w 100%
+### 4. Co trzyma przy grze
+
+Gra ma wciągać, a nie tylko towarzyszyć pedałowaniu. Mechanizmy, które za to odpowiadają:
+
+| Mechanizm | Jak działa w grze |
+|---|---|
+| Zawsze widoczny najbliższy cel | trzy zlecenia na wyprawę z postępem w HUD, nagroda co kilka minut |
+| Rosnąca stawka | passa: czysta jazda podbija mnożnik złomu do ×3, wpadka go zeruje |
+| Niespodzianka | skrzynie z losową nagrodą |
+| Popis umiejętności | unik o włos, celowanie w sprzęg, odcinanie konwoju |
+| Bicie własnych wyników | rekordy mocy 20 s / 1 min / 5 min / 20 min, komunikat na żywo |
+| Powód, żeby wrócić jutro | cel tygodnia w TSS i dni z rzędu w garażu, załoga i kilodżule do podwozia |
+| Rytm napięcia i oddechu | potyczki, wyzwania, napady, konwoje na zmianę ze spokojnym zbieraniem |
+| Odpowiedź na każdy ruch | dźwięki (nuta rośnie z passą), wstrząsy kamery, komentarze postaci |
+
+Interfejs: stalowe płyty ze ściętymi rogami i pomarańczowy akcent. HUD to deska rozdzielcza
+na dole (prędkość, moc, strefy Z1–Z7, wskaźnik widełek, zasilanie, tarcza), a góra ekranu
+zostaje wolna, żeby było widać drogę przed pojazdem.
+
+### 5. Trening zawsze w 100%
 
 Nadrzędna zasada z CLAUDE.md zostaje. W trybie treningowym o wysiłku decyduje plan, a gracz
 wybiera tylko, co robi w tym czasie: napad wypada na interwał, objazd na regenerację.

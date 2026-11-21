@@ -1,7 +1,11 @@
 class_name Hud
 extends CanvasLayer
-## HUD czytelny z 3 m: duża moc w watach (środek dół), prędkość (lewy dół), dystans
-## (prawy dół), czas do końca (lewa góra), złom (prawa góra). Kadencja dyskretnie pod mocą.
+## HUD czytelny z 3 m. Układ:
+## - dół, środek: deska rozdzielcza – prędkość, MOC (największa), pasek stref Z1–Z7,
+##   wskaźnik widełek celu, zasilanie, tarcza, moc na kołach i dopalacz;
+## - lewa góra: czas i dystans, pod spodem panel konwoju albo treningu;
+## - prawa góra: złom z mnożnikiem passy, zlecenia, gadająca głowa;
+## - środek góry: tylko wąski pasek stanu – horyzont i droga przed pojazdem są odsłonięte.
 ## Statyczne elementy powoli dryfują o kilka pikseli (ochrona OLED przed wypaleniem).
 
 ## FTP gracza – do pokazania procentu FTP i strefy mocy.
@@ -9,6 +13,7 @@ var ftp_w := 200.0
 
 const DRIFT_PX := 8.0
 const DRIFT_PERIOD_S := 45.0
+const BAR_WIDTH := 178.0
 
 var _root: Control
 var _time_value: Label
@@ -17,23 +22,32 @@ var _speed_value: Label
 var _distance_value: Label
 var _power_value: Label
 var _cadence_value: Label
+var _zone_label: Label
+var _zone_strip: ZoneStrip
 var _wheel_label: Label
+var _band_gauge: BandGauge
+var _hint: Label
+var _status_box: Control
+var _message: Label
+var _popup: Label
+var _scrap_panel: Control
+var _streak_label: Label
+var _streak_fill: ColorRect
+var _streak_time: ColorRect
+var _fuel_value: Label
+var _speed_caption: Label
+var _challenge_label: Label
+var _contract_box: Control
+var _contract_labels: Array[Label] = []
+var _scout_card: PanelContainer
+var _scout_title: Label
+var _scout_lines: Label
+var _scout_side := 0
 var _convoy_box: PanelContainer
 var _convoy_title: Label
 var _convoy_status: Label
 var _convoy_diagram: ConvoyDiagram
 var _head: TalkingHead
-var _hint: Label
-var _message: Label
-var _popup: Label
-var _scrap_panel: Control
-var _fuel_value: Label
-var _speed_caption: Label
-var _challenge_label: Label
-var _scout_card: PanelContainer
-var _scout_title: Label
-var _scout_lines: Label
-var _scout_side := 0
 var _workout_box: Control
 var _profile: WorkoutProfile
 var _workout_title: Label
@@ -44,16 +58,16 @@ var _supply_label: Label
 var _supply_fill: ColorRect
 var _shield_fill: ColorRect
 var _combat_row: Control
+var _target_col: Control
 var _threat_left: Label
 var _threat_right: Label
 var _blink_t := 0.0
-
-const BAR_WIDTH := 300.0
 
 var _message_left := 0.0
 var _persistent_message := ""
 var _popup_left := 0.0
 var _scrap_pulse := 0.0
+var _streak_pulse := 0.0
 var _drift_from := Vector2.ZERO
 var _drift_to := Vector2.ZERO
 var _drift_t := 0.0
@@ -67,16 +81,18 @@ func _ready() -> void:
 
 func update_from(sim: RunSimulation, power: PowerSource, delta: float) -> void:
 	var e := sim.expedition
-	_power_value.text = str(roundi(power.get_power_watts()))
-	var cadence := roundi(power.get_cadence())
-	# Kadencja dyskretnie, a obok to, co ważne treningowo: procent FTP i strefa mocy.
 	var pw := power.get_power_watts()
+	_power_value.text = str(roundi(pw))
+	var cadence := roundi(power.get_cadence())
+	_cadence_value.text = "%d obr/min" % cadence if cadence > 0 else ""
+	# To, co ważne treningowo: procent FTP i strefa mocy, w kolorze strefy.
+	_zone_strip.set_power(pw, ftp_w)
 	if pw >= 5.0:
 		var zone := TrainingMetrics.zone_index(pw, ftp_w)
-		_cadence_value.text = ("%d obr/min  ·  " % cadence if cadence > 0 else "") + "%d%% FTP  ·  %s" % [roundi(pw / ftp_w * 100.0), TrainingMetrics.ZONE_NAMES[zone]]
-		_cadence_value.add_theme_color_override("font_color", TrainingMetrics.ZONE_COLORS[zone].lerp(Palette.UI_TEXT, 0.35))
+		_zone_label.text = "%d%% FTP\n%s" % [roundi(pw / ftp_w * 100.0), TrainingMetrics.ZONE_NAMES[zone]]
+		_zone_label.add_theme_color_override("font_color", TrainingMetrics.ZONE_COLORS[zone].lerp(Palette.UI_TEXT, 0.35))
 	else:
-		_cadence_value.text = ""
+		_zone_label.text = ""
 	# Układ napędowy: co z mocy z nóg trafia na koła i ile ładunków ma dopalacz.
 	var train := sim.power_train
 	var pips := "■".repeat(train.charges) + "□".repeat(maxi(0, train.max_charges - train.charges))
@@ -88,6 +104,7 @@ func update_from(sim: RunSimulation, power: PowerSource, delta: float) -> void:
 		_wheel_label.add_theme_color_override("font_color", Palette.UI_DIM)
 	_hint.text = power.get_hint()
 	_hint.visible = _hint.text != ""
+	_status_box.visible = _hint.visible or _challenge_label.visible
 	_speed_value.text = "%d" % roundi(sim.vehicle.speed_kmh())
 	var grade_pct := roundi(sim.vehicle.grade * 100.0)
 	if grade_pct > 0:
@@ -96,25 +113,60 @@ func update_from(sim: RunSimulation, power: PowerSource, delta: float) -> void:
 		_speed_caption.text = "KM/H  ↓ %d%%" % absi(grade_pct)
 	else:
 		_speed_caption.text = "KM/H"
-	_distance_value.text = UiStyle.km(sim.vehicle.distance_m)
+	_distance_value.text = "%s km" % UiStyle.km(sim.vehicle.distance_m)
 	_time_value.text = UiStyle.clock(e.time_left_s())
 	_time_value.add_theme_color_override("font_color", Palette.UI_ACCENT if e.time_left_s() <= 60.0 else Palette.UI_TEXT)
 	_scrap_value.text = str(e.scrap)
-	_fuel_value.text = "PALIWO %d" % e.fuel
-	_fuel_value.visible = e.fuel > 0 or sim.ram_cooldown_s > 0.0
+	var extras: Array[String] = []
+	if e.fuel > 0:
+		extras.append("PALIWO %d" % e.fuel)
 	if sim.ram_cooldown_s > 0.0:
-		var ram_text := "TARAN gotowy" if sim.ram_ready() else "TARAN %d s" % ceili(sim.ram_left_s)
-		_fuel_value.text = ("PALIWO %d   ·   " % e.fuel if e.fuel > 0 else "") + ram_text
+		extras.append("TARAN gotowy" if sim.ram_ready() else "TARAN %d s" % ceili(sim.ram_left_s))
+	_fuel_value.text = "   ·   ".join(extras)
+	_fuel_value.visible = not extras.is_empty()
+	_update_streak(sim.streak)
+	_update_contracts(sim.contracts)
 	_tick_effects(delta)
 
 
-## Etap 4: tryb treningowy – profil planu na dole ekranu i bieżący krok.
+## Passa: mnożnik złomu, postęp do następnego progu i zegar do jej utraty.
+func _update_streak(streak: Streak) -> void:
+	var active := streak.points > 0
+	_streak_label.text = "×%.1f" % streak.multiplier()
+	_streak_label.add_theme_color_override("font_color", Palette.UI_ACCENT if streak.tier() > 0 else Palette.UI_DIM)
+	_streak_fill.size.x = 120.0 * streak.progress_to_next()
+	_streak_time.size.x = 120.0 * streak.time_ratio()
+	# Zegar czerwienieje, gdy passa zaraz przepadnie.
+	_streak_time.color = Palette.UI_BAD if active and streak.time_ratio() < 0.3 else Color(1, 1, 1, 0.7)
+
+
+## Impuls przy wejściu passy na wyższy próg.
+func pulse_streak() -> void:
+	_streak_pulse = 0.35
+
+
+func _update_contracts(board: ContractBoard) -> void:
+	_contract_box.visible = not board.contracts.is_empty()
+	for i in _contract_labels.size():
+		var l := _contract_labels[i]
+		l.visible = i < board.contracts.size()
+		if not l.visible:
+			continue
+		var c := board.contracts[i]
+		if bool(c["done"]):
+			l.text = "■ %s" % str(c["text"])
+			l.add_theme_color_override("font_color", Palette.UI_GOOD.darkened(0.15))
+		else:
+			l.text = "□ %s  %s" % [str(c["text"]), ContractBoard.progress_text(c)]
+			l.add_theme_color_override("font_color", Palette.UI_TEXT)
+
+
+## Etap 4: tryb treningowy – profil planu pod licznikiem czasu i bieżący krok.
 func set_workout(blocks: Array[Dictionary], plan_name: String) -> void:
 	_workout_box.visible = true
 	_profile.set_blocks(blocks)
 	_workout_title.text = plan_name
-	_supply_label.add_theme_font_size_override("font_size", 40)
-	_supply_label.add_theme_color_override("font_color", Palette.UI_TEXT)
+	_supply_label.add_theme_font_size_override("font_size", 34)
 
 
 ## info: now_s, step_label, step_left_s, next_label, target_w, safe (bool)
@@ -138,7 +190,7 @@ func update_scout(visible_now: bool, side: int = 1, title: String = "", lines: S
 		_scout_card.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT if side < 0 else Control.PRESET_CENTER_RIGHT, Control.PRESET_MODE_MINSIZE)
 		_scout_card.grow_horizontal = Control.GROW_DIRECTION_END if side < 0 else Control.GROW_DIRECTION_BEGIN
 		_scout_card.grow_vertical = Control.GROW_DIRECTION_END
-		_scout_card.position += Vector2(48.0 if side < 0 else -48.0, 70.0)
+		_scout_card.position += Vector2(48.0 if side < 0 else -48.0, 110.0)
 
 
 ## Gadająca głowa: kwestia z Chatter.line(); priorytet 0 = tło, 1 = zwykła, 2 = ważna.
@@ -175,14 +227,15 @@ func update_convoy(d: Dictionary) -> void:
 	g.board = float(d.get("board", -1.0))
 
 
-## Etap 6: linia wyzwania trybu wolnego w panelu mocy (pusta = ukryta).
+## Pasek stanu u góry: wyzwanie, napad albo konwój (pusty = ukryty).
 func update_challenge(text: String, color: Color) -> void:
 	_challenge_label.text = text
 	_challenge_label.visible = text != ""
 	_challenge_label.add_theme_color_override("font_color", color)
+	_status_box.visible = _hint.visible or _challenge_label.visible
 
 
-## Etap 2: zasilanie (moc względem celu), tarcza i ostrzeżenia o ataku z boku.
+## Zasilanie (moc względem celu), tarcza i ostrzeżenia o ataku z boku.
 func update_combat(combat: CombatModel, power_w: float, player_x: float, delta: float) -> void:
 	_blink_t += delta
 	_combat_row.visible = combat.enabled
@@ -194,11 +247,12 @@ func update_combat(combat: CombatModel, power_w: float, player_x: float, delta: 
 			_supply_label.text = "CEL %s · za słabo" % range_text
 			fill_color = Palette.UI_ACCENT
 		TargetBand.Status.ABOVE:
-			_supply_label.text = "CEL %s · ZA MOCNO – PRZEGRZANIE" % range_text
+			_supply_label.text = "CEL %s · ZA MOCNO" % range_text
 			fill_color = Palette.UI_BAD
 		_:
 			_supply_label.text = "CEL %s · OK" % range_text
-	_supply_label.add_theme_color_override("font_color", fill_color.lerp(Palette.UI_TEXT, 0.35))
+	_supply_label.add_theme_color_override("font_color", fill_color.lerp(Palette.UI_TEXT, 0.25))
+	_band_gauge.set_values(power_w, combat.target_power_w, combat.target_low_tol, combat.target_high_tol, fill_color)
 	_supply_fill.color = fill_color
 	_supply_fill.size.x = BAR_WIDTH * clampf(combat.supply_ratio(), 0.0, 1.0)
 	_shield_fill.size.x = BAR_WIDTH * clampf(combat.shield, 0.0, 1.0)
@@ -277,11 +331,14 @@ func _tick_effects(delta: float) -> void:
 		_popup.modulate.a = clampf(_popup_left / 0.5, 0.0, 1.0)
 	else:
 		_popup.visible = false
-	if _scrap_pulse > 0.0:
-		_scrap_pulse = maxf(0.0, _scrap_pulse - delta)
-	var s := 1.0 + _scrap_pulse * 0.6
-	_scrap_panel.pivot_offset = _scrap_panel.size * 0.5
-	_scrap_panel.scale = Vector2(s, s)
+	_scrap_pulse = maxf(0.0, _scrap_pulse - delta)
+	var s := 1.0 + _scrap_pulse * 0.5
+	_scrap_value.pivot_offset = _scrap_value.size * 0.5
+	_scrap_value.scale = Vector2(s, s)
+	_streak_pulse = maxf(0.0, _streak_pulse - delta)
+	var k := 1.0 + _streak_pulse * 1.6
+	_streak_label.pivot_offset = _streak_label.size * 0.5
+	_streak_label.scale = Vector2(k, k)
 	# Dryf HUD (OLED).
 	_drift_t += delta / DRIFT_PERIOD_S
 	if _drift_t >= 1.0:
@@ -291,94 +348,59 @@ func _tick_effects(delta: float) -> void:
 	_root.position = _drift_from.lerp(_drift_to, smoothstep(0.0, 1.0, _drift_t))
 
 
+# --- Budowa ----------------------------------------------------------------------
+
 func _build() -> void:
 	_root = Control.new()
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
+	_build_top_left()
+	_build_top_right()
+	_build_status()
+	_build_dashboard()
+	_build_overlays()
 
-	# Lewa góra: czas do końca.
-	var time_box := _stat_panel("DO KOŃCA")
-	_time_value = time_box.get_meta("value")
-	_place(time_box, Control.PRESET_TOP_LEFT, Vector2(48, 40))
 
-	# Prawa góra: złom.
-	var scrap_box := _stat_panel("ZŁOM", Palette.UI_SCRAP)
-	_scrap_value = scrap_box.get_meta("value")
-	_scrap_panel = scrap_box
-	_place(scrap_box, Control.PRESET_TOP_RIGHT, Vector2(-48, 40))
-	_fuel_value = UiStyle.label("", 34, Color("ff9a5a"), HORIZONTAL_ALIGNMENT_RIGHT)
-	_fuel_value.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	_fuel_value.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	_fuel_value.position += Vector2(-60, 205)
-	_fuel_value.visible = false
-	_root.add_child(_fuel_value)
-
-	# Lewy dół: prędkość.
-	var speed_box := _stat_panel("KM/H")
-	_speed_value = speed_box.get_meta("value")
-	_speed_caption = speed_box.get_meta("caption")
-	_place(speed_box, Control.PRESET_BOTTOM_LEFT, Vector2(48, -40))
-
-	# Prawy dół: dystans.
-	var dist_box := _stat_panel("KM")
-	_distance_value = dist_box.get_meta("value")
-	_place(dist_box, Control.PRESET_BOTTOM_RIGHT, Vector2(-48, -40))
-
-	# Środek dół: moc – największy element.
-	var power_panel := UiStyle.panel(Palette.UI_PANEL)
-	var col := VBoxContainer.new()
-	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	col.add_theme_constant_override("separation", 0)
-	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	power_panel.add_child(col)
-	_hint = UiStyle.label("", 34, Palette.UI_ACCENT, HORIZONTAL_ALIGNMENT_CENTER)
-	col.add_child(_hint)
+## Lewa góra: czas do końca i dystans; niżej panel konwoju albo treningu.
+func _build_top_left() -> void:
+	var col := _column(Control.PRESET_TOP_LEFT, Vector2(40, 32), false)
+	var plate := UiStyle.plate(UiStyle.STEEL, Palette.UI_ACCENT)
+	plate.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 12)
+	row.add_theme_constant_override("separation", 26)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	col.add_child(row)
-	_power_value = UiStyle.label("0", 168, Palette.UI_TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
-	_power_value.custom_minimum_size = Vector2(330, 0)
-	row.add_child(_power_value)
-	var unit := UiStyle.label("W", 72, Palette.UI_ACCENT)
-	row.add_child(unit)
-	_cadence_value = UiStyle.label("", 34, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER)
-	col.add_child(_cadence_value)
-	_wheel_label = UiStyle.label("", 28, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER)
-	col.add_child(_wheel_label)
-	# Etap 2: zasilanie względem celu i tarcza.
-	var combat_col := VBoxContainer.new()
-	combat_col.add_theme_constant_override("separation", 6)
-	combat_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_supply_label = UiStyle.label("", 28, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER)
-	combat_col.add_child(_supply_label)
-	var supply_row := HBoxContainer.new()
-	supply_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	supply_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var supply_bar := _bar(Palette.UI_GOOD)
-	_supply_fill = supply_bar.get_meta("fill")
-	supply_row.add_child(supply_bar)
-	combat_col.add_child(supply_row)
-	var shield_row := HBoxContainer.new()
-	shield_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	shield_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var shield_bar := _bar(Palette.UI_SCRAP)
-	_shield_fill = shield_bar.get_meta("fill")
-	shield_row.add_child(shield_bar)
-	combat_col.add_child(shield_row)
-	combat_col.add_child(UiStyle.label("TARCZA", 22, Palette.UI_SCRAP, HORIZONTAL_ALIGNMENT_CENTER))
-	_combat_row = combat_col
-	col.add_child(combat_col)
-	_challenge_label = UiStyle.label("", 32, Palette.UI_ACCENT, HORIZONTAL_ALIGNMENT_CENTER)
-	_challenge_label.visible = false
-	col.add_child(_challenge_label)
-	# Moc na górze pośrodku: tam jest tylko niebo, a dół ekranu zajmuje pojazd.
-	_place(power_panel, Control.PRESET_CENTER_TOP, Vector2(0, 24))
+	plate.add_child(row)
+	var time := _stat("DO KOŃCA", 76)
+	_time_value = time.get_meta("value")
+	row.add_child(time)
+	var dist := _stat("DYSTANS", 40, Palette.UI_DIM)
+	_distance_value = dist.get_meta("value")
+	dist.size_flags_vertical = Control.SIZE_SHRINK_END
+	row.add_child(dist)
+	col.add_child(plate)
 
-	# Etap 4: panel treningu na dole pośrodku (ukryty w jeździe swobodnej).
-	var wpanel := UiStyle.panel(Palette.UI_PANEL)
+	# Panel konwoju (w treningu konwojów nie ma, więc dzieli miejsce z panelem treningu).
+	_convoy_box = UiStyle.plate(UiStyle.STEEL_STRONG, Palette.UI_ACCENT)
+	_convoy_box.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	var convoy_col := VBoxContainer.new()
+	convoy_col.add_theme_constant_override("separation", 2)
+	convoy_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_convoy_box.add_child(convoy_col)
+	_convoy_title = UiStyle.label("", 28, Palette.UI_ACCENT)
+	convoy_col.add_child(_convoy_title)
+	_convoy_diagram = ConvoyDiagram.new()
+	_convoy_diagram.custom_minimum_size = Vector2(640, 180)
+	_convoy_diagram.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	convoy_col.add_child(_convoy_diagram)
+	_convoy_status = UiStyle.label("", 30, Palette.UI_TEXT)
+	convoy_col.add_child(_convoy_status)
+	_convoy_box.visible = false
+	col.add_child(_convoy_box)
+
+	# Panel treningu: plan, bieżący krok, profil.
+	var wpanel := UiStyle.plate(UiStyle.STEEL_STRONG, Palette.UI_GOOD)
+	wpanel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	var wcol := VBoxContainer.new()
 	wcol.add_theme_constant_override("separation", 4)
 	wcol.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -386,9 +408,9 @@ func _build() -> void:
 	var title_row := HBoxContainer.new()
 	title_row.add_theme_constant_override("separation", 24)
 	title_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_workout_title = UiStyle.label("", 26, Palette.UI_DIM)
+	_workout_title = UiStyle.caption("", 24)
 	title_row.add_child(_workout_title)
-	_safe_label = UiStyle.label("POLE BEZPIECZNE", 26, Palette.UI_GOOD)
+	_safe_label = UiStyle.caption("POLE BEZPIECZNE", 24, Palette.UI_GOOD)
 	_safe_label.visible = false
 	title_row.add_child(_safe_label)
 	wcol.add_child(title_row)
@@ -401,12 +423,164 @@ func _build() -> void:
 	_next_label = UiStyle.label("", 24, Palette.UI_DIM)
 	wcol.add_child(_next_label)
 	_workout_box = wpanel
-	# Pod licznikiem czasu (lewa góra) – dół ekranu zajmuje pojazd.
-	_place(wpanel, Control.PRESET_TOP_LEFT, Vector2(48, 196))
 	wpanel.visible = false
+	col.add_child(wpanel)
 
-	# Karta zwiadu (napady).
-	_scout_card = UiStyle.panel(Palette.UI_PANEL_STRONG)
+
+## Prawa góra: złom z mnożnikiem passy, paliwo i taran, zlecenia, gadająca głowa.
+func _build_top_right() -> void:
+	var col := _column(Control.PRESET_TOP_RIGHT, Vector2(-40, 32), true)
+	var plate := UiStyle.plate(UiStyle.STEEL, Palette.UI_SCRAP)
+	plate.size_flags_horizontal = Control.SIZE_SHRINK_END
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 22)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.add_child(row)
+	# Passa: mnożnik, postęp do następnego progu, zegar.
+	var streak_col := VBoxContainer.new()
+	streak_col.add_theme_constant_override("separation", 3)
+	streak_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	streak_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_streak_label = UiStyle.label("×1.0", 46, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	streak_col.add_child(_streak_label)
+	var progress := _bar(Palette.UI_ACCENT, 120.0, 8.0)
+	_streak_fill = progress.get_meta("fill")
+	streak_col.add_child(progress)
+	var timer := _bar(Color(1, 1, 1, 0.7), 120.0, 5.0)
+	_streak_time = timer.get_meta("fill")
+	streak_col.add_child(timer)
+	streak_col.add_child(UiStyle.caption("PASSA", 20, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER))
+	row.add_child(streak_col)
+	var scrap := _stat("ZŁOM", 76, Palette.UI_SCRAP)
+	_scrap_value = scrap.get_meta("value")
+	row.add_child(scrap)
+	_scrap_panel = plate
+	col.add_child(plate)
+	_fuel_value = UiStyle.label("", 28, Color("ff9a5a"), HORIZONTAL_ALIGNMENT_RIGHT)
+	_fuel_value.visible = false
+	col.add_child(_fuel_value)
+
+	# Zlecenia: trzy cele wyprawy z postępem.
+	var contracts := UiStyle.plate(UiStyle.STEEL)
+	contracts.size_flags_horizontal = Control.SIZE_SHRINK_END
+	var ccol := VBoxContainer.new()
+	ccol.add_theme_constant_override("separation", 0)
+	ccol.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	contracts.add_child(ccol)
+	ccol.add_child(UiStyle.caption("ZLECENIA", 20, Palette.UI_ACCENT))
+	for i in 3:
+		var l := UiStyle.label("", 26, Palette.UI_TEXT)
+		ccol.add_child(l)
+		_contract_labels.append(l)
+	_contract_box = contracts
+	contracts.visible = false
+	col.add_child(contracts)
+
+	_head = TalkingHead.new()
+	_head.size_flags_horizontal = Control.SIZE_SHRINK_END
+	col.add_child(_head)
+
+
+## Środek góry: wąski pasek stanu (podpowiedź źródła mocy i bieżące zadanie).
+func _build_status() -> void:
+	var plate := UiStyle.plate(UiStyle.STEEL)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 0)
+	col.alignment = BoxContainer.ALIGNMENT_CENTER
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.add_child(col)
+	_hint = UiStyle.caption("", 24, Palette.UI_ACCENT, HORIZONTAL_ALIGNMENT_CENTER)
+	col.add_child(_hint)
+	_challenge_label = UiStyle.label("", 34, Palette.UI_ACCENT, HORIZONTAL_ALIGNMENT_CENTER)
+	_challenge_label.visible = false
+	col.add_child(_challenge_label)
+	_status_box = plate
+	plate.visible = false
+	_place(plate, Control.PRESET_CENTER_TOP, Vector2(0, 24))
+
+
+## Deska rozdzielcza na dole: prędkość | moc i strefy | cel, zasilanie, tarcza, napęd.
+func _build_dashboard() -> void:
+	var plate := UiStyle.plate(UiStyle.STEEL, Palette.UI_ACCENT)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 30)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	plate.add_child(row)
+
+	# Prędkość i kadencja.
+	var speed_col := VBoxContainer.new()
+	speed_col.add_theme_constant_override("separation", -2)
+	speed_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	speed_col.custom_minimum_size = Vector2(190, 0)
+	speed_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_speed_value = UiStyle.label("0", 76, Palette.UI_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	_speed_value.add_theme_constant_override("line_spacing", -12)
+	speed_col.add_child(_speed_value)
+	_speed_caption = UiStyle.caption("KM/H", 22, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	speed_col.add_child(_speed_caption)
+	_cadence_value = UiStyle.label("", 26, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER)
+	speed_col.add_child(_cadence_value)
+	row.add_child(speed_col)
+	row.add_child(_divider())
+
+	# Moc – największy element – z paskiem stref.
+	var power_col := VBoxContainer.new()
+	power_col.add_theme_constant_override("separation", -4)
+	power_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	power_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var power_row := HBoxContainer.new()
+	power_row.add_theme_constant_override("separation", 10)
+	power_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_power_value = UiStyle.label("0", 116, Palette.UI_TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
+	_power_value.custom_minimum_size = Vector2(230, 0)
+	power_row.add_child(_power_value)
+	var unit := UiStyle.label("W", 60, Palette.UI_ACCENT)
+	unit.size_flags_vertical = Control.SIZE_SHRINK_END
+	power_row.add_child(unit)
+	_zone_label = UiStyle.label("", 26, Palette.UI_DIM)
+	_zone_label.custom_minimum_size = Vector2(220, 0)
+	_zone_label.add_theme_constant_override("line_spacing", -4)
+	power_row.add_child(_zone_label)
+	power_col.add_child(power_row)
+	_zone_strip = ZoneStrip.new()
+	_zone_strip.custom_minimum_size = Vector2(500, 26)
+	_zone_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	power_col.add_child(_zone_strip)
+	row.add_child(power_col)
+	row.add_child(_divider())
+
+	# Cel mocy z widełkami, zasilanie, tarcza i układ napędowy.
+	var target_col := VBoxContainer.new()
+	target_col.add_theme_constant_override("separation", 3)
+	target_col.alignment = BoxContainer.ALIGNMENT_CENTER
+	target_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_supply_label = UiStyle.label("", 28, Palette.UI_DIM)
+	target_col.add_child(_supply_label)
+	_band_gauge = BandGauge.new()
+	_band_gauge.custom_minimum_size = Vector2(BAR_WIDTH * 2.0 + 24.0, 40)
+	_band_gauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	target_col.add_child(_band_gauge)
+	var bars := HBoxContainer.new()
+	bars.add_theme_constant_override("separation", 24)
+	bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var supply := _captioned_bar("ZASILANIE", Palette.UI_GOOD)
+	_supply_fill = supply.get_meta("fill")
+	bars.add_child(supply)
+	var shield := _captioned_bar("TARCZA", Palette.UI_SCRAP)
+	_shield_fill = shield.get_meta("fill")
+	bars.add_child(shield)
+	_combat_row = bars
+	target_col.add_child(bars)
+	_wheel_label = UiStyle.label("", 22, Palette.UI_DIM)
+	target_col.add_child(_wheel_label)
+	_target_col = target_col
+	row.add_child(target_col)
+	_place(plate, Control.PRESET_CENTER_BOTTOM, Vector2(0, -16))
+
+
+## Karta zwiadu, ostrzeżenia o gangu, komunikaty i wyskakujące napisy.
+func _build_overlays() -> void:
+	_scout_card = UiStyle.plate(UiStyle.STEEL_STRONG, Palette.UI_ACCENT)
 	var scout_col := VBoxContainer.new()
 	scout_col.add_theme_constant_override("separation", 2)
 	scout_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -418,43 +592,20 @@ func _build() -> void:
 	_scout_card.visible = false
 	_root.add_child(_scout_card)
 
-	# Panel konwoju: pod licznikiem czasu (w treningu konwojów nie ma, więc miejsce jest wolne).
-	_convoy_box = UiStyle.panel(Palette.UI_PANEL_STRONG)
-	var convoy_col := VBoxContainer.new()
-	convoy_col.add_theme_constant_override("separation", 2)
-	convoy_col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_convoy_box.add_child(convoy_col)
-	_convoy_title = UiStyle.label("", 30, Palette.UI_ACCENT)
-	convoy_col.add_child(_convoy_title)
-	_convoy_diagram = ConvoyDiagram.new()
-	_convoy_diagram.custom_minimum_size = Vector2(760, 190)
-	_convoy_diagram.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	convoy_col.add_child(_convoy_diagram)
-	_convoy_status = UiStyle.label("", 34, Palette.UI_TEXT)
-	convoy_col.add_child(_convoy_status)
-	_place(_convoy_box, Control.PRESET_TOP_LEFT, Vector2(48, 196))
-	_convoy_box.visible = false
-
-	# Gadająca głowa: lewy dół, nad prędkością.
-	_head = TalkingHead.new()
-	_place(_head, Control.PRESET_BOTTOM_LEFT, Vector2(48, -232))
-
-	# Ostrzeżenia o gangu po bokach ekranu.
 	_threat_left = UiStyle.label("", 96, Palette.UI_BAD)
 	_threat_left.set_anchors_preset(Control.PRESET_CENTER_LEFT)
 	_threat_left.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_threat_left.position.x += 40
+	_threat_left.position += Vector2(40, 60)
 	_threat_left.visible = false
 	_root.add_child(_threat_left)
 	_threat_right = UiStyle.label("", 96, Palette.UI_BAD, HORIZONTAL_ALIGNMENT_RIGHT)
 	_threat_right.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
 	_threat_right.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	_threat_right.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_threat_right.position.x -= 40
+	_threat_right.position += Vector2(-40, 60)
 	_threat_right.visible = false
 	_root.add_child(_threat_right)
 
-	# Komunikaty na środku i wyskakujące „-N ZŁOMU”.
 	_message = UiStyle.label("", 58, Palette.UI_TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 	# Długie komunikaty (np. o cyfrowym triggerze) zawijamy, zamiast ucinać na 16:9.
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -462,50 +613,80 @@ func _build() -> void:
 	_message.set_anchors_preset(Control.PRESET_CENTER)
 	_message.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_message.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_message.position.y -= 40
+	_message.position.y -= 150
 	_message.visible = false
 	_root.add_child(_message)
-	_popup = UiStyle.label("", 80, Palette.UI_BAD, HORIZONTAL_ALIGNMENT_CENTER)
+	_popup = UiStyle.label("", 76, Palette.UI_BAD, HORIZONTAL_ALIGNMENT_CENTER)
 	_popup.set_anchors_preset(Control.PRESET_CENTER)
 	_popup.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	_popup.grow_vertical = Control.GROW_DIRECTION_BOTH
-	_popup.position.y += 70
+	_popup.position.y -= 40
 	_popup.visible = false
 	_root.add_child(_popup)
 
 
-func _bar(color: Color) -> Control:
+# --- Klocki ----------------------------------------------------------------------
+
+## Kolumna przypięta do rogu ekranu; elementy układają się jeden pod drugim.
+func _column(preset: Control.LayoutPreset, offset: Vector2, to_right: bool) -> VBoxContainer:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 10)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(col)
+	col.set_anchors_and_offsets_preset(preset, Control.PRESET_MODE_MINSIZE)
+	col.grow_horizontal = Control.GROW_DIRECTION_BEGIN if to_right else Control.GROW_DIRECTION_END
+	col.grow_vertical = Control.GROW_DIRECTION_END
+	col.position += offset
+	return col
+
+
+## Wartość z podpisem pod spodem. Wartość: meta "value".
+func _stat(title: String, size: int, color: Color = Palette.UI_TEXT) -> VBoxContainer:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", -10 if size >= 60 else -2)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var value := UiStyle.label("0", size, color, HORIZONTAL_ALIGNMENT_CENTER)
+	col.add_child(value)
+	col.add_child(UiStyle.caption(title, 20, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER))
+	col.set_meta("value", value)
+	return col
+
+
+func _divider() -> Control:
+	var line := ColorRect.new()
+	line.color = Color(1, 1, 1, 0.12)
+	line.custom_minimum_size = Vector2(2, 0)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return line
+
+
+func _captioned_bar(title: String, color: Color) -> VBoxContainer:
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 0)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.add_child(UiStyle.caption(title, 18, color.lerp(Palette.UI_DIM, 0.4)))
+	var bar := _bar(color, BAR_WIDTH, 12.0)
+	col.add_child(bar)
+	col.set_meta("fill", bar.get_meta("fill"))
+	return col
+
+
+func _bar(color: Color, width: float = BAR_WIDTH, height: float = 16.0) -> Control:
 	var holder := Control.new()
-	holder.custom_minimum_size = Vector2(BAR_WIDTH, 16)
+	holder.custom_minimum_size = Vector2(width, height)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var bg := ColorRect.new()
 	bg.color = Color(0, 0, 0, 0.55)
-	bg.size = Vector2(BAR_WIDTH, 16)
+	bg.size = Vector2(width, height)
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(bg)
 	var fill := ColorRect.new()
 	fill.color = color
-	fill.size = Vector2(0, 16)
+	fill.size = Vector2(0, height)
 	fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(fill)
 	holder.set_meta("fill", fill)
 	return holder
-
-
-func _stat_panel(caption: String, value_color: Color = Palette.UI_TEXT) -> PanelContainer:
-	var p := UiStyle.panel()
-	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", -14)
-	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	p.add_child(col)
-	var value := UiStyle.label("0", 84, value_color, HORIZONTAL_ALIGNMENT_CENTER)
-	value.custom_minimum_size = Vector2(220, 0)
-	col.add_child(value)
-	var caption_label := UiStyle.label(caption, 28, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER)
-	col.add_child(caption_label)
-	p.set_meta("value", value)
-	p.set_meta("caption", caption_label)
-	return p
 
 
 func _place(c: Control, preset: Control.LayoutPreset, offset: Vector2) -> void:

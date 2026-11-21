@@ -76,6 +76,29 @@ static func make_fuel() -> Node3D:
 	return root
 
 
+## Skrzynia z niespodzianką: stalowa, z żółtymi pasami i znakiem zapytania; złota wiązka.
+static func make_crate() -> Node3D:
+	var root := Node3D.new()
+	var steel := Palette.mat(Color("4a443e"), 0.6, 0.6)
+	var gold := Palette.glow(Color("ffc21a"), 2.4)
+	root.add_child(LowPoly.box(Vector3(1.0, 0.8, 1.0), steel, Vector3(0, 0.05, 0)))
+	for y: float in [-0.22, 0.32]:
+		root.add_child(LowPoly.box(Vector3(1.04, 0.12, 1.04), gold, Vector3(0, y, 0)))
+	for s: float in [-1.0, 1.0]:
+		root.add_child(LowPoly.box(Vector3(0.1, 0.84, 0.1), Palette.mat(Palette.RUST, 0.9, 0.3), Vector3(s * 0.48, 0.05, 0.48)))
+		root.add_child(LowPoly.box(Vector3(0.1, 0.84, 0.1), Palette.mat(Palette.RUST, 0.9, 0.3), Vector3(s * 0.48, 0.05, -0.48)))
+	var mark := Label3D.new()
+	mark.text = "?"
+	mark.font_size = 160
+	mark.outline_size = 28
+	mark.modulate = Color("ffd21a")
+	mark.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	mark.position = Vector3(0, 1.5, 0)
+	root.add_child(mark)
+	root.add_child(_beam(Color("ffc21a")))
+	return root
+
+
 ## Złom: świecąca zębatka (mały) albo skrzynia z wiązką światła (duży, wart 5).
 static func make_scrap(big: bool) -> Node3D:
 	var kenney := KenneyModels.scrap(big)

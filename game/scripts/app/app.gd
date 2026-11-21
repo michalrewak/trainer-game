@@ -160,6 +160,36 @@ func set_auto_fire(enabled: bool) -> void:
 	_save_settings()
 
 
+## Efekty dźwiękowe – z ustawień (domyślnie włączone).
+func sound_enabled() -> bool:
+	return bool(settings.get("sound", true)) and not options.mute
+
+
+func set_sound(enabled: bool) -> void:
+	settings["sound"] = enabled
+	_save_settings()
+
+
+## Cel tygodnia w TSS – z ustawień; pasek postępu w garażu.
+func weekly_tss_goal() -> int:
+	return clampi(int(settings.get("weekly_tss", 150)), 50, 1000)
+
+
+func set_weekly_tss_goal(value: int) -> void:
+	settings["weekly_tss"] = clampi(value, 50, 1000)
+	_save_settings()
+
+
+## Skąd pochodzi moc – do osobnych tabel rekordów ("pad", "trainer", "auto").
+func power_source_tag() -> String:
+	match power_source_kind():
+		PowerSourceFactory.KIND_TRAINER:
+			return "trainer"
+		PowerSourceFactory.KIND_AUTOPILOT:
+			return "auto"
+	return "pad"
+
+
 ## Zapisuje wynik wyprawy (ukończonej albo przerwanej) i pokazuje podsumowanie.
 func finish_run(summary: Dictionary) -> void:
 	active_run = null
@@ -239,6 +269,11 @@ func _move_to_screen(screen: int) -> void:
 
 func _setup_display() -> void:
 	if is_headless():
+		return
+	if options.window_size != Vector2i.ZERO:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_WINDOWED)
+		DisplayServer.window_set_size(options.window_size)
+		DisplayServer.window_set_position(Vector2i(40, 40))
 		return
 	# Jeśli okno startuje poza ekranem głównym (np. --screen 1), to wybór użytkownika –
 	# nie nadpisujemy go zapamiętanym ekranem. (--screen nie trafia do get_cmdline_args.)

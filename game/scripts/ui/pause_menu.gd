@@ -48,17 +48,25 @@ func _build() -> void:
 	root.theme = UiStyle.menu_theme()
 	add_child(root)
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.55)
+	dim.color = Color(0, 0, 0, 0.62)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.add_child(dim)
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.add_child(center)
+	# Stalowa płyta z paskiem akcentu – ten sam język co garaż i HUD.
+	var plate := UiStyle.plate(UiStyle.STEEL_MENU, Palette.UI_ACCENT)
+	var style := plate.get_theme_stylebox("panel") as StyleBoxFlat
+	style.content_margin_left = 60
+	style.content_margin_right = 60
+	style.content_margin_top = 30
+	style.content_margin_bottom = 36
+	center.add_child(plate)
 	var col := VBoxContainer.new()
-	col.add_theme_constant_override("separation", 28)
+	col.add_theme_constant_override("separation", 22)
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
-	center.add_child(col)
-	col.add_child(UiStyle.label("PAUZA", 120, Palette.UI_ACCENT, HORIZONTAL_ALIGNMENT_CENTER))
+	plate.add_child(col)
+	col.add_child(UiStyle.label("PAUZA", 110, Palette.UI_ACCENT, HORIZONTAL_ALIGNMENT_CENTER))
 	_reason = UiStyle.label("", 44, Palette.UI_BAD, HORIZONTAL_ALIGNMENT_CENTER)
 	col.add_child(_reason)
 	_resume = UiStyle.button("JEDŹ DALEJ")
@@ -67,4 +75,4 @@ func _build() -> void:
 	_end = UiStyle.button("ZAKOŃCZ WYPRAWĘ (zapisz złom)")
 	_end.pressed.connect(func() -> void: end_requested.emit())
 	col.add_child(_end)
-	col.add_child(UiStyle.label("Start / B / Esc – wróć do jazdy   ·   A – wybierz", 32, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER))
+	col.add_child(UiStyle.caption("Start / B / Esc – wróć do jazdy   ·   A – wybierz", 26, Palette.UI_DIM, HORIZONTAL_ALIGNMENT_CENTER))

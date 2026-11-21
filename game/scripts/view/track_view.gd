@@ -369,5 +369,7 @@ func _make_item_node(item: TrackItem) -> Node3D:
 			return WreckFactory.make_scrap(true)
 		TrackItem.Kind.FUEL:
 			return WreckFactory.make_fuel()
+		TrackItem.Kind.CRATE:
+			return WreckFactory.make_crate()
 		_:
 			return WreckFactory.make_scrap(false)

@@ -12,6 +12,10 @@ const ZONE_LIMITS: Array[float] = [0.55, 0.75, 0.90, 1.05, 1.20, 1.50]
 const ZONE_NAMES: Array[String] = ["Z1 regeneracja", "Z2 wytrzymałość", "Z3 tempo", "Z4 próg", "Z5 VO2max", "Z6 beztlenowa", "Z7 sprint"]
 const ZONE_COLORS: Array[Color] = [Color("8a8f96"), Color("4a9fd8"), Color("5cc46a"), Color("f2c94c"), Color("f2994a"), Color("eb5757"), Color("c04ad8")]
 const WINDOW_S := 30
+## Okna rekordów mocy [s] i ich klucze w podsumowaniu (średnia z najlepszego odcinka).
+const BEST_WINDOWS: Array[int] = [20, 60, 300, 1200]
+const BEST_KEYS: Array[String] = ["best_20s_w", "best_1min_w", "best_5min_w", "best_20min_w"]
+const BEST_NAMES: Array[String] = ["20 s", "1 min", "5 min", "20 min"]
 
 var ftp_w := 200.0
 var zone_s: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -23,6 +27,9 @@ var _window: Array[float] = []
 var _window_sum := 0.0
 var _fourth_sum := 0.0
 var _samples := 0
+## Sumy narastające próbek sekundowych – do najlepszej średniej z każdego okna.
+var _cum: Array[float] = [0.0]
+var _best: Array[float] = [0.0, 0.0, 0.0, 0.0]
 
 
 func _init(p_ftp_w: float = 200.0) -> void:
@@ -69,6 +76,17 @@ func _push_second(avg_w: float) -> void:
 	var rolling := _window_sum / _window.size()
 	_fourth_sum += pow(rolling, 4.0)
 	_samples += 1
+	_cum.append(_cum[_cum.size() - 1] + avg_w)
+	var n := _cum.size() - 1
+	for i in BEST_WINDOWS.size():
+		var w := BEST_WINDOWS[i]
+		if n >= w:
+			_best[i] = maxf(_best[i], (_cum[n] - _cum[n - w]) / w)
+
+
+## Najlepsza średnia moc z odcinka o długości BEST_WINDOWS[index]; 0, gdy za krótko.
+func best_power(index: int) -> float:
+	return _best[index]
 
 
 func normalized_power() -> float:
@@ -89,10 +107,13 @@ func to_summary() -> Dictionary:
 	var zones: Array[int] = []
 	for s in zone_s:
 		zones.append(roundi(s))
-	return {
+	var out := {
 		"ftp_w": roundi(ftp_w),
 		"np_w": roundi(normalized_power()),
 		"intensity_factor": snappedf(intensity_factor(), 0.01),
 		"tss": snappedf(tss(), 0.1),
 		"zones_s": zones,
 	}
+	for i in BEST_KEYS.size():
+		out[BEST_KEYS[i]] = roundi(_best[i])
+	return out

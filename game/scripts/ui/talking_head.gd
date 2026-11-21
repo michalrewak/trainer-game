@@ -4,8 +4,8 @@ extends PanelContainer
 ## imię, rola i kwestia wypisywana litera po literze. Kwestie czekają w krótkiej kolejce;
 ## ważniejsza przerywa mniej ważną, a nadmiar przepada – gadki nie mogą zalewać ekranu.
 
-const PORTRAIT_PX := 230.0
-const TEXT_WIDTH := 640.0
+const PORTRAIT_PX := 176.0
+const TEXT_WIDTH := 470.0
 const MAX_QUEUE := 2
 const CHARS_PER_S := 40.0
 const JAW_DROP := 0.11
@@ -160,12 +160,12 @@ func _build() -> void:
 	col.alignment = BoxContainer.ALIGNMENT_CENTER
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(col)
-	_name = UiStyle.label("", 40, Palette.UI_ACCENT)
+	_name = UiStyle.label("", 34, Palette.UI_ACCENT)
 	col.add_child(_name)
-	_role = UiStyle.label("", 24, Palette.UI_DIM)
+	_role = UiStyle.label("", 20, Palette.UI_DIM)
 	col.add_child(_role)
-	_text = UiStyle.label("", 38, Palette.UI_TEXT)
+	_text = UiStyle.label("", 32, Palette.UI_TEXT)
 	_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_text.custom_minimum_size = Vector2(TEXT_WIDTH, 150)
+	_text.custom_minimum_size = Vector2(TEXT_WIDTH, 118)
 	_text.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	col.add_child(_text)

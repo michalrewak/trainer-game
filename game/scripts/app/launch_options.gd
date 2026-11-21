@@ -48,6 +48,9 @@ var raid_test := false
 var no_raids := false
 var convoy_test := false
 var no_convoys := false
+var mute := false
+## Okno o zadanym rozmiarze zamiast pełnego ekranu (np. 1920x1080 – podgląd układu 16:9).
+var window_size := Vector2i.ZERO
 var no_challenges := false
 var trainer := false
 var plan_path := ""
@@ -106,6 +109,12 @@ static func parse(args: PackedStringArray) -> LaunchOptions:
 				o.convoy_test = true
 			"--no-convoys":
 				o.no_convoys = true
+			"--mute":
+				o.mute = true
+			"--window":
+				var wh := value.split("x")
+				if wh.size() == 2 and int(wh[0]) > 0 and int(wh[1]) > 0:
+					o.window_size = Vector2i(int(wh[0]), int(wh[1]))
 			"--challenge-test":
 				o.challenge_test = true
 			"--no-challenges":

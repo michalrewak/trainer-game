@@ -14,6 +14,7 @@ const FINISH_DELAY_S := 2.5
 
 var raid_view: RaidView
 var convoy_view: ConvoyView
+var sfx: Sfx
 var _loadout: Loadout
 @onready var camera: ChaseCamera = $Camera
 @onready var hud: Hud = $Hud
@@ -66,6 +67,9 @@ func _ready() -> void:
 	add_child(raid_view)
 	convoy_view = ConvoyView.new()
 	add_child(convoy_view)
+	sfx = Sfx.new()
+	sfx.enabled = App.sound_enabled() and not App.is_headless()
+	add_child(sfx)
 	_apply_terrain_look(App.selected_terrain)
 	weather.setup($WorldEnvironment, sun)
 	weather.attach_headlights(buggy)
@@ -77,13 +81,17 @@ func _ready() -> void:
 	sim.wreck_rammed.connect(func(item: TrackItem) -> void:
 		combat_view.explode_at(Vector3(sim.lane_x(item.lane), 0.0, -(item.distance_m - sim.vehicle.distance_m)))
 		camera.shake(0.6)
+		sfx.play("boom", 1.2)
 		hud.show_popup("TARAN!", Palette.UI_GOOD, 1.0))
-	sim.fuel_collected.connect(func(_item: TrackItem) -> void: hud.show_popup("+1 PALIWO", Color("ff8a4a"), 1.0))
+	sim.fuel_collected.connect(func(_item: TrackItem) -> void:
+		sfx.play("big")
+		hud.show_popup("+1 PALIWO", Color("ff8a4a"), 1.0))
 	_setup_combat()
 	_setup_challenges()
 	_setup_workout()
 	_setup_raids()
 	_setup_convoys()
+	_setup_engagement()
 	sim.combat.raider_spawned.connect(_on_raider_spawned)
 	pause_menu.resume_requested.connect(_resume)
 	pause_menu.end_requested.connect(_end_early)
@@ -194,6 +202,7 @@ func _ride(delta: float) -> void:
 	_update_views(delta, p)
 	_update_challenge_hud()
 	_tick_chatter(delta, p)
+	_tick_records(delta)
 	if sim.vehicle.speed_mps > 1.5:
 		hud.set_persistent_message("")
 	var e := sim.expedition
@@ -442,7 +451,9 @@ func _setup_convoys() -> void:
 		hud.show_message("ODCZEP GALERĘ!\nBoczny pas, zrównaj się ze sprzęgiem i strzelaj w sworzeń", 4.0)
 		_say("convoy_engaged", 2)
 		_say("convoy_hint", 1))
-	c.pace_warning.connect(func(fast: bool) -> void: _say("pace_fast" if fast else "pace_slow", 1))
+	c.pace_warning.connect(func(fast: bool) -> void:
+		sfx.play("warn", 1.2 if fast else 0.8)
+		_say("pace_fast" if fast else "pace_slow", 1))
 	c.pace_changed.connect(func(fast: bool) -> void:
 		if fast:
 			hud.show_popup("KONWÓJ UCIEKA – DOCIŚNIJ!", Palette.UI_ACCENT, 1.8)
@@ -478,6 +489,7 @@ func _setup_convoys() -> void:
 
 
 func _on_mine_exploded(mine: Dictionary, hit: bool, blocked: bool, lost: int) -> void:
+	sfx.play("boom", 1.1, -3.0)
 	combat_view.explode_at(Vector3(sim.lane_x(int(mine["lane"])), 0.0, -(float(mine["d"]) - sim.vehicle.distance_m)))
 	if not hit:
 		return
@@ -506,6 +518,7 @@ func _on_convoy_finished(_info: Dictionary, result: Dictionary) -> void:
 				extra = "  ·  ogon zabrał 30% łupu"
 			hud.show_message("GALERA PRZEJĘTA!%s\n+%d złomu  ·  +%d paliwa  ·  +%d do załogi" % [extra, int(result["scrap"]), int(result["fuel"]), int(result["freed"])], 5.0)
 			camera.shake(0.6)
+			sfx.play("fanfare")
 			_say("captured_clean" if bool(result.get("clean", false)) else "captured", 2)
 		ConvoyDirector.Outcome.PARTIAL:
 			hud.show_message("WAGON ZOSTAŁ W TYLE\nZgarnąłeś tylko resztki: +%d złomu" % int(result["scrap"]), 4.0)
@@ -591,10 +604,77 @@ func _convoy_order(c: ConvoyDirector, rel: float, beside: bool) -> String:
 	return "ZWOLNIJ: minąłeś okno o %d m" % ceili(past)
 
 
+# --- To, co ma wciągać: passa, zlecenia, skrzynie, uniki, rekordy ---------------
+
+var _record_checked: Dictionary = {}
+var _record_t := 0.0
+
+
+func _setup_engagement() -> void:
+	sim.contracts.setup(sim.expedition.duration_s / 60.0, App.ftp_w(), App.run_seed(), {
+		"combat": sim.combat.enabled, "convoys": sim.convoys.enabled and not App.options.convoy_test,
+		"raids": sim.raids.enabled, "workout": workout != null,
+	})
+	sim.contracts.completed.connect(func(c: Dictionary) -> void:
+		sfx.play("fanfare")
+		var reward := "+%d złomu" % int(c["reward_scrap"]) + (", +%d paliwa" % int(c["reward_fuel"]) if int(c["reward_fuel"]) > 0 else "")
+		hud.show_message("ZLECENIE WYKONANE\n%s  ·  %s" % [str(c["text"]), reward], 3.5)
+		_say("contract", 1))
+	sim.contracts.all_completed.connect(func() -> void:
+		hud.show_popup("KOMPLET ZLECEŃ! +%d PALIWA" % ContractBoard.ALL_DONE_FUEL, Palette.UI_GOOD, 2.5))
+	sim.streak.tier_changed.connect(func(tier: int, up: bool) -> void:
+		if up:
+			sfx.play("tier", 1.0 + 0.08 * tier)
+			hud.pulse_streak()
+			hud.show_popup("PASSA ×%.1f" % Streak.tier_multiplier(tier), Palette.UI_ACCENT, 1.2)
+			if tier >= 3:
+				_say("streak", 0, 90.0))
+	sim.streak.broken.connect(func(_points: int) -> void:
+		sfx.play("lost")
+		_say("streak_lost", 0, 60.0))
+	sim.near_miss.connect(func(_item: TrackItem) -> void:
+		sfx.play("pickup", 1.6)
+		hud.show_popup("O WŁOS!", Palette.UI_SCRAP, 0.9))
+	sim.crate_opened.connect(func(_item: TrackItem, prize: int, amount: int) -> void:
+		sfx.play("crate")
+		match prize:
+			RunSimulation.Prize.SCRAP_RAIN:
+				hud.show_popup("SKRZYNIA: DESZCZ ZĘBATEK!", Palette.UI_SCRAP, 1.8)
+			RunSimulation.Prize.FUEL:
+				hud.show_popup("SKRZYNIA: KANISTER PALIWA", Color("ff8a4a"), 1.8)
+			RunSimulation.Prize.CHARGE:
+				hud.show_popup("SKRZYNIA: PEŁNY DOPALACZ I TARCZA", Palette.UI_GOOD, 1.8)
+			_:
+				hud.show_popup("SKRZYNIA: ZŁOTA ZĘBATKA +%d" % amount, Color("ffd21a"), 1.8)
+		_say("crate", 0, 80.0))
+
+
+## Rekordy mocy na żywo: gdy najlepszy odcinek tej wyprawy przebije zapisany rekord.
+func _tick_records(delta: float) -> void:
+	_record_t += delta
+	if _record_t < 1.0:
+		return
+	_record_t = 0.0
+	var source := App.power_source_tag()
+	if source == "auto":
+		return
+	var metrics := sim.expedition.metrics
+	for i in TrainingMetrics.BEST_KEYS.size():
+		var key := TrainingMetrics.BEST_KEYS[i]
+		var old := App.progress.record(source, key)
+		if old <= 0.0 or _record_checked.has(key) or metrics.best_power(i) <= old + 1.0:
+			continue
+		_record_checked[key] = true
+		sfx.play("fanfare", 1.15)
+		hud.show_message("NOWY REKORD: MOC %s\n%d W  (było %d W)" % [TrainingMetrics.BEST_NAMES[i].to_upper(), roundi(metrics.best_power(i)), roundi(old)], 4.0)
+		_say("record", 2)
+
+
 # --- Dopalacz --------------------------------------------------------------------
 
 func _fire_boost(by_player: bool) -> void:
 	if sim.trigger_boost():
+		sfx.play("boost")
 		var t := sim.power_train
 		camera.shake(0.5)
 		hud.show_popup("DOPALACZ! +%d%% MOCY" % roundi(t.boost_gain * 100.0), Color("ff9a4a"), 1.6)
@@ -623,6 +703,8 @@ func _say(event: String, priority: int = 1, cooldown_s: float = 0.0) -> void:
 	if cooldown_s > 0.0 and now < float(_chat_until.get(event, -1e9)):
 		return
 	_chat_until[event] = now + cooldown_s
+	if not hud.head_busy() or priority >= 2:
+		sfx.play("radio", 1.0, -6.0)
 	hud.say(_chat.line(event), priority)
 	_lore_left_s = maxf(_lore_left_s, 22.0)
 
@@ -753,13 +835,16 @@ func _setup_combat() -> void:
 	c.raider_warning.connect(_on_raider_warning)
 	c.ram_resolved.connect(_on_ram_resolved)
 	c.raider_destroyed.connect(_on_raider_destroyed)
-	c.shot_fired.connect(func(_p: Dictionary) -> void: buggy.muzzle_flash())
+	c.shot_fired.connect(func(_p: Dictionary) -> void:
+		buggy.muzzle_flash()
+		sfx.play("shot", randf_range(0.92, 1.08), -9.0))
 	c.wreck_destroyed.connect(func(item: TrackItem) -> void:
 		combat_view.explode_at(Vector3(sim.lane_x(item.lane), 0.0, -(item.distance_m - sim.vehicle.distance_m)))
 		hud.show_popup("WRAK ROZBITY", Palette.UI_GOOD, 1.0))
 
 
 func _on_raider_warning(r: RaiderModel) -> void:
+	sfx.play("warn")
 	hud.show_message("ATAK Z %s!" % ("LEWEJ" if r.side < 0 else "PRAWEJ"), 1.2)
 
 
@@ -768,11 +853,13 @@ func _on_ram_resolved(_r: RaiderModel, outcome: int, lost: int) -> void:
 		CombatModel.RamOutcome.HIT:
 			buggy.on_hit()
 			camera.shake(1.2)
+			sfx.play("hit")
 			hud.show_popup("RABUNEK! -%d ZŁOMU" % lost if lost > 0 else "ZEPCHNIĘTY!", Palette.UI_BAD)
 			_say("ram_hit", 1, 40.0)
 		CombatModel.RamOutcome.BLOCKED:
 			buggy.shield_block()
 			camera.shake(0.5)
+			sfx.play("hit", 1.8, -4.0)
 			hud.show_popup("TARCZA ZATRZYMAŁA ATAK", Palette.UI_SCRAP)
 			_say("ram_blocked", 0, 90.0)
 		CombatModel.RamOutcome.DODGED:
@@ -783,6 +870,7 @@ func _on_ram_resolved(_r: RaiderModel, outcome: int, lost: int) -> void:
 
 
 func _on_raider_destroyed(r: RaiderModel, dropped: int, cause: int) -> void:
+	sfx.play("boom", 0.8 if r.half_length > 0.0 else 1.0)
 	combat_view.explode_at(Vector3(r.x, 0.0, -(r.d - sim.vehicle.distance_m)))
 	camera.shake(0.35)
 	if r.is_convoy_part():
@@ -824,6 +912,8 @@ func _end_early() -> void:
 
 func _summary(completed: bool) -> Dictionary:
 	var s := sim.expedition.to_summary(completed)
+	s["source"] = App.power_source_tag()
+	s["contracts"] = sim.contracts.to_summary()
 	if workout != null:
 		s["workout"] = workout.plan.name
 		s["workout_in_band_pct"] = roundi(workout.compliance() * 100.0)
@@ -853,12 +943,14 @@ func save_partial_run() -> void:
 # --- Zdarzenia -----------------------------------------------------------------
 
 func _on_wreck_hit(_item: TrackItem, lost: int) -> void:
+	sfx.play("hit")
 	buggy.on_hit()
 	camera.shake(1.0)
 	hud.flash_hit(lost)
 
 
 func _on_scrap_collected(_item: TrackItem) -> void:
+	sfx.pickup(sim.streak.tier())
 	hud.pulse_scrap()
 
 

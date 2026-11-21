@@ -60,7 +60,7 @@ func decide(sim: RunSimulation, delta: float) -> int:
 			return signi(best - here)
 		return 0
 	for item in sim.items_between(d + 4.0, d + scrap_look_ahead_m):
-		if item.is_scrap() and item.lane != here:
+		if (item.is_scrap() or item.is_crate()) and item.lane != here:
 			var dir := signi(item.lane - here)
 			if not _wreck_ahead(sim, here + dir, d, horizon):
 				_cooldown = cooldown_s

@@ -3,7 +3,8 @@ extends RefCounted
 ## Obiekt na trasie: wrak do ominięcia albo złom do zebrania.
 ## Pozycja = pas + dystans wzdłuż trasy (metry od startu wyprawy).
 
-enum Kind { WRECK, SCRAP, SCRAP_BIG, FUEL }
+## CRATE = skrzynia z losową nagrodą.
+enum Kind { WRECK, SCRAP, SCRAP_BIG, FUEL, CRATE }
 
 var id := 0
 var kind: Kind = Kind.SCRAP
@@ -14,6 +15,8 @@ var variant := 0
 var consumed := false
 ## Wytrzymałość wraku na ostrzał z wieżyczki.
 var hp := 2
+## Wrak już minięty (do liczenia uników „o włos”).
+var passed := false
 
 
 func _init(p_id: int = 0, p_kind: Kind = Kind.SCRAP, p_lane: int = 1, p_distance_m: float = 0.0, p_value: int = 1, p_variant: int = 0) -> void:
@@ -35,6 +38,10 @@ func is_scrap() -> bool:
 
 func is_fuel() -> bool:
 	return kind == Kind.FUEL
+
+
+func is_crate() -> bool:
+	return kind == Kind.CRATE
 
 
 ## Rzecz do zebrania (złom albo paliwo).

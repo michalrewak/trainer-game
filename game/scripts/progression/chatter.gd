@@ -172,6 +172,28 @@ const LINES := {
 		[PRIEST, "Dziewięćdziesiąt obrotów. Kościół patrzy z uznaniem."],
 		[PRIEST, "Równo jak w zegarku. Błogosławiona noga."],
 	],
+	"contract": [
+		[MECH, "Zlecenie odhaczone. Osada płaci złomem."],
+		[MECH, "Dobra robota. Następne czeka na liście."],
+		[SLAVE, "Szef dowozi! Tak trzymać."],
+	],
+	"streak": [
+		[MECH, "Czysta jazda! Mnożnik rośnie, tylko się nie rozbij."],
+		[PRIEST, "Kto jedzie bez skazy, temu złom sam wpada do skrzyni."],
+	],
+	"streak_lost": [
+		[RAIDER, "I po passie! Ha!"],
+		[MECH, "Passa przepadła. Zbieraj od nowa."],
+	],
+	"crate": [
+		[MECH, "Skrzynia sprzed zarazy! Nigdy nie wiadomo, co w środku."],
+		[SLAVE, "Ooo, co tam było? Pokaż!"],
+	],
+	"record": [
+		[MECH, "Tyle jeszcze nie wykręciłeś! Zapisuję na ścianie warsztatu."],
+		[PRIEST, "Nowy rekord. Nogi rosną, synu."],
+		[BARON, "Rekord? Phi. Moi ludzie kręcą tyle przez sen."],
+	],
 	"raid_scout": [
 		[MECH, "Osada przy zjeździe. Zerknij na kartę zwiadu i zdecyduj."],
 	],
